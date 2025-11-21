@@ -1177,6 +1177,7 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         row = self.preview_widget.current_slide_number()
         self.selected_row = 0
         if -1 < row < self.preview_widget.slide_count():
+            Registry().execute('slidecontroller_slide_selected', [self.service_item, self.is_live, row])
             if self.service_item.is_command():
                 if self.is_live and not start:
                     Registry().execute('{text}_slide'.format(text=self.service_item.name.lower()),

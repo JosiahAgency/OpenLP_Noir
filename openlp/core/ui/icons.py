@@ -115,6 +115,7 @@ class UiIcons(metaclass=Singleton):
             'new': {'icon': 'mdi.file-plus-outline'},
             'new_group': {'icon': 'mdi.folder'},
             'notes': {'icon': 'mdi.note'},
+            'obs_studio': {'icon': 'mdi.spotlight'},
             'open': {'icon': 'mdi.folder-open'},
             'optical': {'icon': 'mdi.disc'},
             'pause': {'icon': 'mdi.pause'},

@@ -92,6 +92,7 @@ test-arch:
       Mako
       mock
       mysql-connector-python
+      obsws-python
       packaging
       platformdirs
       psycopg2-binary
