@@ -289,7 +289,7 @@ build-macos:
     - "# Copying and linking the media info library files"
     - sitePackagesDirectoryPyMediaInfo="/Users/gitlab/.pyenv/versions/$pythonFullVersion/lib/python$pythonVersion/site-packages/pymediainfo"
     - cp "/opt/homebrew/lib/libmediainfo.dylib" $sitePackagesDirectoryPyMediaInfo
-    - ln -s "$sitePackagesDirectoryPyMediaInfo/libmediainfo.dylib" "$sitePackagesDirectoryPyMediaInfo/libmediainfo.0.dylib"
+    - ln -sf "$sitePackagesDirectoryPyMediaInfo/libmediainfo.dylib" "$sitePackagesDirectoryPyMediaInfo/libmediainfo.0.dylib"
     - "# Installing PyInstaller"
     - pip install pyinstaller
     - "# Downloading the necessary files for packaging from GitLab"
