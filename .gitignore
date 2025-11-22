@@ -21,6 +21,7 @@
 .idea
 .kdev4
 .komodotools
+.pylintrc
 .pytest_cache
 .venv
 .vscode
