@@ -129,15 +129,25 @@ class ObsStudioTab(SettingsTab):
         port = int(self.port_line_edit.text())
         password = self.password_line_edit.text()
         message = self.message_line_edit.text()
-        dialog_title = 'OBS Studio Connection Test'
+        dialog_title = translate('ObsStudioPlugin.ObsStudioTab', 'OBS Studio Connection Test')
         try:
             test_client = ObsStudioAPI(host, port, password)
             test_client.send_advanced_scene_switcher_message(message)
             test_client.disconnect()
-            QtWidgets.QMessageBox.information(self, dialog_title,
-                                              "Message was sent successfully.",
-                                              QtWidgets.QMessageBox.Ok)
+            QtWidgets.QMessageBox.information(
+                self, dialog_title,
+                translate(
+                    'ObsStudioPlugin.ObsStudioTab',
+                    'Message was sent successfully.'
+                ),
+                QtWidgets.QMessageBox.Ok
+            )
         except (ConnectionError, obsws_python.error.OBSSDKError, JSONDecodeError) as exception:
-            QtWidgets.QMessageBox.warning(self, dialog_title,
-                                          f"Message was not sent successfully: {exception}",
-                                          QtWidgets.QMessageBox.Ok)
+            QtWidgets.QMessageBox.warning(
+                self, dialog_title,
+                translate(
+                    'ObsStudioPlugin.ObsStudioTab',
+                    f'Message was not sent successfully: {exception}'
+                ),
+                QtWidgets.QMessageBox.Ok
+            )
