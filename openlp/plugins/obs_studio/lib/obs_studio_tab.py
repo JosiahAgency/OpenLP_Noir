@@ -20,7 +20,6 @@
 The :mod:`~openlp.plugins.obs_studio.lib.obsstudio_tab` module contains
 the settings tab for the OBS Studio plugin
 """
-from json import JSONDecodeError
 from PyQt5 import QtCore, QtWidgets
 
 from openlp.core.common.i18n import translate
