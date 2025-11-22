@@ -24,6 +24,7 @@ import base64
 import hashlib
 import json
 import logging
+import uuid
 import websocket
 
 log = logging.getLogger(__name__)
@@ -86,6 +87,7 @@ class ObsStudioAPI:
 
         :param message: The message to send to OBS Studio.
         """
+        unique_id = uuid.uuid4().hex
         payload = {
             "d": {
                 "requestData": {
@@ -95,11 +97,14 @@ class ObsStudioAPI:
                     "requestType": "AdvancedSceneSwitcherMessage",
                     "vendorName": "AdvancedSceneSwitcher"
                 },
-                "requestId": "someUniqueIdHere",
+                "requestId": unique_id,
                 "requestType": "CallVendorRequest"
             },
             "op": 6
         }
+        log.info(
+            'Sending Advanced Scene Switcher message to OBS Studio: %s', message
+        )
         self.__websocket.send(json.dumps(payload))
 
     def disconnect(self):
