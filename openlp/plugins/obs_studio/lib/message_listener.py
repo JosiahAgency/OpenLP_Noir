@@ -77,7 +77,7 @@ class MessageListener():
                 slide = message[0]
                 slide_number = message[2] + 1
                 message = f"type: {slide.name}, title: {slide.title}, slide: {slide_number}, \
-    notes: {slide.notes}"
+notes: {slide.notes}"
                 try:
                     self.client.send_advanced_scene_switcher_message(message)
                 except JSONDecodeError as exception:
