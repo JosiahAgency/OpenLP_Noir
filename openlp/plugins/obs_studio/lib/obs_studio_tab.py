@@ -22,7 +22,6 @@ the settings tab for the OBS Studio plugin
 """
 from json import JSONDecodeError
 from PyQt5 import QtCore, QtWidgets
-import obsws_python.error
 
 from openlp.core.common.i18n import translate
 from openlp.core.lib.settingstab import SettingsTab
@@ -142,7 +141,7 @@ class ObsStudioTab(SettingsTab):
                 ),
                 QtWidgets.QMessageBox.Ok
             )
-        except (ConnectionError, obsws_python.error.OBSSDKError, JSONDecodeError) as exception:
+        except ConnectionError as exception:
             QtWidgets.QMessageBox.warning(
                 self, dialog_title,
                 translate(

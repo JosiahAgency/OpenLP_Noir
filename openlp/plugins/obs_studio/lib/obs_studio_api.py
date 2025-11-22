@@ -20,8 +20,11 @@
 The :mod:`~openlp.plugins.obs_studio.lib.obs_studio_api` module contains
 an API interface for the OBS Studio WebSocket protocol
 """
+import base64
+import hashlib
+import json
 import logging
-import obsws_python as obs
+import websocket
 
 log = logging.getLogger(__name__)
 
@@ -39,7 +42,43 @@ class ObsStudioAPI:
         :param password: The password for the OBS Studio WebSocket server.
         :param timeout: The timeout for the OBS Studio WebSocket client.
         """
-        self.__client = obs.ReqClient(host=host, port=port, password=password, timeout=timeout)
+        self.__password = password
+        self.__websocket = websocket.WebSocket()
+        self.__websocket.connect(f"ws://{host}:{port}", timeout=timeout)
+        self.__auth()
+
+    def __build_auth_string(self, salt, challenge):
+        secret = base64.b64encode(
+            hashlib.sha256(
+                (self.__password + salt).encode('utf-8')
+            ).digest()
+        )
+        auth = base64.b64encode(
+            hashlib.sha256(
+                secret + challenge.encode('utf-8')
+            ).digest()
+        ).decode('utf-8')
+        return auth
+
+    def __auth(self):
+        message = self.__websocket.recv()
+        result = json.loads(message)
+        server_version = result['d'].get('obsWebSocketVersion')
+        log.info('Connected to OBS Studio WebSocket server version %s', server_version)
+        auth = self.__build_auth_string(
+            result['d']['authentication']['salt'], result['d']['authentication']['challenge']
+        )
+        payload = {
+            "op": 1,
+            "d": {
+                "rpcVersion": 1,
+                "authentication": auth,
+                "eventSubscriptions": 1000
+            }
+        }
+        self.__websocket.send(json.dumps(payload))
+        message = self.__websocket.recv()
+        result = json.loads(message)
 
     def send_advanced_scene_switcher_message(self, message):
         """
@@ -47,17 +86,24 @@ class ObsStudioAPI:
 
         :param message: The message to send to OBS Studio.
         """
-        request = {
-            "requestData": {
-                "message": message
+        payload = {
+            "d": {
+                "requestData": {
+                    "requestData": {
+                        "message": message
+                    },
+                    "requestType": "AdvancedSceneSwitcherMessage",
+                    "vendorName": "AdvancedSceneSwitcher"
+                },
+                "requestId": "someUniqueIdHere",
+                "requestType": "CallVendorRequest"
             },
-            "requestType": "AdvancedSceneSwitcherMessage",
-            "vendorName": "AdvancedSceneSwitcher"
+            "op": 6
         }
-        self.__client.send("CallVendorRequest", data=request, raw=True)
+        self.__websocket.send(json.dumps(payload))
 
     def disconnect(self):
         """
         Disconnect from the OBS Studio WebSocket server.
         """
-        self.__client.disconnect()
+        self.__websocket.close()

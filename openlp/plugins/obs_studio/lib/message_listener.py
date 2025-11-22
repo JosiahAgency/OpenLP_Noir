@@ -21,8 +21,6 @@ The :mod:`~openlp.plugins.obs_studio.lib.message_listener` module contains
 the MessageListener class for the OBS Studio plugin.
 """
 import logging
-from json import JSONDecodeError
-import obsws_python.error
 
 from openlp.core.common.registry import Registry
 from openlp.plugins.obs_studio.lib.obs_studio_api import ObsStudioAPI
@@ -60,7 +58,7 @@ class MessageListener():
             self.client = ObsStudioAPI(self.__host, self.__port, self.__password)
             self.is_connected = True
             log.info("Connected successfully to OBS Studio.")
-        except (ConnectionError, obsws_python.error.OBSSDKError) as exception:
+        except ConnectionError as exception:
             log.error("Failed to make a connection to OBS Studio: %s", exception)
 
     def slide_selected(self, message):
@@ -80,7 +78,7 @@ class MessageListener():
 notes: {slide.notes}"
                 try:
                     self.client.send_advanced_scene_switcher_message(message)
-                except JSONDecodeError as exception:
+                except ConnectionError as exception:
                     log.error("Message could not be processed by OBS Studio: %s", exception)
                     self.is_connected = False
 
