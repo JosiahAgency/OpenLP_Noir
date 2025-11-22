@@ -112,8 +112,8 @@ test-arch:
       six
       sqlalchemy
       waitress
-      websockets
       websocket-client
+      websockets
 
 .run_tests:
   script:
