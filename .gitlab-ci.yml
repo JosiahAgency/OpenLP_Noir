@@ -219,7 +219,7 @@ test-windows:
     - >
       pip install pyodbc
       pypiwin32
-    - $pyIcuVersion = '2.11'
+    - $pyIcuVersion = '2.12'
     - $pyIcuPackageFileName = "PyICU-$pyIcuVersion-cp$pythonVersion-cp$pythonVersion-win_amd64.whl"
     - "# Installing PyICU for Windows from GitHub"
     - pip install https://github.com/cgohlke/pyicu-build/releases/download/v$pyIcuVersion/$pyIcuPackageFileName
