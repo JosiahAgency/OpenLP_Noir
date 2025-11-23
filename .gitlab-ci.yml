@@ -7,7 +7,7 @@ default:
   retry: 2
 
 variables:
-  PYTHON_VERSION_WINDOWS_AND_MACOS: "3.11"
+  PYTHON_VERSION_WINDOWS_AND_MACOS: "3.12"
   IMAGE_BASE: $CI_REGISTRY/openlp/runners
   PACKAGING_REPOSITORY_NAME: "packaging"
   PACKAGING_BRANCH_NAME: "master"
