@@ -61,13 +61,11 @@ def test_extension_loader_no_files_found():
     Test the `extension_loader` function when no files are found
     """
     # GIVEN: A mocked `Path.glob` method which does not match any files
-    with patch('openlp.core.common.applocation.AppLocation.get_directory',
-               return_value=Path('/', 'app', 'dir', 'openlp')), \
-            patch.object(Path, 'glob', return_value=[]), \
-            patch('openlp.core.common.importlib.import_module') as mocked_import_module:
+    with patch.object(Path, 'glob', return_value=[]), \
+         patch('openlp.core.common.importlib.import_module') as mocked_import_module:
 
         # WHEN: Calling `extension_loader`
-        extension_loader('glob', ['file2.py', 'file3.py'])
+        extension_loader(Path('/', 'app', 'dir', 'openlp'), 'glob', ['file2.py', 'file3.py'])
 
         # THEN: `extension_loader` should not try to import any files
         assert mocked_import_module.called is False
@@ -78,17 +76,15 @@ def test_extension_loader_files_found():
     Test the `extension_loader` function when it successfully finds and loads some files
     """
     # GIVEN: A mocked `Path.glob` method which returns a list of files
-    with patch('openlp.core.common.applocation.AppLocation.get_directory',
-               return_value=Path('/', 'app', 'dir', 'openlp')), \
-            patch.object(Path, 'glob', return_value=[
-                Path('/', 'app', 'dir', 'openlp', 'import_dir', 'file1.py'),
-                Path('/', 'app', 'dir', 'openlp', 'import_dir', 'file2.py'),
-                Path('/', 'app', 'dir', 'openlp', 'import_dir', 'file3.py'),
-                Path('/', 'app', 'dir', 'openlp', 'import_dir', 'file4.py')]), \
+    with patch.object(Path, 'glob', return_value=[
+            Path('/', 'app', 'dir', 'openlp', 'import_dir', 'file1.py'),
+            Path('/', 'app', 'dir', 'openlp', 'import_dir', 'file2.py'),
+            Path('/', 'app', 'dir', 'openlp', 'import_dir', 'file3.py'),
+            Path('/', 'app', 'dir', 'openlp', 'import_dir', 'file4.py')]), \
             patch('openlp.core.common.import_openlp_module') as mocked_import_module:
 
         # WHEN: Calling `extension_loader` with a list of files to exclude
-        extension_loader('glob', ['file2.py', 'file3.py'])
+        extension_loader(Path('/', 'app', 'dir', 'openlp'),'glob', ['file2.py', 'file3.py'])
 
         # THEN: `extension_loader` should only try to import the files that are matched by the blob, excluding the
         #       files listed in the `excluded_files` argument
@@ -102,17 +98,15 @@ def test_extension_loader_files_found_community():
     Test the `extension_loader` function when it successfully finds and loads some files
     """
     # GIVEN: A mocked `Path.glob` method which returns a list of files
-    with patch('openlp.core.common.applocation.AppLocation.get_directory',
-               return_value=Path(p_prefix, 'app', 'dir')), \
-            patch.object(Path, 'glob', return_value=[
-                Path(p_prefix, 'app', 'dir', 'contrib', 'import_dir', 'file1.py'),
-                Path(p_prefix, 'app', 'dir', 'contrib', 'import_dir', 'file2.py'),
-                Path(p_prefix, 'app', 'dir', 'contrib', 'import_dir', 'file3.py'),
-                Path(p_prefix, 'app', 'dir', 'contrib', 'import_dir', 'file4.py')]), \
+    with patch.object(Path, 'glob', return_value=[
+            Path(p_prefix, 'app', 'dir', 'contrib', 'import_dir', 'file1.py'),
+            Path(p_prefix, 'app', 'dir', 'contrib', 'import_dir', 'file2.py'),
+            Path(p_prefix, 'app', 'dir', 'contrib', 'import_dir', 'file3.py'),
+            Path(p_prefix, 'app', 'dir', 'contrib', 'import_dir', 'file4.py')]), \
             patch('openlp.core.common.import_openlp_module') as mocked_import_module:
 
         # WHEN: Calling `extension_loader` with a list of files to exclude
-        extension_loader('glob', ['file2.py', 'file3.py'], True)
+        extension_loader(Path(p_prefix, 'app', 'dir'), 'glob', ['file2.py', 'file3.py'], True)
 
         # THEN: `extension_loader` should only try to import the files that are matched by the blob, excluding the
         #       files listed in the `excluded_files` argument
@@ -127,15 +121,13 @@ def test_extension_loader_import_error():
     Test the `extension_loader` function when `SourceFileLoader` raises a `ImportError`
     """
     # GIVEN: A mocked `import_module` which raises an `ImportError`
-    with patch('openlp.core.common.applocation.AppLocation.get_directory',
-               return_value=Path(p_prefix, 'app', 'dir', 'openlp')), \
-            patch.object(Path, 'glob', return_value=[
-                Path(p_prefix, 'app', 'dir', 'openlp', 'import_dir', 'file1.py')]), \
+    with patch.object(Path, 'glob', return_value=[
+            Path(p_prefix, 'app', 'dir', 'openlp', 'import_dir', 'file1.py')]), \
             patch('openlp.core.common.import_openlp_module', side_effect=ImportError()), \
             patch('openlp.core.common.log') as mocked_logger:
 
         # WHEN: Calling `extension_loader`
-        extension_loader('glob')
+        extension_loader(Path(p_prefix, 'app', 'dir', 'openlp'),'glob')
 
         # THEN: The `ImportError` should be caught and logged
         assert mocked_logger.exception.called
@@ -146,15 +138,13 @@ def test_extension_loader_os_error():
     Test the `extension_loader` function when `import_module` raises a `ImportError`
     """
     # GIVEN: A mocked `SourceFileLoader` which raises an `OSError`
-    with patch('openlp.core.common.applocation.AppLocation.get_directory',
-               return_value=Path('/', 'app', 'dir', 'openlp')), \
-            patch.object(Path, 'glob', return_value=[
-                Path('/', 'app', 'dir', 'openlp', 'import_dir', 'file1.py')]), \
+    with patch.object(Path, 'glob', return_value=[
+            Path('/', 'app', 'dir', 'openlp', 'import_dir', 'file1.py')]), \
             patch('openlp.core.common.import_openlp_module', side_effect=OSError()), \
             patch('openlp.core.common.log') as mocked_logger:
 
         # WHEN: Calling `extension_loader`
-        extension_loader('glob')
+        extension_loader(Path('/', 'app', 'dir', 'openlp'), 'glob')
 
         # THEN: The `OSError` should be caught and logged
         assert mocked_logger.exception.called

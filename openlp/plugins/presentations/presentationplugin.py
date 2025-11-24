@@ -27,6 +27,7 @@ import os
 from pathlib import Path
 
 from openlp.core.common import extension_loader, sha256_file_hash
+from openlp.core.common.applocation import AppLocation
 from openlp.core.common.i18n import translate
 from openlp.core.lib import build_icon
 from openlp.core.db.manager import DBManager
@@ -141,7 +142,7 @@ class PresentationPlugin(Plugin):
         controller_dir = os.path.join('plugins', 'presentations', 'lib')
         # Find all files that do not begin with '.' (lp:#1738047) and end with controller.py
         glob_pattern = os.path.join(controller_dir, '[!.]*controller.py')
-        extension_loader(glob_pattern, ['presentationcontroller.py'])
+        extension_loader(AppLocation.get_directory(AppLocation.AppDir), glob_pattern, ['presentationcontroller.py'])
         controller_classes = PresentationController.__subclasses__()
         for controller_class in controller_classes:
             # Don't use classes marked as base

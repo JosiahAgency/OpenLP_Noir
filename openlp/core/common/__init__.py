@@ -38,8 +38,6 @@ from PyQt5.QtCore import QCryptographicHash as QHash
 from PyQt5.QtNetwork import QAbstractSocket, QHostAddress, QNetworkInterface
 from chardet.universaldetector import UniversalDetector
 
-from openlp.core.common.applocation import AppLocation
-
 log = logging.getLogger(__name__ + '.__init__')
 
 
@@ -127,6 +125,7 @@ def import_openlp_module(module_name):
 
 
 def extension_loader(
+    app_dir: Path,
     glob_pattern: str,
     excluded_files: list = None,
     community: bool = False
@@ -135,6 +134,7 @@ def extension_loader(
     A utility function to find and load OpenLP extensions, such as plugins,
     presentation and media controllers and importers.
 
+    :param Path app_dir: The application directory to search in.
     :param str glob_pattern: A glob pattern used to find the extension(s) to be imported.
         Should be relative to the application directory. i.e. plugins/*/*plugin.py
     :param list[str] | None excluded_files: A list of file names to exclude that the
@@ -142,7 +142,6 @@ def extension_loader(
     :param bool | False community: are we using the community directory path
     :rtype: None
     """
-    app_dir = AppLocation.get_directory(AppLocation.DataDir if community else AppLocation.AppDir)
     sys.path.insert(0, str(app_dir))
     if community:
         app_dir = app_dir / 'contrib'
