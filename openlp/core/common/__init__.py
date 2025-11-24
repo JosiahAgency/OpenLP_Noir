@@ -38,6 +38,8 @@ from PyQt5.QtCore import QCryptographicHash as QHash
 from PyQt5.QtNetwork import QAbstractSocket, QHostAddress, QNetworkInterface
 from chardet.universaldetector import UniversalDetector
 
+from openlp.core.common.applocation import AppLocation
+
 log = logging.getLogger(__name__ + '.__init__')
 
 
@@ -112,37 +114,38 @@ def path_to_module(path: Path, community: bool = None) -> str:
     :rtype: str
     """
     module_path = path.with_suffix('')
-    if community:
-        return 'contrib.' + '.'.join(module_path.parts)
-    else:
-        return 'openlp.' + '.'.join(module_path.parts)
+    prefix = 'contrib.' if community else 'openlp.'
+    return prefix + '.'.join(module_path.parts)
 
 
 def import_openlp_module(module_name):
     """
-    Refactor module import out for testability. In Python 3.11, mock.patch and import_module do not play along nicely.
+    Refactor module import out for testability.
+    In Python 3.11, mock.patch and import_module do not play along nicely.
     """
     importlib.import_module(module_name)
 
 
-def extension_loader(glob_pattern: str, excluded_files: list = None, community: bool = False) -> None:
+def extension_loader(
+    glob_pattern: str,
+    excluded_files: list = None,
+    community: bool = False
+) -> None:
     """
-    A utility function to find and load OpenLP extensions, such as plugins, presentation and media controllers and
-    importers.
+    A utility function to find and load OpenLP extensions, such as plugins,
+    presentation and media controllers and importers.
 
-    :param str glob_pattern: A glob pattern used to find the extension(s) to be imported. Should be relative to the
-        application directory. i.e. plugins/*/*plugin.py
-    :param list[str] | None excluded_files: A list of file names to exclude that the glob pattern may find.
+    :param str glob_pattern: A glob pattern used to find the extension(s) to be imported.
+        Should be relative to the application directory. i.e. plugins/*/*plugin.py
+    :param list[str] | None excluded_files: A list of file names to exclude that the
+        glob pattern may find.
     :param bool | False community: are we using the community directory path
     :rtype: None
     """
-    from openlp.core.common.applocation import AppLocation
+    app_dir = AppLocation.get_directory(AppLocation.DataDir if community else AppLocation.AppDir)
+    sys.path.insert(0, str(app_dir))
     if community:
-        app_dir = AppLocation.get_directory(AppLocation.DataDir)
-        sys.path.insert(0, str(app_dir))
         app_dir = app_dir / 'contrib'
-    else:
-        app_dir = AppLocation.get_directory(AppLocation.AppDir)
     for extension_path in app_dir.glob(glob_pattern):
         extension_path = extension_path.relative_to(app_dir)
         if extension_path.name in (excluded_files or []):
@@ -153,8 +156,7 @@ def extension_loader(glob_pattern: str, excluded_files: list = None, community: 
             import_openlp_module(module_name)
         except (ImportError, OSError):
             # On some platforms importing vlc.py might cause OSError exceptions. (e.g. Mac OS X)
-            log.exception('Failed to import {module_name} on path {extension_path}'
-                          .format(module_name=module_name, extension_path=extension_path))
+            log.exception('Failed to import %s on path %s', module_name, extension_path)
 
 
 def get_frozen_path(frozen_option, non_frozen_option):
@@ -164,7 +166,7 @@ def get_frozen_path(frozen_option, non_frozen_option):
     :param frozen_option:
     :param non_frozen_option:
     """
-    if hasattr(sys, 'frozen') and sys.frozen == 1:
+    if getattr(sys, 'frozen', False) == 1:
         return frozen_option
     return non_frozen_option
 
