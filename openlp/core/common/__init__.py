@@ -142,8 +142,8 @@ def extension_loader(
     :param bool | False community: are we using the community directory path
     :rtype: None
     """
-    sys.path.insert(0, str(app_dir))
     if community:
+        sys.path.insert(0, str(app_dir))
         app_dir = app_dir / 'contrib'
     for extension_path in app_dir.glob(glob_pattern):
         extension_path = extension_path.relative_to(app_dir)
