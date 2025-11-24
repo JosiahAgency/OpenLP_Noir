@@ -51,8 +51,8 @@ def test_class_init_defaults(plugin: ObsStudioPlugin):
     # THEN:
     # icon is set correctly
     assert plugin.icon == UiIcons().obs_studio, "Init icon set to obs_studio icon"
-    # weight is -1
-    assert plugin.weight == -1, "Init weight set to -1"
+    # weight is -2
+    assert plugin.weight == -2, "Init weight set to -2"
     # the obs_studio module is registered active
     assert State().is_module_active('obs_studio') is True, "Init State() is active"
 
