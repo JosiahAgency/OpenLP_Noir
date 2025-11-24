@@ -60,12 +60,12 @@ class PluginManager(RegistryBase, LogMixin, RegistryProperties):
             AppLocation.get_directory(AppLocation.DataDir), glob_pattern, community=True
         )
         plugin_classes = Plugin.__subclasses__()
-        for p in plugin_classes:
+        for plugin in plugin_classes:
             try:
-                p()
-                self.log_debug('Loaded plugin {plugin}'.format(plugin=str(p)))
+                plugin()
+                self.log_debug(f'Loaded plugin {plugin}')
             except TypeError:
-                self.log_exception('Failed to load plugin {plugin}'.format(plugin=str(p)))
+                self.log_exception(f'Failed to load plugin {plugin}')
 
     def bootstrap_post_set_up(self):
         """
