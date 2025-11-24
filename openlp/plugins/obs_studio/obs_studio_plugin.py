@@ -46,7 +46,7 @@ class ObsStudioPlugin(Plugin):
         super().__init__('obs_studio', settings_tab_class=ObsStudioTab)
         self.icon = UiIcons().obs_studio
         self.icon_path = self.icon
-        self.weight = -1
+        self.weight = -2
         self.host: Required[str] = None
         self.port: Required[int] = None
         self.password: Optional[str] = None
