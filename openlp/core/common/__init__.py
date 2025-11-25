@@ -125,7 +125,7 @@ def import_openlp_module(module_name):
 
 
 def extension_loader(
-    app_dir: Path,
+    base_dir: Path,
     glob_pattern: str,
     excluded_files: list = None,
     community: bool = False
@@ -134,7 +134,8 @@ def extension_loader(
     A utility function to find and load OpenLP extensions, such as plugins,
     presentation and media controllers and importers.
 
-    :param Path app_dir: The application directory to search in.
+    :param Path base_dir: The base directory to search in; usually the application directory itself,
+        but when loading community extensions, it is the 'contrib' subdirectory.
     :param str glob_pattern: A glob pattern used to find the extension(s) to be imported.
         Should be relative to the application directory. i.e. plugins/*/*plugin.py
     :param list[str] | None excluded_files: A list of file names to exclude that the
@@ -143,10 +144,10 @@ def extension_loader(
     :rtype: None
     """
     if community:
-        sys.path.insert(0, str(app_dir))
-        app_dir = app_dir / 'contrib'
-    for extension_path in app_dir.glob(glob_pattern):
-        extension_path = extension_path.relative_to(app_dir)
+        sys.path.insert(0, str(base_dir))
+        base_dir = base_dir / 'contrib'
+    for extension_path in base_dir.glob(glob_pattern):
+        extension_path = extension_path.relative_to(base_dir)
         if extension_path.name in (excluded_files or []):
             continue
         log.debug('Attempting to import %s', extension_path)
