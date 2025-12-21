@@ -117,8 +117,6 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         self.screens = ScreenList()
         self.vlc_instance = None
         self.media_info = None
-        self.obs_studio_plugin = Registry().get('plugin_manager').get_plugin_by_name('obs_studio')
-        self.obs_studio_plugin_is_active = self.obs_studio_plugin.is_active() if self.obs_studio_plugin else False
         Registry().set_flag('has doubleclick added item to service', True)
         Registry().set_flag('replace service manager item', False)
 
@@ -1179,8 +1177,7 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         row = self.preview_widget.current_slide_number()
         self.selected_row = 0
         if -1 < row < self.preview_widget.slide_count():
-            if self.obs_studio_plugin_is_active:
-                Registry().execute('slidecontroller_slide_selected', [self.service_item, self.is_live, row])
+            Registry().execute('slidecontroller_slide_selected', [self.service_item, self.is_live, row])
             if self.service_item.is_command():
                 if self.is_live and not start:
                     Registry().execute('{text}_slide'.format(text=self.service_item.name.lower()),

@@ -55,7 +55,8 @@ class ObsStudioPlugin(Plugin):
         self.host = self.settings.value('obs_studio/host')
         self.port = int(self.settings.value('obs_studio/port'))
         self.password = self.settings.value('obs_studio/password')
-        self.message_listener = MessageListener(self.host, self.port, self.password)
+        if self.is_active():
+            self.message_listener = MessageListener(self.host, self.port, self.password)
 
     def initialise(self):
         """
