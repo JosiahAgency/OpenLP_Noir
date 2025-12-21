@@ -67,20 +67,23 @@ class MessageListener():
 
         :param message: The message to handle.
         """
-        is_live = message[1]
-        if is_live:
-            if not self.is_connected:
-                self.connect()
-            if self.is_connected:
-                slide = message[0]
-                slide_number = message[2] + 1
-                message = f"type: {slide.name}, title: {slide.title}, slide: {slide_number}, \
+        obs_studio_plugin = Registry().get('plugin_manager').get_plugin_by_name('obs_studio')
+        obs_studio_plugin_is_active = obs_studio_plugin.is_active() if obs_studio_plugin else False
+        if obs_studio_plugin_is_active:
+            is_live = message[1]
+            if is_live:
+                if not self.is_connected:
+                    self.connect()
+                if self.is_connected:
+                    slide = message[0]
+                    slide_number = message[2] + 1
+                    message = f"type: {slide.name}, title: {slide.title}, slide: {slide_number}, \
 notes: {slide.notes}"
-                try:
-                    self.client.send_advanced_scene_switcher_message(message)
-                except ConnectionError as exception:
-                    log.error("Message could not be processed by OBS Studio: %s", exception)
-                    self.is_connected = False
+                    try:
+                        self.client.send_advanced_scene_switcher_message(message)
+                    except ConnectionError as exception:
+                        log.error("Message could not be processed by OBS Studio: %s", exception)
+                        self.is_connected = False
 
     def finalise(self):
         """
