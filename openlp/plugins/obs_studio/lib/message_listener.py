@@ -35,9 +35,10 @@ class MessageListener():
     """
     log.info('MessageListener loaded')
 
-    def __init__(self, host, port, password):
+    def __init__(self, host: str, port: int, password: str):
         self.client = None
         self.is_connected = False
+        self.is_active = False
         self.__host = host
         self.__port = port
         self.__password = password
@@ -67,9 +68,7 @@ class MessageListener():
 
         :param message: The message to handle.
         """
-        obs_studio_plugin = Registry().get('plugin_manager').get_plugin_by_name('obs_studio')
-        obs_studio_plugin_is_active = obs_studio_plugin.is_active() if obs_studio_plugin else False
-        if obs_studio_plugin_is_active:
+        if self.is_active:
             is_live = message[1]
             if is_live:
                 if not self.is_connected:

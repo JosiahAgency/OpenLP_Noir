@@ -79,7 +79,7 @@ class ObsStudioAPI:
         }
         self.__websocket.send(json.dumps(payload))
         message = self.__websocket.recv()
-        result = json.loads(message)
+        result = json.loads(message) if message else None
 
     def send_advanced_scene_switcher_message(self, message):
         """

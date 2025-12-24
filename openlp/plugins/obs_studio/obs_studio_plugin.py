@@ -63,6 +63,7 @@ class ObsStudioPlugin(Plugin):
         """
         log.info('OBS Studio Plugin Initialising')
         super().initialise()
+        self.message_listener.is_active = self.is_active()
 
     def set_plugin_text_strings(self):
         """
@@ -109,5 +110,6 @@ messages to control scenes in OBS by using the Advanced Scene Switcher plugin.'
         Tidy up on exit.
         """
         log.info('OBS Studio Plugin Finalising')
+        self.message_listener.is_active = self.is_active()
         self.message_listener.finalise()
         super().finalise()

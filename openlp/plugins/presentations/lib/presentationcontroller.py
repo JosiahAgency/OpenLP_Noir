@@ -334,7 +334,7 @@ class PresentationDocument(object):
             prefix = 'live'
         else:
             prefix = 'preview'
-        Registry().execute('slidecontroller_{prefix}_change'.format(prefix=prefix), self.slide_number - 1)
+        Registry().execute(f'slidecontroller_{prefix}_change', int(self.slide_number) - 1)
 
     def get_slide_text(self, slide_no):
         """
