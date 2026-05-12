@@ -70,12 +70,12 @@ def run_thread(worker, thread_name, can_start=True):
     # Connect slots and signals
     thread.started.connect(worker.start)
     worker.quit.connect(thread.quit)
-    worker.quit.connect(worker.deleteLater)
+    worker.quit.connect(worker.deleteLater, QtCore.Qt.ConnectionType.QueuedConnection)
     # when used from the FTW the main window is not yet available
     if main_window:
         worker.error.connect(main_window.error_message)
-    thread.finished.connect(thread.deleteLater)
-    thread.finished.connect(make_remove_thread(thread_name))
+    thread.finished.connect(thread.deleteLater, QtCore.Qt.ConnectionType.QueuedConnection)
+    thread.finished.connect(make_remove_thread(thread_name), QtCore.Qt.ConnectionType.QueuedConnection)
     if can_start:
         thread.start()
 
