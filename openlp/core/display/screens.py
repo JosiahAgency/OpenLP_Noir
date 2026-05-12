@@ -431,17 +431,33 @@ class ScreenList(metaclass=Singleton):
 
         :param changed_screen: The screen which has been unplugged.
         """
-        # Remove screens
-        removed_screen_number = -1
+        removed_screen_number = None
+
+        # Prefer matching by underlying QScreen identity. Geometry can be stale/mutated during hotplug.
         for screen in self.screens:
-            # once the screen that must be removed has been found, update numbering
-            if removed_screen_number >= 0:
-                screen.number -= 1
-            # find the screen that is removed
-            if removed_screen.geometry() == screen.geometry:
+            if screen.raw_screen == removed_screen:
                 removed_screen_number = screen.number
+                break
+
+        # Fall back to geometry for old state or tests where object identity may not be available.
+        if removed_screen_number is None:
+            removed_geometry = removed_screen.geometry()
+            for screen in self.screens:
+                if removed_geometry == screen.geometry:
+                    removed_screen_number = screen.number
+                    break
+
+        if removed_screen_number is None:
+            log.warning('Could not match removed screen, refreshing screen list from application state.')
+            self.update_screens()
+            self.find_new_display_screen()
+            ConfigScreenChangedEmitter().emit()
+            return
+
         removed_screen_is_display = self.screens[removed_screen_number].is_display
         self.screens.pop(removed_screen_number)
+        for number, screen in enumerate(self.screens):
+            screen.number = number
         if removed_screen_is_display:
             self.find_new_display_screen()
         ConfigScreenChangedEmitter().emit()
