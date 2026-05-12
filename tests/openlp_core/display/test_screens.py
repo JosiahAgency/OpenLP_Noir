@@ -444,6 +444,31 @@ def test_screen_removed(mocked_screens, settings):
 
 
 @patch('openlp.core.display.screens.QtWidgets.QApplication.screens')
+def test_screen_removed_when_geometry_changed(mocked_screens, settings):
+    """Test that screen removal matches by raw screen identity when geometry has changed"""
+    # GIVEN: A screenlist of a mocked application with two screens
+    mocked_application = MagicMock()
+    mocked_screen1 = MagicMock(**{'geometry.return_value': QtCore.QRect(0, 0, 1024, 768)})
+    mocked_screen2 = MagicMock(**{'geometry.return_value': QtCore.QRect(1024, 0, 1024, 768)})
+    mocked_application.screens.return_value = [mocked_screen1, mocked_screen2]
+    mocked_application.primaryScreen.return_value = mocked_screen1
+
+    screen_list = ScreenList.create(mocked_application)
+
+    # WHEN: Screen 2 is removed but Qt reports a changed geometry on the removed screen
+    mocked_screen2.geometry.return_value = QtCore.QRect(0, 0, 800, 600)
+    mocked_application.screens.return_value = [mocked_screen1]
+    screen_list.on_screen_removed(mocked_screen2)
+
+    # THEN: The correct screen is removed and the remaining one is display
+    assert len(screen_list.screens) == 1
+    assert screen_list.screens[0].number == 0
+    assert screen_list.screens[0].geometry == QtCore.QRect(0, 0, 1024, 768)
+    assert screen_list.screens[0].is_primary is True
+    assert screen_list.screens[0].is_display is True
+
+
+@patch('openlp.core.display.screens.QtWidgets.QApplication.screens')
 def test_screen_added(mocked_screens, settings):
     """Test that the screen list is correct after a screen is added"""
     # GIVEN: A screenlist of a mocked application with one screen
