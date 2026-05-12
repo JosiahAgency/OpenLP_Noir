@@ -21,6 +21,7 @@
 """
 Package to test the openlp.core.threading package.
 """
+from PySide6 import QtCore
 from inspect import isfunction
 from unittest.mock import MagicMock, call, patch
 
@@ -81,11 +82,15 @@ def test_run_thread(MockRegistry, MockQThread):
     mocked_thread = mocked_application.worker_threads['test_thread']['thread']
     mocked_worker.moveToThread.assert_called_once_with(mocked_thread)
     mocked_thread.started.connect.assert_called_once_with(mocked_worker.start)
-    expected_quit_calls = [call(mocked_thread.quit), call(mocked_worker.deleteLater)]
+    expected_quit_calls = [
+        call(mocked_thread.quit),
+        call(mocked_worker.deleteLater, QtCore.Qt.ConnectionType.QueuedConnection)
+    ]
     assert mocked_worker.quit.connect.call_args_list == expected_quit_calls, \
         'The workers quit signal should be connected twice'
-    assert mocked_thread.finished.connect.call_args_list[0] == call(mocked_thread.deleteLater), \
-        'The threads finished signal should be connected to its deleteLater slot'
+    assert mocked_thread.finished.connect.call_args_list[0] == call(
+        mocked_thread.deleteLater, QtCore.Qt.ConnectionType.QueuedConnection
+    ), 'The threads finished signal should be connected to its deleteLater slot'
     assert mocked_thread.finished.connect.call_count == 2, 'The signal should have been connected twice'
     mocked_thread.start.assert_called_once_with()
 
