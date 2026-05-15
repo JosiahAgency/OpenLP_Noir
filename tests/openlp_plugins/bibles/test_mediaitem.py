@@ -26,8 +26,10 @@ from unittest.mock import MagicMock, call, patch
 
 from PySide6 import QtCore, QtWidgets
 
+from openlp.core.common.enum import LayoutStyle
 from openlp.core.common.registry import Registry
 from openlp.core.lib.mediamanageritem import MediaManagerItem
+from openlp.core.lib.serviceitem import ItemCapabilities
 from openlp.plugins.bibles.lib.mediaitem import VALID_TEXT_SEARCH, BibleMediaItem, BibleSearch, ResultsTab, \
     SearchStatus, SearchTabs, get_reference_separators
 
@@ -1733,3 +1735,31 @@ def test_generate_slide_data_data_string_one_bible(media_item: BibleMediaItem):
             }
         ]
     }
+
+
+def test_generate_slide_data_whole_verse_continuous_can_word_split(media_item: BibleMediaItem):
+    """
+    Test that WholeVerseContinuous Bible items advertise word splitting to the renderer.
+    """
+    # GIVEN: A single-bible WholeVerseContinuous item
+    mocked_service_item = MagicMock()
+    slide_data = {
+        'book': 'Matthew',
+        'chapter': '1',
+        'verse': '2',
+        'version': 'Bible version 104',
+        'copyright': 'copywrong',
+        'permissions': 'all the permissions',
+        'second_bible': '',
+        'text': 'text from matthew 1:2'
+    }
+    mocked_items = [MagicMock(**{'data.return_value': slide_data})]
+    media_item.format_verse = MagicMock(return_value='')
+    media_item.settings_tab = MagicMock(layout_style=LayoutStyle.WholeVerseContinuous, bible_theme='')
+
+    # WHEN: generate_slide_data is called
+    media_item.generate_slide_data(mocked_service_item, item=mocked_items)
+
+    # THEN: the renderer-facing capabilities should include both NoLineBreaks and CanWordSplit
+    mocked_service_item.add_capability.assert_any_call(ItemCapabilities.NoLineBreaks)
+    mocked_service_item.add_capability.assert_any_call(ItemCapabilities.CanWordSplit)
