@@ -997,10 +997,10 @@ class BibleMediaItem(MediaManagerItem):
         if self.settings_tab.layout_style == LayoutStyle.Continuous and not data['second_bible']:
             # Split the line but do not replace line breaks in renderer.
             service_item.add_capability(ItemCapabilities.NoLineBreaks)
-        if self.settings_tab.layout_style == LayoutStyle.WholeVerseContinuous:
-            if not data['second_bible']:
-                service_item.add_capability(ItemCapabilities.NoLineBreaks)
-        else:
+        if self.settings_tab.layout_style == LayoutStyle.WholeVerseContinuous and not data['second_bible']:
+            service_item.add_capability(ItemCapabilities.NoLineBreaks)
+            service_item.add_capability(ItemCapabilities.CanWordSplit)
+        elif self.settings_tab.layout_style != LayoutStyle.WholeVerseContinuous:
             service_item.add_capability(ItemCapabilities.CanWordSplit)
         service_item.add_capability(ItemCapabilities.CanPreview)
         service_item.add_capability(ItemCapabilities.CanLoop)
