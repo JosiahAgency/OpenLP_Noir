@@ -56,7 +56,7 @@ class PresentationPlugin(Plugin):
         PluginPresentation constructor.
         """
         super().__init__('presentations', PresentationMediaItem)
-        self.manager = DBManager(plugin_name='media', init_schema=init_schema)
+        self.manager = DBManager(plugin_name='presentations', init_schema=init_schema)
         self.weight = -8
         self.icon_path = UiIcons().presentation
         self.icon = build_icon(self.icon_path)
