@@ -137,11 +137,11 @@ def check_for_update(main_window):
         log.debug('Version check skipped, last checked today')
         return
     worker = VersionWorker(last_check_date, get_version())
-    worker.new_version.connect(main_window.on_new_version)
     worker.quit.connect(update_check_date)
     # TODO: Use this to figure out if there's an Internet connection?
     # worker.no_internet.connect(parent.on_no_internet)
-    run_thread(worker, 'version')
+    run_thread(worker, 'version',
+               queued_connections=[(worker.new_version, main_window.on_new_version)])
 
 
 def _get_version_from_hatch():

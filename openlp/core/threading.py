@@ -45,13 +45,20 @@ class ThreadWorker(QtCore.QObject, LogMixin):
         raise NotImplementedError('Your base class needs to override this method and run self.quit.emit() at the end.')
 
 
-def run_thread(worker, thread_name, can_start=True):
+def run_thread(worker, thread_name, can_start=True, queued_connections=None):
     """
     Create a thread and assign a worker to it. This removes a lot of boilerplate code from the codebase.
+
+    Any worker signal whose slot lives in another thread (typically the GUI thread) MUST be wired through
+    queued_connections rather than connected by the caller before this function runs. Connecting before
+    moveToThread can leave the connection resolved as a direct call in PySide6, meaning the slot runs in
+    the worker thread and any GUI work it does corrupts Qt's paint state and eventually crashes.
 
     :param QObject worker: A QObject-based worker object which does the actual work.
     :param str thread_name: The name of the thread, used to keep track of the thread.
     :param bool can_start: Start the thread. Defaults to True.
+    :param queued_connections: Iterable of (signal, slot) pairs to connect with Qt.QueuedConnection after the worker
+                               has been moved to its thread.
     """
     if not thread_name:
         raise ValueError('A thread_name is required when calling the "run_thread" function')
@@ -65,15 +72,19 @@ def run_thread(worker, thread_name, can_start=True):
         'thread': thread,
         'worker': worker
     }
-    # Move the worker into the thread's context
+    # Move the worker into the thread's context before any cross-thread connections are wired up.
     worker.moveToThread(thread)
+    # Wire caller-supplied cross-thread connections now that the worker lives in its thread.
+    if queued_connections:
+        for signal, slot in queued_connections:
+            signal.connect(slot, QtCore.Qt.ConnectionType.QueuedConnection)
     # Connect slots and signals
     thread.started.connect(worker.start)
     worker.quit.connect(thread.quit)
     worker.quit.connect(worker.deleteLater, QtCore.Qt.ConnectionType.QueuedConnection)
     # when used from the FTW the main window is not yet available
     if main_window:
-        worker.error.connect(main_window.error_message)
+        worker.error.connect(main_window.error_message, QtCore.Qt.ConnectionType.QueuedConnection)
     thread.finished.connect(thread.deleteLater, QtCore.Qt.ConnectionType.QueuedConnection)
     thread.finished.connect(make_remove_thread(thread_name), QtCore.Qt.ConnectionType.QueuedConnection)
     if can_start:

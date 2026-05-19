@@ -109,11 +109,17 @@ def test_init_download_worker(download_env, mock_settings):
     # WHEN: Creating an instance of `ThemeListWidgetItem`
     instance = ThemeListWidgetItem('url', sample_theme_data, mocked_ftw)
 
-    # THEN: The `DownloadWorker` should have been set up with the appropriate data
+    # THEN: The `DownloadWorker` should have been set up and `run_thread` should have been handed the
+    # download_failed/download_succeeded signals via `queued_connections` so they are wired up safely
+    # on the GUI thread after the worker has been moved to its thread.
     mocked_download_worker.assert_called_once_with('url', 'BlueBurst.png')
-    mocked_download_worker().download_failed.connect.assert_called_once_with(instance._on_download_failed)
-    mocked_download_worker().download_succeeded.connect.assert_called_once_with(instance._on_thumbnail_downloaded)
-    mocked_run_thread.assert_called_once_with(mocked_download_worker(), 'thumbnail_download_BlueBurst.png')
+    mocked_run_thread.assert_called_once()
+    args, kwargs = mocked_run_thread.call_args
+    assert args == (mocked_download_worker(), 'thumbnail_download_BlueBurst.png')
+    assert kwargs['queued_connections'] == [
+        (mocked_download_worker().download_failed, instance._thumbnail_receiver.on_failed),
+        (mocked_download_worker().download_succeeded, instance._thumbnail_receiver.on_succeeded),
+    ]
     assert mocked_ftw.thumbnail_download_threads == ['thumbnail_download_BlueBurst.png']
 
 
@@ -466,6 +472,8 @@ def test_failed_download(mocked_set_icon):
 
     # WHEN: `DownloadWorker` emits the `download_failed` signal
     worker.download_failed.emit()
+    # The signal is wired with Qt.QueuedConnection so we have to spin the event loop to deliver it.
+    QtCore.QCoreApplication.processEvents()
 
     # THEN: Then the initial loading icon should have been replaced by the exception icon
     mocked_set_icon.assert_has_calls([call(UiIcons().get_icon_variant('picture')),
@@ -486,6 +494,8 @@ def test_successful_download(mocked_build_icon, mocked_set_icon):
 
     # WHEN: `DownloadWorker` emits the `download_succeeded` signal
     worker.download_succeeded.emit(test_path)
+    # The signal is wired with Qt.QueuedConnection so we have to spin the event loop to deliver it.
+    QtCore.QCoreApplication.processEvents()
 
     # THEN: An icon should have been built from the downloaded file and used to replace the loading icon
     mocked_build_icon.assert_called_once_with(test_path)
