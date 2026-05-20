@@ -52,6 +52,23 @@ from openlp.core.widgets.widgets import ProxyDialog
 log = logging.getLogger(__name__)
 
 
+class ThumbnailReceiver(QtCore.QObject):
+    """
+    Small QObject helper that owns the slots invoked when a thumbnail download finishes.
+    """
+    def __init__(self, item):
+        super().__init__()
+        self._item = item
+
+    @QtCore.Slot()
+    def on_failed(self):
+        self._item.setIcon(UiIcons().get_icon_variant('exception'))
+
+    @QtCore.Slot(Path)
+    def on_succeeded(self, thumbnail_path):
+        self._item.setIcon(build_icon(thumbnail_path))
+
+
 class ThemeListWidgetItem(QtWidgets.QListWidgetItem):
     """
     Subclass a QListWidgetItem to allow dynamic loading of thumbnails from an online resource
@@ -65,29 +82,17 @@ class ThemeListWidgetItem(QtWidgets.QListWidgetItem):
         self.setIcon(UiIcons().get_icon_variant('picture'))  # Set a place holder icon whilst the thumbnails download
         self.setText(title)
         self.setToolTip(title)
+        # Use the ThumbnailReceiver for handling the thumbnail download signals, and keep a reference to it on the
+        # item so it doesn't get garbage collected. This is needed because the ThemeListWidgetItem is not a QObject
+        # and can't be the receiver of the signals itself.
+        self._thumbnail_receiver = ThumbnailReceiver(self)
         worker = DownloadWorker(themes_url, thumbnail)
-        worker.download_failed.connect(self._on_download_failed)
-        worker.download_succeeded.connect(self._on_thumbnail_downloaded)
         thread_name = 'thumbnail_download_{thumbnail}'.format(thumbnail=thumbnail)
-        run_thread(worker, thread_name)
+        run_thread(worker, thread_name, queued_connections=[
+            (worker.download_failed, self._thumbnail_receiver.on_failed),
+            (worker.download_succeeded, self._thumbnail_receiver.on_succeeded),
+        ])
         ftw.thumbnail_download_threads.append(thread_name)
-
-    def _on_download_failed(self):
-        """
-        Set an icon to indicate that the thumbnail download has failed.
-
-        :rtype: None
-        """
-        self.setIcon(UiIcons().get_icon_variant('exception'))
-
-    def _on_thumbnail_downloaded(self, thumbnail_path):
-        """
-        Load the thumbnail as the icon when it has downloaded.
-
-        :param Path thumbnail_path: Path to the file to use as a thumbnail
-        :rtype: None
-        """
-        self.setIcon(build_icon(thumbnail_path))
 
 
 class FirstTimeForm(QtWidgets.QWizard, UiFirstTimeWizard, RegistryProperties):

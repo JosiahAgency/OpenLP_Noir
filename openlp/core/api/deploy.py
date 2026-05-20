@@ -149,10 +149,10 @@ def check_for_remote_update(main_window):
         log.debug('Version check skipped, last checked today')
         return
     worker = RemoteVersionWorker(Registry().get('settings').value('api/download version'))
-    worker.new_version.connect(main_window.on_new_remote_version)
     # TODO: Use this to figure out if there's an Internet connection?
     # worker.no_internet.connect(main_window.on_no_internet)
-    run_thread(worker, 'remote-version')
+    run_thread(worker, 'remote-version',
+               queued_connections=[(worker.new_version, main_window.on_new_remote_version)])
 
 
 def get_installed_version():
