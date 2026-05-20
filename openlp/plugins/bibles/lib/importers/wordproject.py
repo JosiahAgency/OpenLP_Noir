@@ -94,6 +94,8 @@ class WordProjectBible(BibleImport):
                 # And sometimes there's a title on the a with the number in it
                 book_string = li_book.a['title'].split(' ')[0]
                 book_name = li_book.a.contents[0].strip()
+            else:
+                continue
             book_link = li_book.a['href']
             book_id = int(BOOK_NUMBER_PATTERN.search(book_string).group(1))
             book_name = book_name.strip()

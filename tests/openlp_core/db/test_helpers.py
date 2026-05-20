@@ -56,7 +56,7 @@ def test_init_db_calls_correct_functions():
 
         # THEN: We should see the correct function calls
         mocked_create_engine.assert_called_with(db_url, poolclass=StaticPool)
-        MockedMetaData.assert_called_with(bind=mocked_engine)
+        MockedMetaData.assert_called_with()
         if sqla_version.startswith('1.'):
             mocked_sessionmaker.assert_called_with(autoflush=True, autocommit=False, bind=mocked_engine)
         else:

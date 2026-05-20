@@ -64,8 +64,8 @@ def upgrade_1(session: Session, metadata: MetaData):
     if 'media_files_songs' in [t.name for t in metadata.tables.values()]:
         op.drop_table('media_files_songs')
         with op.batch_alter_table('media_files') as batch_op:
-            batch_op.add_column('media_files', Column('song_id', Integer, server_default=null()))
-            batch_op.add_column('media_files', Column('weight', Integer, server_default=text('0')))
+            batch_op.add_column(Column('song_id', Integer, server_default=null()))
+            batch_op.add_column(Column('weight', Integer, server_default=text('0')))
             batch_op.create_foreign_key('fk_media_files_song_id', 'media_files', 'songs', ['song_id', 'id'])
     else:
         log.warning('Skipping upgrade_1 step of upgrading the song db')

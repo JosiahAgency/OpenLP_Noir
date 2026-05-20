@@ -185,7 +185,8 @@ def init_db(url: str, auto_flush: bool = True, auto_commit: bool = False,
         session = scoped_session(sessionmaker(autoflush=auto_flush, autobegin=True, bind=engine))
 
     if base is None:
-        metadata = MetaData(bind=engine)
+        metadata = MetaData()
+        metadata.bind = engine
     else:
         base.metadata.bind = engine
         metadata = base.metadata

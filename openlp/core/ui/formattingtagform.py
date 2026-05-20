@@ -196,6 +196,7 @@ class FormattingTagForm(QtWidgets.QDialog, Ui_FormattingTagDialog, FormattingTag
         # only process for editable rows
         if self.tag_table_widget.item(pre_row, 0):
             item = self.tag_table_widget.item(pre_row, pre_col)
+            text = None
             if pre_col is not EditColumn.Hidden:
                 text = item.text()
             errors = None

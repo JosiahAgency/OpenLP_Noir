@@ -798,6 +798,7 @@ def transpose_chord(chord, transpose_value, notation, key, last_chord, is_bass):
     chord = chord.replace('♭', 'b').replace('♯', '#')
     transposed_chord = ''
     minor = ''
+    note = ''
     is_key_change_chord = False
     notes_sharp = notes_sharp_notation[notation]
     notes_flat = notes_flat_notation[notation]
