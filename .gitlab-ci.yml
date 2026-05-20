@@ -127,7 +127,7 @@ test-macos:
   stage: test
   tags:
     - saas-macos-medium-m1
-  image: macos-14-xcode-15
+  image: macos-15-xcode-16
   variables:
     # Set environment variable QT_QPA_PLATFORM to offscreen to avoid UI troubles
     QT_QPA_PLATFORM: "offscreen"
