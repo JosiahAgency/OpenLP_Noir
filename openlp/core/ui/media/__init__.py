@@ -196,8 +196,8 @@ def format_play_time(milliseconds):
     milliseconds = int(milliseconds)
     seconds, _ = divmod(milliseconds, 1000)
     minutes, seconds = divmod(seconds, 60)
-    _, minutes = divmod(minutes, 60)
-    return f"{minutes:02d}:{seconds:02d}"
+    hours, minutes = divmod(minutes, 60)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 
 def format_play_seconds(seconds: float) -> str:

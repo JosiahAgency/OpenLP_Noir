@@ -141,6 +141,7 @@ class OpenLPToolbar(QtWidgets.QToolBar):
 class MediaToolbar(OpenLPToolbar):
     def __init__(self, parent, hide_components=[], action_prefixes=''):
         super().__init__(parent)
+        self.parent = parent
         self.on_action = lambda *args: None
         self.hide_components = hide_components
         self.action_prefixes = action_prefixes

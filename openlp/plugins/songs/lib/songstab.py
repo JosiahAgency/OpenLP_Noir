@@ -322,7 +322,7 @@ class SongsTab(SettingsTab):
         self.auto_play = (check_state == QtCore.Qt.CheckState.Checked)
 
     def on_uppercase_check_box_changed(self, check_state):
-        self.uppercase = (check_state == QtCore.Qt.Checked)
+        self.uppercase = (check_state == QtCore.Qt.CheckState.Checked)
 
     def on_disable_chords_import_check_box_changed(self, check_state):
         self.disable_chords_import = (check_state == QtCore.Qt.CheckState.Checked)
