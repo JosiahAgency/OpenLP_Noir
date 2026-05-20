@@ -39,6 +39,7 @@ venv
 dist
 env
 htmlcov
+justfile
 list
 node_modules
 openlp.cfg

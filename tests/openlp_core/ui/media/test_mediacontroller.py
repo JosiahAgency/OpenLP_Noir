@@ -26,7 +26,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from PySide6 import QtCore
 
 from openlp.core.state import State
 from openlp.core.common.registry import Registry
@@ -206,17 +205,18 @@ def test_load_media(media_env, settings):
     media_env.media_controller._define_display = MagicMock()
     media_env.media_controller.media_reset = MagicMock()
     media_env.media_controller.media_play = MagicMock()
+    media_env.media_controller._media_set_visibility = MagicMock()
     media_env.media_controller.set_controls_visible = MagicMock()
     # WHEN: load_media() is called
-    media_env.media_controller.load_media(DisplayControllerType.Live, mocked_service_item)
+    result = media_env.media_controller.load_media(DisplayControllerType.Live, mocked_service_item)
 
     # THEN: The current controller's media should be reset
     #       The volume should be set from the settings
     #       The video should have autoplayed
     #       The controls should have been made visible
     media_env.media_controller.media_reset.assert_called_once_with(mocked_slide_controller)
-    # w dmmedia_env.media_controller._define_display.assert_called_once_with(mocked_slide_controller)
-    # media_env.media_controller.media_play.assert_called_once_with(mocked_slide_controller, False)
+    assert result is True, "Load failed to run"
+    media_env.media_controller.media_play.assert_not_called()
     media_env.media_controller.set_controls_visible.assert_called_once_with(mocked_slide_controller, True)
     assert mocked_slide_controller.media_play_item.is_background is False
 
@@ -559,7 +559,6 @@ def test_display_controllers_preview(media_env):
 
     # WHEN: display_controllers() is called with DisplayControllerType.Preview
     controller = media_env.media_controller._display_controllers(DisplayControllerType.Preview)
-
     # THEN: the controller should be the live controller
     assert controller is mocked_preview_controller
 
@@ -599,22 +598,22 @@ def test_media_play(media_env, settings):
     mocked_controller._set_theme.assert_called_once()
 
 
-@pytest.mark.parametrize("tests", [[False, QtCore.Qt.CheckState.Unchecked, False, False, MediaType.Audio, False],
-                                   [True, QtCore.Qt.CheckState.Checked, True, True, MediaType.DeviceStream, True],
-                                   [False, QtCore.Qt.CheckState.Checked, False, False, MediaType.Audio, True],
-                                   [True, QtCore.Qt.CheckState.Unchecked, False, False, MediaType.Audio, True],
-                                   [False, QtCore.Qt.CheckState.Unchecked, True, False, MediaType.Audio, True],
-                                   [False, QtCore.Qt.CheckState.Unchecked, False, True, MediaType.Audio, True]
+@pytest.mark.parametrize("tests", [[False, False, False, False, MediaType.Audio, False],
+                                   [True, True, True, True, MediaType.DeviceStream, True],
+                                   [False, True, False, False, MediaType.Audio, False],
+                                   [True, False, False, False, MediaType.Audio, True],
+                                   [False, False, True, False, MediaType.Audio, True],
+                                   [False, False, False, True, MediaType.Audio, True]
                                    ])
-def test_decide_autoplay_media_normal(media_env, settings, tests):
+def test_decide_autoplay_media_media(media_env, settings, tests):
     """
     Test that media with a normal background behaves
     """
     # GIVEN: A media controller and a service item
     mocked_service_item = MagicMock()
     mocked_service_item.will_auto_start = tests[0]
-    settings.setValue('media/media auto start', tests[1])
-    settings.setValue('songs/auto play audio', False)
+    media_env.media_controller.settings.setValue('media/media auto start', tests[1])
+    media_env.media_controller.settings.setValue('songs/auto play audio', False)
     media_env.media_controller.is_live = True
     media_env.media_controller.media_play_item = MediaPlayItem()
     media_env.media_controller.media_play_item.is_background = tests[2]
@@ -627,6 +626,34 @@ def test_decide_autoplay_media_normal(media_env, settings, tests):
            f"The Media autoplay does not match expected results {tests}"
 
 
+@pytest.mark.parametrize("tests", [[False, MediaType.Audio, False, False],
+                                   [True, MediaType.Audio, False, True],
+                                   [True, MediaType.Dual, True, True],
+                                   [False, MediaType.Dual, False, False]
+                                   ])
+def test_decide_autoplay_media_audio(media_env, settings, tests):
+    """
+    Test that media with a songs auto play works
+    """
+    # GIVEN: A media controller and a service item
+    mocked_service_item = MagicMock()
+    mocked_service_item.will_auto_start = False
+    media_env.media_controller.settings.setValue('media/media auto start', False)
+    media_env.media_controller.settings.setValue('songs/auto play audio', tests[0])
+    media_env.media_controller.is_live = True
+    media_env.media_controller.media_play_item = MediaPlayItem()
+    media_env.media_controller.media_play_item.is_background = False
+    media_env.media_controller.media_play_item.is_theme_background = False
+    media_env.media_controller.media_play_item.media_type = tests[1]
+    # WHEN: decide_autoplay() is called
+    media_env.media_controller.decide_autostart(mocked_service_item, media_env.media_controller)
+    # THEN: Autoplay will obey the following
+    assert media_env.media_controller.media_play_item.audio_autostart is tests[2], \
+           f"The Audio autoplay does not match expected results {tests}"
+    assert media_env.media_controller.media_play_item.media_autostart is tests[3], \
+           f"The Media autoplay does not match expected results {tests}"
+
+
 def test_media_bar_play(media_env, settings):
     """
     Test that media bar is set correctly following a play event
@@ -634,6 +661,7 @@ def test_media_bar_play(media_env, settings):
     # GIVEN: A media controller and a service item
     mocked_controller = MagicMock()
     mocked_controller.media_play_item = MediaPlayItem()
+
     mocked_controller.mediabar = OpenLPToolbar(None)
     mocked_controller.mediabar.seek_slider = MagicMock()
     mocked_controller.mediabar.actions_map['playbackPlay'] = MagicMock()
