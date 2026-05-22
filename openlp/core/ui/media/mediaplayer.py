@@ -74,11 +74,19 @@ class MediaPlayer(MediaBase, LogMixin):
                 | QtCore.Qt.WindowType.Tool
                 | QtCore.Qt.WindowType.WindowStaysOnTopHint)
             controller.media_widget.setAttribute(QtCore.Qt.WidgetAttribute.WA_X11NetWmWindowTypeDialog)
-
         else:
             controller.media_widget = QtWidgets.QWidget(display)
         self.media_player = QMediaPlayer(None)
         self.audio_output = QAudioOutput()
+        if controller.is_live:
+            audio_out_set = self.settings.value('media/live audio out')
+        else:
+            audio_out_set = self.settings.value('media/preview audio out')
+        if audio_out_set:
+            for au_dev in QMediaDevices().audioOutputs():
+                if audio_out_set == au_dev.description():
+                    self.audio_output.setDevice(au_dev)
+                    break
         self.media_player.setAudioOutput(self.audio_output)
         self.video_widget = QVideoWidget()
         layout = QtWidgets.QVBoxLayout(controller.media_widget)
