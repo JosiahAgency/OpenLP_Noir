@@ -21,6 +21,7 @@
 """
 Provides the generic functions for interfacing plugins with the Media Manager.
 """
+import fnmatch
 import re
 
 from PySide6 import QtCore, QtWidgets
@@ -346,10 +347,12 @@ class MediaManagerItem(QtWidgets.QWidget, RegistryProperties, LogMixin):
         """
         Add a file to the list widget to make it available for showing
         """
+        options = QtWidgets.QFileDialog.Option.HideNameFilterDetails
         file_paths, _ = FileDialog.getOpenFileNames(
             self, self.on_new_prompt,
             self.settings.value(self.settings_section + '/last directory'),
-            self.on_new_file_masks)
+            self.on_new_file_masks,
+            options=options)
         self.log_info(f'New file(s) {file_paths}')
         if file_paths:
             self.application.set_busy_cursor()
@@ -365,7 +368,7 @@ class MediaManagerItem(QtWidgets.QWidget, RegistryProperties, LogMixin):
         new_file_paths = []
         error_shown = False
         for file_path in data['file_paths']:
-            if file_path.suffix[1:].lower() not in self.on_new_file_masks:
+            if not self._is_supported_file_path(file_path):
                 if not error_shown:
                     critical_error_message_box(
                         translate('OpenLP.MediaManagerItem', 'Invalid File Type'),
@@ -380,6 +383,37 @@ class MediaManagerItem(QtWidgets.QWidget, RegistryProperties, LogMixin):
                 self.validate_and_load(new_file_paths, data['target'])
             else:
                 self.validate_and_load(new_file_paths)
+
+    def _get_new_file_mask_patterns(self):
+        """
+        Get wildcard patterns from the first configured file filter.
+
+        :return: A list of wildcard patterns (for example ``*.png``).
+        :rtype: list[str]
+        """
+        if not self.on_new_file_masks:
+            return []
+        first_filter = self.on_new_file_masks.split(';;', 1)[0]
+        matches = re.findall(r'\(([^)]*)\)', first_filter)
+        if not matches:
+            return []
+        return [pattern for pattern in matches[0].split() if pattern and pattern != '*']
+
+    def _is_supported_file_path(self, file_path):
+        """
+        Check whether the file name matches one of the configured file-mask patterns.
+
+        Matching is case-insensitive so extension case does not block valid files.
+
+        :param pathlib.Path file_path: The path to validate.
+        :return: ``True`` when the file matches the configured mask.
+        :rtype: bool
+        """
+        patterns = self._get_new_file_mask_patterns()
+        if not patterns:
+            return True
+        file_name = file_path.name
+        return any(re.match(fnmatch.translate(pattern), file_name, re.IGNORECASE) for pattern in patterns)
 
     def dnd_move_internal(self, target):
         """

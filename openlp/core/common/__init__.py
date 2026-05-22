@@ -400,6 +400,25 @@ def delete_file(file_path):
         return False
 
 
+def case_insensitive_glob(extension):
+    """
+    Build a case-insensitive glob pattern for an extension.
+
+    For example, ``png`` becomes ``*.[pP][nN][gG]``.
+
+    :param str extension: The file extension without a leading dot.
+    :return: A glob pattern matching all case permutations for that extension.
+    :rtype: str
+    """
+    pattern = '*.'
+    for char in extension:
+        if char.isalpha():
+            pattern += '[{lower}{upper}]'.format(lower=char.lower(), upper=char.upper())
+        else:
+            pattern += char
+    return pattern
+
+
 def get_images_filter():
     """
     Returns a filter string for a file dialog containing all the supported image formats.
@@ -409,8 +428,8 @@ def get_images_filter():
     if not IMAGES_FILTER:
         log.debug('Generating images filter.')
         formats = list(map(bytes.decode, map(bytes, QtGui.QImageReader.supportedImageFormats())))
-        actual_formats = '(' + ' *.'.join(formats) + ')'
-        IMAGES_FILTER = '{text}{actual}'.format(text=translate('OpenLP', 'Image Files'), actual=actual_formats)
+        actual_formats = f"({' '.join(case_insensitive_glob(fmt) for fmt in formats)})"
+        IMAGES_FILTER = f"{translate('OpenLP', 'Image Files')}{actual_formats}"
     return IMAGES_FILTER
 
 
