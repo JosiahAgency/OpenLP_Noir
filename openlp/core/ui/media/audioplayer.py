@@ -30,7 +30,7 @@ from openlp.core.ui.slidecontroller import SlideController
 from openlp.core.ui.media import MediaType
 from openlp.core.ui.media.mediabase import MediaBase
 
-from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
+from PySide6.QtMultimedia import QMediaDevices, QMediaPlayer, QAudioOutput
 from PySide6.QtCore import QUrl
 
 log = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ class AudioPlayer(MediaBase, LogMixin):
 
     def setup(self, controller: SlideController, display: DisplayWindow) -> None:
         """
-        Set up an audio player andbind it to a controller and display
+        Set up an audio player and bind it to a controller and display
 
         :param controller: The controller where the media is
         :param display: The display where the media is.
@@ -60,6 +60,15 @@ class AudioPlayer(MediaBase, LogMixin):
 
         self.media_player = QMediaPlayer(None)
         self.audio_output = QAudioOutput()
+        if controller.is_live:
+            audio_out_set = self.settings.value('media/live audio out')
+        else:
+            audio_out_set = self.settings.value('media/preview audio out')
+        if audio_out_set:
+            for au_dev in QMediaDevices().audioOutputs():
+                if audio_out_set == au_dev.description():
+                    self.audio_output.setDevice(au_dev)
+                    break
         self.media_player.setAudioOutput(self.audio_output)
         self.controller = controller
         self.display = display

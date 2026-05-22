@@ -403,6 +403,8 @@ class Settings(QtCore.QSettings):
         'media/db password': '',
         'media/db hostname': '',
         'media/db database': '',
+        'media/live audio out': '',
+        'media/preview audio out': '',
         'players/background color': '#000000',
         'obs_studio/status': PluginStatus.Inactive,
         'obs_studio/host': 'localhost',

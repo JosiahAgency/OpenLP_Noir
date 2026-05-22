@@ -55,7 +55,7 @@ def test_init():
     assert audio_player is not None
 
 
-def test_setup(base_audio_player):
+def test_setup(base_audio_player, settings):
     """
     Test the setup method
     """

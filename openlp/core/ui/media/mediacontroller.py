@@ -179,7 +179,7 @@ class MediaController(QtWidgets.QWidget, RegistryBase, LogMixin, RegistryPropert
 
     def _media_status_changed_preview(self) -> None:
         """
-        The playerr has stopped so updated the preview UI
+        The player has stopped so updated the preview UI
         """
         self._media_bar(self.preview_controller, "stop")
 

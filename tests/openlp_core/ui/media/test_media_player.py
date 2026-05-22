@@ -60,7 +60,7 @@ def test_init(mock_settings):
 
 
 @patch('openlp.core.ui.media.mediaplayer.QtWidgets')
-def test_setup_live(MockedQtWidgets):
+def test_setup_live(MockedQtWidgets, settings):
     """
     Test the setup method for Live Controller
     """
@@ -85,7 +85,7 @@ def test_setup_live(MockedQtWidgets):
 
 
 @patch('openlp.core.ui.media.mediaplayer.QtWidgets')
-def test_setup_preview(MockedQtWidgets):
+def test_setup_preview(MockedQtWidgets, settings):
     """
     Test the setup method for Preview controller
     """
