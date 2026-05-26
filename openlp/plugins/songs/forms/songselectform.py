@@ -30,19 +30,12 @@ from tempfile import TemporaryDirectory
 
 from openlp.core.common.i18n import translate
 from openlp.core.common.mixins import RegistryProperties
-from openlp.core.common.platform import is_linux, is_macosx
 from openlp.plugins.songs.forms.songselectdialog import Ui_SongSelectDialog
 from openlp.plugins.songs.lib.db import Song
 from openlp.plugins.songs.lib.songselect import SongSelectImport, Pages
 from openlp.plugins.songs.lib.importers.chordpro import ChordProImport
 from openlp.plugins.songs.lib.importers.cclifile import CCLIFileImport
 
-
-CHROME_USER_AGENT = 'Mozilla/5.0 ({os_info}) AppleWebKit/537.36 ' \
-                    '(KHTML, like Gecko) Chrome/{version} Safari/537.36'
-WIN_OS_USER_AGENT = 'Windows NT 10.0; Win64; x64'
-MAC_OS_USER_AGENT = 'Macintosh; Intel Mac OS X 13_5_2'
-LINUX_OS_USER_AGENT = 'X11; Linux x86_64'
 
 REPLACE_ALL_JS = """
 // Based on: https://vanillajstoolkit.com/polyfills/stringreplaceall/
@@ -85,17 +78,6 @@ class SongSelectForm(QtWidgets.QDialog, Ui_SongSelectDialog, RegistryProperties)
         self.url_bar.returnPressed.connect(self.on_url_bar_return_pressed)
         self.back_button.clicked.connect(self.on_back_button_clicked)
         self.close_button.clicked.connect(self.done)
-        # We need to set the user agent to an up to date browser version do to the pyqtwebengine package
-        # from pypi has not been updated in ages...
-        # TODO: get the latest version number from somewhere
-        chrome_version = '117.0.5938.48'
-        if is_linux():
-            user_agent = CHROME_USER_AGENT.format(os_info=LINUX_OS_USER_AGENT, version=chrome_version)
-        elif is_macosx():
-            user_agent = CHROME_USER_AGENT.format(os_info=MAC_OS_USER_AGENT, version=chrome_version)
-        else:
-            user_agent = CHROME_USER_AGENT.format(os_info=WIN_OS_USER_AGENT, version=chrome_version)
-        self.webview.page().profile().setHttpUserAgent(user_agent)
         self.webview.page().loadStarted.connect(self.page_load_started)
         self.webview.page().loadFinished.connect(self.page_loaded)
         self.webview.page().profile().downloadRequested.connect(self.on_download_requested)

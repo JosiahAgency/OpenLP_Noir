@@ -196,8 +196,7 @@ def test_websocket_worker_start(mocked_asyncio: MagicMock, worker: WebSocketWork
     mocked_asyncio.set_event_loop.assert_called_once_with(mocked_event_loop)
     # This is a mix of sync and async, and it's not working right now
     # assert mocked_event_loop.run_until_complete.call_args_list == [
-    #     call(mocked_serve),
-    #     call(mocked_cancel_tasks)
+    #     call(mocked_serve()),
     # ]
     mocked_event_loop.close.assert_called_once_with()
     mocked_quit.emit.assert_called_once_with()
