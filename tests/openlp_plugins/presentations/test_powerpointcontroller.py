@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 ##########################################################################
 # OpenLP - Open Source Lyrics Projection                                 #
 # ---------------------------------------------------------------------- #
@@ -39,6 +37,9 @@ if is_win():
 
 @pytest.fixture()
 def presentation_setup(settings):
+    """
+    Fixture to patch the _setup method of PresentationDocument to prevent actual PowerPoint interaction during tests.
+    """
     with patch('openlp.plugins.presentations.lib.powerpointcontroller.PresentationDocument._setup') as mocked_setup:
         yield mocked_setup
 
@@ -393,6 +394,23 @@ def test_goto_slide(presentation_setup):
 
     # THEN: next_step() should be call to try to advance to the next effect.
     assert doc.next_step.called is True, 'next_step() should have been called!'
+
+
+def test_goto_slide_with_string_slide_number(presentation_setup):
+    """
+    Test that goto_slide accepts string slide numbers without raising KeyError.
+    """
+    # GIVEN: A document with a string index map and a mocked PowerPoint view
+    Registry().get('settings').setValue('presentations/powerpoint slide click advance', False)
+    doc = PowerpointDocument(MagicMock(), MagicMock())
+    doc.presentation = MagicMock()
+    doc.index_map = {'1': 1}
+
+    # WHEN: goto_slide is called
+    doc.goto_slide(1)
+
+    # THEN: The view should jump to the mapped slide index without crashing
+    doc.presentation.SlideShowWindow.View.GotoSlide.assert_called_once_with(1)
 
 
 def test_blank_screen(presentation_setup):

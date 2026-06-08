@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 ##########################################################################
 # OpenLP - Open Source Lyrics Projection                                 #
 # ---------------------------------------------------------------------- #
@@ -164,7 +162,7 @@ class PowerpointDocument(PresentationDocument):
             if not self.controller.process:
                 self.controller.start_process()
             self.presentation = self.controller.process.Presentations.Open(str(self.file_path), False, False, False)
-            log.debug('Loaded presentation %s' % self.presentation.FullName)
+            log.debug('Loaded presentation %s', self.presentation.FullName)
             self.export_presentation_data()
             # Make sure powerpoint doesn't steal focus, unless we're on a single screen setup
             if len(ScreenList()) > 1:
@@ -195,7 +193,7 @@ class PowerpointDocument(PresentationDocument):
                 slide = self.presentation.Slides(num + 1)
                 if not slide.SlideShowTransition.Hidden:
                     self.index_map[key] = num + 1
-                    slide.Export(str(thumbnail_folder / 'slide{key:d}.png'.format(key=key)),
+                    slide.Export(str(thumbnail_folder / f'slide{key:d}.png'),
                                  'png', image_width, 360)
                     try:
                         text = slide.Shapes.Title.TextFrame.TextRange.Text
@@ -237,7 +235,7 @@ class PowerpointDocument(PresentationDocument):
             with open(index_map_path, 'r', encoding='utf-8') as file:
                 self.index_map = json.load(file)
             if not isinstance(self.index_map, dict):
-                log.error('Invalid index_map format: Expected a dictionary, got {}'.format(type(self.index_map)))
+                log.error('Invalid index_map format: Expected a dictionary, got %s', type(self.index_map))
                 self.index_map = {}
                 self.slide_count = 0
                 return False
@@ -256,7 +254,7 @@ class PowerpointDocument(PresentationDocument):
         log.debug('close_presentation')
         if self.presentation:
             try:
-                check_for_ghost_window = (self.presentation.SlideShowSettings.ShowType == 2)
+                check_for_ghost_window = self.presentation.SlideShowSettings.ShowType == 2
                 if check_for_ghost_window:
                     current_window_position = self._get_QRect_from_current_powerpoint_window_position()
                 self.presentation.Close()
@@ -402,7 +400,7 @@ class PowerpointDocument(PresentationDocument):
             change_powerpoint_display_monitor = (Registry().get('settings')
                                                  .value('presentations/powerpoint control window')
                                                  == QtCore.Qt.CheckState.Unchecked)
-            is_fullscreen = (ScreenList().current.custom_geometry is None)
+            is_fullscreen = ScreenList().current.custom_geometry is None
             # Configure and run PowerPoint
             try:
                 if change_powerpoint_display_monitor:
@@ -450,7 +448,7 @@ class PowerpointDocument(PresentationDocument):
                 try:
                     win32gui.BringWindowToTop(self.presentation_hwnd)
                 except Exception as e:
-                    log.exception(f'Caught exception while running BringWindowToTop in start_presentation. {e}')
+                    log.exception('Caught exception while running BringWindowToTop in start_presentation. %s', e)
             # Make sure powerpoint doesn't steal focus, unless we're on a single screen setup
             if len(ScreenList()) > 1:
                 Registry().get('main_window').activateWindow()
@@ -524,8 +522,8 @@ class PowerpointDocument(PresentationDocument):
                 return original_value
             except OSError:
                 log.warning(
-                    f'Unable to change PowerPoint setting for selecting the presentation monitor. '
-                    f'PowerPoint version used for registry access: {pp_version}')
+                    'Unable to change PowerPoint setting for selecting the presentation monitor. '
+                    'PowerPoint version used for registry access: %s', pp_version)
 
         def adjust_powerpoint_window_position(self, ppt_window, hwnd_to_scale=None):
             """
@@ -641,11 +639,11 @@ class PowerpointDocument(PresentationDocument):
             self.export_presentation_data()
         return self.slide_count
 
-    def goto_slide(self, slide_no):
+    def goto_slide(self, slide_no: int) -> None:
         """
         Moves to a specific slide in the presentation.
 
-        :param slide_no: The slide the text is required for, starting at 1
+        :param slide_no: The slide number to be moved to, starting at 1
         """
         log.debug('goto_slide')
         try:
@@ -653,12 +651,16 @@ class PowerpointDocument(PresentationDocument):
                     and self.get_slide_number() == slide_no:
                 click_index = self.presentation.SlideShowWindow.View.GetClickIndex()
                 click_count = self.presentation.SlideShowWindow.View.GetClickCount()
-                log.debug('We are already on this slide - go to next effect if any left, idx: '
-                          '{index:d}, count: {count:d}'.format(index=click_index, count=click_count))
+                log.debug('We are already on this slide - go to next effect if any left, index: '
+                          '%d, count: %d', click_index, click_count)
                 if click_index < click_count:
                     self.next_step()
             else:
-                self.presentation.SlideShowWindow.View.GotoSlide(self.index_map[slide_no])
+                slide_index = self.index_map.get(slide_no)
+                if slide_index is None:
+                    slide_index = self.index_map.get(str(slide_no))
+                if slide_index is not None:
+                    self.presentation.SlideShowWindow.View.GotoSlide(slide_index)
         except (AttributeError, pywintypes.com_error):
             log.exception('Caught exception while in goto_slide')
             trace_error_handler(log)
