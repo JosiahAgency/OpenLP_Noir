@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 ##########################################################################
 # OpenLP - Open Source Lyrics Projection                                 #
 # ---------------------------------------------------------------------- #
@@ -37,6 +35,8 @@ from PySide6 import QtGui
 from PySide6.QtCore import QCryptographicHash as QHash
 from PySide6.QtNetwork import QAbstractSocket, QHostAddress, QNetworkInterface
 from chardet.universaldetector import UniversalDetector
+
+from openlp.core.common.platform import is_win
 
 log = logging.getLogger(__name__ + '.__init__')
 
@@ -400,20 +400,23 @@ def delete_file(file_path):
         return False
 
 
-def case_insensitive_glob(extension):
+def get_file_type_glob(extension: str) -> str:
     """
-    Build a case-insensitive glob pattern for an extension.
+    Build a glob pattern for an extension that's case-insensitive when not on Windows.
 
-    For example, ``png`` becomes ``*.[pP][nN][gG]``.
+    For example, ``png`` becomes ``*.png`` on Windows or ``*.[pP][nN][gG]`` on other platforms.
 
-    :param str extension: The file extension without a leading dot.
-    :return: A glob pattern matching all case permutations for that extension.
+    :param extension: The file extension without a leading dot.
+    :type extension: str
+    :return: A glob pattern for the extension.
     :rtype: str
     """
+    if is_win():
+        return f'*.{extension}'.lower()
     pattern = '*.'
     for char in extension:
         if char.isalpha():
-            pattern += '[{lower}{upper}]'.format(lower=char.lower(), upper=char.upper())
+            pattern += f'[{char.lower()}{char.upper()}]'
         else:
             pattern += char
     return pattern
@@ -428,7 +431,7 @@ def get_images_filter():
     if not IMAGES_FILTER:
         log.debug('Generating images filter.')
         formats = list(map(bytes.decode, map(bytes, QtGui.QImageReader.supportedImageFormats())))
-        actual_formats = f"({' '.join(case_insensitive_glob(fmt) for fmt in formats)})"
+        actual_formats = f"({' '.join(get_file_type_glob(fmt) for fmt in formats)})"
         IMAGES_FILTER = f"{translate('OpenLP', 'Image Files')}{actual_formats}"
     return IMAGES_FILTER
 

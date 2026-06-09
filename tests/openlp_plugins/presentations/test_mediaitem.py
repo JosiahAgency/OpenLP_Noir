@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 ##########################################################################
 # OpenLP - Open Source Lyrics Projection                                 #
 # ---------------------------------------------------------------------- #
@@ -26,7 +24,7 @@ from unittest.mock import MagicMock, PropertyMock, call, patch
 
 from PySide6 import QtCore, QtWidgets
 
-from openlp.core.common import case_insensitive_glob
+from openlp.core.common import get_file_type_glob
 from openlp.core.lib import ServiceItemContext
 from openlp.core.lib.serviceitem import ItemCapabilities
 from openlp.plugins.presentations.lib.db import Folder, Item
@@ -66,23 +64,23 @@ def test_build_file_mask_string(media_item):
         media_item.build_file_mask_string()
 
     # THEN: The file mask should be generated correctly with a space before all bar the first.
-    assert case_insensitive_glob('odp') in media_item.on_new_file_masks, \
+    assert get_file_type_glob('odp') in media_item.on_new_file_masks, \
         'The file mask should contain the odp extension'
-    assert case_insensitive_glob('ppt') in media_item.on_new_file_masks, \
+    assert get_file_type_glob('ppt') in media_item.on_new_file_masks, \
         'The file mask should contain the ppt extension'
-    assert case_insensitive_glob('pdf') in media_item.on_new_file_masks, \
+    assert get_file_type_glob('pdf') in media_item.on_new_file_masks, \
         'The file mask should contain the pdf extension'
-    assert case_insensitive_glob('PdF') in media_item.on_new_file_masks, \
+    assert get_file_type_glob('PdF') in media_item.on_new_file_masks, \
         'The file mask should contain the pdf extension'
-    assert case_insensitive_glob('xps') in media_item.on_new_file_masks, \
+    assert get_file_type_glob('xps') in media_item.on_new_file_masks, \
         'The file mask should contain the xps extension'
-    assert case_insensitive_glob('oxps') in media_item.on_new_file_masks, \
+    assert get_file_type_glob('oxps') in media_item.on_new_file_masks, \
         'The file mask should contain the oxps extension'
-    assert case_insensitive_glob('epub') in media_item.on_new_file_masks, \
+    assert get_file_type_glob('epub') in media_item.on_new_file_masks, \
         'The file mask should contain the epub extension'
-    assert case_insensitive_glob('cbz') in media_item.on_new_file_masks, \
+    assert get_file_type_glob('cbz') in media_item.on_new_file_masks, \
         'The file mask should contain the cbz extension'
-    assert case_insensitive_glob('fb2') in media_item.on_new_file_masks, \
+    assert get_file_type_glob('fb2') in media_item.on_new_file_masks, \
         'The file mask should contain the fb2 extension'
 
 
