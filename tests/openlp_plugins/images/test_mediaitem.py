@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 ##########################################################################
 # OpenLP - Open Source Lyrics Projection                                 #
 # ---------------------------------------------------------------------- #
@@ -28,7 +26,7 @@ from unittest.mock import ANY, MagicMock, patch
 import pytest
 from PySide6 import QtCore, QtWidgets
 
-from openlp.core.common import case_insensitive_glob
+from openlp.core.common import get_file_type_glob
 from openlp.core.common.enum import ImageThemeMode
 from openlp.core.common.registry import Registry
 from openlp.core.db.manager import DBManager
@@ -120,15 +118,15 @@ def test_retranslate_ui_file_masks_are_case_insensitive(mocked_retranslate_ui: M
 
     # THEN: The file masks should contain case-insensitive glob patterns for common image extensions,
     #       so that files like image.PNG or image.Jpg are not filtered out on case-sensitive filesystems
-    assert case_insensitive_glob('png') in media_item.on_new_file_masks, \
+    assert get_file_type_glob('png') in media_item.on_new_file_masks, \
         'The file mask should contain a case-insensitive pattern for png'
-    assert case_insensitive_glob('jpg') in media_item.on_new_file_masks, \
+    assert get_file_type_glob('jpg') in media_item.on_new_file_masks, \
         'The file mask should contain a case-insensitive pattern for jpg'
-    assert case_insensitive_glob('jpeg') in media_item.on_new_file_masks, \
+    assert get_file_type_glob('jpeg') in media_item.on_new_file_masks, \
         'The file mask should contain a case-insensitive pattern for jpeg'
-    assert case_insensitive_glob('gif') in media_item.on_new_file_masks, \
+    assert get_file_type_glob('gif') in media_item.on_new_file_masks, \
         'The file mask should contain a case-insensitive pattern for gif'
-    assert case_insensitive_glob('bmp') in media_item.on_new_file_masks, \
+    assert get_file_type_glob('bmp') in media_item.on_new_file_masks, \
         'The file mask should contain a case-insensitive pattern for bmp'
 
 
