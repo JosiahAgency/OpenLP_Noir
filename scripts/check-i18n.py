@@ -54,7 +54,10 @@ def check_for_mismatching_variables(xml_file: Path) -> list[dict[str, str]]:
 
     messages = root.findall('.//context/message')
     for message in messages:
-        source = message.find('source').text.strip()        # type: ignore[union-attr]
+        source = message.find('source').text
+        if source is None:
+            source = ""
+        source = source.strip()        # type: ignore[union-attr]
         translation = message.find('translation').text      # type: ignore[union-attr]
         if translation is None:
             continue
@@ -85,6 +88,7 @@ def main():
     args = get_args()
     xml_files = Path(args.base_path).glob('*.ts')
     for ts_file in xml_files:
+        print(f"processing: {ts_file}")
         errors = check_for_mismatching_variables(ts_file)
         if errors:
             exit_code = 1
