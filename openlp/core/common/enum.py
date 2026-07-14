@@ -74,6 +74,16 @@ class DisplayStyle(IntEnum):
 
 
 @unique
+class EGWSearch(IntEnum):
+    """
+    An enumeration for the EGW Library search methods.
+    """
+    Smart = 1
+    Reference = 2
+    Text = 3
+
+
+@unique
 class ImageThemeMode(IntEnum):
     """
     An enumeration for image background settings.

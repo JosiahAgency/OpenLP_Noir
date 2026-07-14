@@ -1,0 +1,29 @@
+{
+    "book": {
+        "title": "Sample Book",
+        "abbreviation": "SB",
+        "copyright": "This sample text is in the public domain.",
+        "language": "en",
+        "aliases": ["Sample", "s.b."],
+        "chapters": [
+            {
+                "number": 1,
+                "title": "The First Chapter",
+                "paragraphs": [
+                    {"page": 9, "text": "This is the first paragraph of the sample book. It exists so that you can try out the EGW Library plugin before importing real books. Its reference is SB 9.1."},
+                    {"page": 9, "text": "This is the second paragraph on page nine, so its reference is SB 9.2. Try finding it with the search box by typing its reference."},
+                    {"page": 10, "text": "This paragraph starts on page ten, which makes it SB 10.1. You can list every paragraph on this page by searching for SB 10."}
+                ]
+            },
+            {
+                "number": 2,
+                "title": "The Second Chapter",
+                "paragraphs": [
+                    {"page": 11, "text": "The second chapter begins here on page eleven. You can list this whole chapter by searching for SB ch 2."},
+                    {"page": 11, "text": "A longer paragraph is useful for testing the automatic slide splitting. When a paragraph does not fit on one slide, OpenLP automatically continues it on the next slide, in the same way that long Bible verses are handled. This paragraph repeats itself a little so that it has some length to it. When a paragraph does not fit on one slide, OpenLP automatically continues it on the next slide, so nothing is ever cut off."},
+                    {"page": 12, "text": "This final paragraph is SB 12.1. Full text search works too: try searching for the word slide with the sample book selected."}
+                ]
+            }
+        ]
+    }
+}

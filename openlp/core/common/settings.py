@@ -35,8 +35,8 @@ from tempfile import gettempdir
 from PySide6 import QtCore, QtGui
 
 from openlp.core.common import SlideLimits, ThemeLevel
-from openlp.core.common.enum import AlertLocation, BibleSearch, CustomSearch, HiDPIMode, ImageThemeMode, LayoutStyle, \
-    DisplayStyle, LanguageSelection, SongFirstSlideMode, SongSearch, PluginStatus
+from openlp.core.common.enum import AlertLocation, BibleSearch, CustomSearch, EGWSearch, HiDPIMode, ImageThemeMode, \
+    LayoutStyle, DisplayStyle, LanguageSelection, SongFirstSlideMode, SongSearch, PluginStatus
 from openlp.core.common.json import OpenLPJSONDecoder, OpenLPJSONEncoder, is_serializable
 from openlp.core.common.path import files_to_paths, str_to_path
 from openlp.core.common.platform import is_linux, is_win, is_macosx
@@ -356,6 +356,19 @@ class Settings(QtCore.QSettings):
         'custom/display footer': True,
         'custom/add custom from service': True,
         'custom/status': PluginStatus.Inactive,
+        'egwlibrary/db type': 'sqlite',
+        'egwlibrary/db username': '',
+        'egwlibrary/db password': '',
+        'egwlibrary/db hostname': '',
+        'egwlibrary/db database': '',
+        'egwlibrary/status': PluginStatus.Inactive,
+        'egwlibrary/last used search type': EGWSearch.Smart,
+        'egwlibrary/last directory import': None,
+        'egwlibrary/last selected book': '',
+        'egwlibrary/search all books': False,
+        'egwlibrary/is search while typing enabled': True,
+        'egwlibrary/footer show reference': True,
+        'egwlibrary/footer show copyright': True,
         'formattingTags/html_tags': '',
         'core/auto open': False,
         'core/auto preview': False,
@@ -688,6 +701,15 @@ class Settings(QtCore.QSettings):
                                                  QtGui.QKeySequence(QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Enter)],
             'shortcuts/listViewCustomServiceItem': [QtGui.QKeySequence(QtCore.Qt.Key.Key_Plus),
                                                     QtGui.QKeySequence(QtCore.Qt.Key.Key_Equal)],
+            'shortcuts/listViewEgwlibraryDeleteItem': [QtGui.QKeySequence(QtGui.QKeySequence.StandardKey.Delete)],
+            'shortcuts/listViewEgwlibraryPreviewItem': [QtGui.QKeySequence(QtCore.Qt.Key.Key_Return),
+                                                        QtGui.QKeySequence(QtCore.Qt.Key.Key_Enter)],
+            'shortcuts/listViewEgwlibraryLiveItem': [QtGui.QKeySequence(QtCore.Qt.Key.Key_Shift +
+                                                                        QtCore.Qt.Key.Key_Return),
+                                                     QtGui.QKeySequence(QtCore.Qt.Key.Key_Shift +
+                                                                        QtCore.Qt.Key.Key_Enter)],
+            'shortcuts/listViewEgwlibraryServiceItem': [QtGui.QKeySequence(QtCore.Qt.Key.Key_Plus),
+                                                        QtGui.QKeySequence(QtCore.Qt.Key.Key_Equal)],
             'shortcuts/listViewImagesDeleteItem': [QtGui.QKeySequence(QtGui.QKeySequence.StandardKey.Delete)],
             'shortcuts/listViewImagesPreviewItem': [QtGui.QKeySequence(QtCore.Qt.Key.Key_Return),
                                                     QtGui.QKeySequence(QtCore.Qt.Key.Key_Enter)],
