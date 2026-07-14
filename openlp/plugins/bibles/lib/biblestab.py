@@ -145,6 +145,27 @@ class BiblesTab(SettingsTab):
         self.bible_search_while_typing_check_box = QtWidgets.QCheckBox(self.bible_quick_settings_group_box)
         self.bible_search_while_typing_check_box.setObjectName('bible_search_while_typing_check_box')
         self.search_settings_layout.addRow(self.bible_search_while_typing_check_box)
+        self.footer_group_box = QtWidgets.QGroupBox(self.right_column)
+        self.footer_group_box.setObjectName('footer_group_box')
+        self.footer_layout = QtWidgets.QFormLayout(self.footer_group_box)
+        self.footer_layout.setObjectName('footer_layout')
+        self.footer_reference_check_box = QtWidgets.QCheckBox(self.footer_group_box)
+        self.footer_reference_check_box.setObjectName('footer_reference_check_box')
+        self.footer_layout.addRow(self.footer_reference_check_box)
+        self.footer_version_check_box = QtWidgets.QCheckBox(self.footer_group_box)
+        self.footer_version_check_box.setObjectName('footer_version_check_box')
+        self.footer_layout.addRow(self.footer_version_check_box)
+        self.footer_copyright_check_box = QtWidgets.QCheckBox(self.footer_group_box)
+        self.footer_copyright_check_box.setObjectName('footer_copyright_check_box')
+        self.footer_layout.addRow(self.footer_copyright_check_box)
+        self.footer_permission_check_box = QtWidgets.QCheckBox(self.footer_group_box)
+        self.footer_permission_check_box.setObjectName('footer_permission_check_box')
+        self.footer_layout.addRow(self.footer_permission_check_box)
+        self.footer_note_label = QtWidgets.QLabel(self.footer_group_box)
+        self.footer_note_label.setWordWrap(True)
+        self.footer_note_label.setObjectName('footer_note_label')
+        self.footer_layout.addRow(self.footer_note_label)
+        self.right_layout.addWidget(self.footer_group_box)
         self.left_layout.addStretch()
         self.right_layout.addStretch()
         # Signals and slots
@@ -174,6 +195,10 @@ class BiblesTab(SettingsTab):
             self.on_hide_combined_quick_error_check_box_changed)
         self.bible_search_while_typing_check_box.stateChanged.connect(
             self.on_bible_search_while_typing_check_box_changed)
+        self.footer_reference_check_box.stateChanged.connect(self.on_footer_reference_check_box_changed)
+        self.footer_version_check_box.stateChanged.connect(self.on_footer_version_check_box_changed)
+        self.footer_copyright_check_box.stateChanged.connect(self.on_footer_copyright_check_box_changed)
+        self.footer_permission_check_box.stateChanged.connect(self.on_footer_permission_check_box_changed)
 
     def retranslate_ui(self):
         self.verse_display_group_box.setTitle(translate('BiblesPlugin.BiblesTab', 'Verse Display'))
@@ -229,6 +254,15 @@ class BiblesTab(SettingsTab):
                                                                    'Search automatically while typing (Text search must'
                                                                    ' contain a\nminimum of {count} characters and a '
                                                                    'space for performance reasons)').format(count='8'))
+        self.footer_group_box.setTitle(translate('BiblesPlugin.BiblesTab', 'Bible Footer'))
+        self.footer_reference_check_box.setText(
+            translate('BiblesPlugin.BiblesTab', 'Show book, chapter and verse reference'))
+        self.footer_version_check_box.setText(translate('BiblesPlugin.BiblesTab', 'Show Bible version name'))
+        self.footer_copyright_check_box.setText(translate('BiblesPlugin.BiblesTab', 'Show copyright information'))
+        self.footer_permission_check_box.setText(
+            translate('BiblesPlugin.BiblesTab', 'Show licensing / permission information'))
+        self.footer_note_label.setText(translate('BiblesPlugin.BiblesTab',
+                                                 'Note: Changes do not affect verses already in the Service'))
 
     def on_bible_theme_combo_box_changed(self):
         self.bible_theme = self.bible_theme_combo_box.currentText()
@@ -355,6 +389,30 @@ class BiblesTab(SettingsTab):
         """
         self.bible_search_while_typing = (check_state == QtCore.Qt.CheckState.Checked)
 
+    def on_footer_reference_check_box_changed(self, check_state):
+        """
+        Event handler for the 'footer_reference' check box
+        """
+        self.show_reference_in_footer = (check_state == QtCore.Qt.CheckState.Checked)
+
+    def on_footer_version_check_box_changed(self, check_state):
+        """
+        Event handler for the 'footer_version' check box
+        """
+        self.show_version_in_footer = (check_state == QtCore.Qt.CheckState.Checked)
+
+    def on_footer_copyright_check_box_changed(self, check_state):
+        """
+        Event handler for the 'footer_copyright' check box
+        """
+        self.show_copyright_in_footer = (check_state == QtCore.Qt.CheckState.Checked)
+
+    def on_footer_permission_check_box_changed(self, check_state):
+        """
+        Event handler for the 'footer_permission' check box
+        """
+        self.show_permission_in_footer = (check_state == QtCore.Qt.CheckState.Checked)
+
     def load(self):
         self.is_verse_number_visible = self.settings.value('bibles/is verse number visible')
         self.show_new_chapters = self.settings.value('bibles/display new chapter')
@@ -416,6 +474,14 @@ class BiblesTab(SettingsTab):
         self.hide_combined_quick_error_check_box.setChecked(self.hide_combined_quick_error)
         self.bible_search_while_typing = self.settings.value('bibles/is search while typing enabled')
         self.bible_search_while_typing_check_box.setChecked(self.bible_search_while_typing)
+        self.show_reference_in_footer = self.settings.value('bibles/footer show reference')
+        self.footer_reference_check_box.setChecked(self.show_reference_in_footer)
+        self.show_version_in_footer = self.settings.value('bibles/footer show version')
+        self.footer_version_check_box.setChecked(self.show_version_in_footer)
+        self.show_copyright_in_footer = self.settings.value('bibles/footer show copyright')
+        self.footer_copyright_check_box.setChecked(self.show_copyright_in_footer)
+        self.show_permission_in_footer = self.settings.value('bibles/footer show permission')
+        self.footer_permission_check_box.setChecked(self.show_permission_in_footer)
 
     def save(self):
         self.settings.setValue('bibles/is verse number visible', self.is_verse_number_visible)
@@ -447,6 +513,10 @@ class BiblesTab(SettingsTab):
         self.settings.setValue('bibles/reset to combined quick search', self.reset_to_combined_quick_search)
         self.settings.setValue('bibles/hide combined quick error', self.hide_combined_quick_error)
         self.settings.setValue('bibles/is search while typing enabled', self.bible_search_while_typing)
+        self.settings.setValue('bibles/footer show reference', self.show_reference_in_footer)
+        self.settings.setValue('bibles/footer show version', self.show_version_in_footer)
+        self.settings.setValue('bibles/footer show copyright', self.show_copyright_in_footer)
+        self.settings.setValue('bibles/footer show permission', self.show_permission_in_footer)
         if self.tab_visited:
             self.settings_form.register_post_process('bibles_config_updated')
         self.tab_visited = False

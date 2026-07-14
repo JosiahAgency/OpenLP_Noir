@@ -1763,3 +1763,76 @@ def test_generate_slide_data_whole_verse_continuous_can_word_split(media_item: B
     # THEN: the renderer-facing capabilities should include both NoLineBreaks and CanWordSplit
     mocked_service_item.add_capability.assert_any_call(ItemCapabilities.NoLineBreaks)
     mocked_service_item.add_capability.assert_any_call(ItemCapabilities.CanWordSplit)
+
+
+def _create_mocked_footer_slide_items():
+    slide_data = {
+        'book': 'Matthew',
+        'chapter': '1',
+        'verse': '2',
+        'version': 'Bible version 104',
+        'copyright': 'copywrong',
+        'permissions': 'all the permissions',
+        'second_bible': '',
+        'text': 'text from matthew 1:2'
+    }
+    return [MagicMock(**{'data.return_value': slide_data})]
+
+
+def test_generate_slide_data_footer_reference_only(media_item: BibleMediaItem):
+    """
+    Test that only the verse reference is added to the footer when version, copyright and permission are disabled
+    """
+    # GIVEN: A mocked service item and settings which only show the reference in the footer
+    mocked_service_item = MagicMock()
+    mocked_service_item.raw_footer = []
+    media_item.format_verse = MagicMock(return_value='')
+    media_item.settings_tab = MagicMock(bible_theme='', show_reference_in_footer=True,
+                                        show_version_in_footer=False, show_copyright_in_footer=False,
+                                        show_permission_in_footer=False)
+
+    # WHEN: generate_slide_data is called
+    media_item.generate_slide_data(mocked_service_item, item=_create_mocked_footer_slide_items())
+
+    # THEN: the footer should only contain the verse reference
+    assert len(mocked_service_item.raw_footer) == 1
+    assert 'Matthew' in mocked_service_item.raw_footer[0]
+    assert 'Bible version 104' not in mocked_service_item.raw_footer[0]
+
+
+def test_generate_slide_data_footer_version_only(media_item: BibleMediaItem):
+    """
+    Test that only the version name is added to the footer when reference, copyright and permission are disabled
+    """
+    # GIVEN: A mocked service item and settings which only show the version name in the footer
+    mocked_service_item = MagicMock()
+    mocked_service_item.raw_footer = []
+    media_item.format_verse = MagicMock(return_value='')
+    media_item.settings_tab = MagicMock(bible_theme='', show_reference_in_footer=False,
+                                        show_version_in_footer=True, show_copyright_in_footer=False,
+                                        show_permission_in_footer=False)
+
+    # WHEN: generate_slide_data is called
+    media_item.generate_slide_data(mocked_service_item, item=_create_mocked_footer_slide_items())
+
+    # THEN: the footer should only contain the version name
+    assert mocked_service_item.raw_footer == ['Bible version 104']
+
+
+def test_generate_slide_data_footer_all_disabled(media_item: BibleMediaItem):
+    """
+    Test that the footer stays empty when all footer options are disabled
+    """
+    # GIVEN: A mocked service item and settings which show nothing in the footer
+    mocked_service_item = MagicMock()
+    mocked_service_item.raw_footer = []
+    media_item.format_verse = MagicMock(return_value='')
+    media_item.settings_tab = MagicMock(bible_theme='', show_reference_in_footer=False,
+                                        show_version_in_footer=False, show_copyright_in_footer=False,
+                                        show_permission_in_footer=False)
+
+    # WHEN: generate_slide_data is called
+    media_item.generate_slide_data(mocked_service_item, item=_create_mocked_footer_slide_items())
+
+    # THEN: the footer should be empty
+    assert mocked_service_item.raw_footer == []

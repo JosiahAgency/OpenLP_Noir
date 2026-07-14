@@ -22,7 +22,7 @@
 This module contains tests for the lib submodule of the Bible plugin.
 """
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from openlp.core.common.registry import Registry
 from openlp.plugins.bibles.lib.biblestab import BiblesTab
@@ -82,3 +82,37 @@ def test_load_when_seperators_unset(form):
     assert form.range_separator_check_box.isChecked() is False
     assert form.list_separator_check_box.isChecked() is False
     assert form.end_separator_check_box.isChecked() is False
+
+
+def test_load_footer_defaults(form):
+    """
+    Test that the footer checkboxes are all checked by default
+    """
+    # WHEN: Load is invoked
+    form.load()
+
+    # THEN: All footer checkboxes should be checked
+    assert form.footer_reference_check_box.isChecked() is True
+    assert form.footer_version_check_box.isChecked() is True
+    assert form.footer_copyright_check_box.isChecked() is True
+    assert form.footer_permission_check_box.isChecked() is True
+
+
+def test_save_footer_settings(form):
+    """
+    Test that the footer settings are saved from the checkboxes
+    """
+    # GIVEN: A loaded form with some footer checkboxes unchecked
+    form.load()
+    form.footer_version_check_box.setChecked(False)
+    form.footer_copyright_check_box.setChecked(False)
+
+    # WHEN: Save is invoked (without rebuilding the global reference separators)
+    with patch('openlp.plugins.bibles.lib.biblestab.update_reference_separators'):
+        form.save()
+
+    # THEN: The settings should reflect the checkbox states
+    assert form.settings.value('bibles/footer show reference') is True
+    assert form.settings.value('bibles/footer show version') is False
+    assert form.settings.value('bibles/footer show copyright') is False
+    assert form.settings.value('bibles/footer show permission') is True

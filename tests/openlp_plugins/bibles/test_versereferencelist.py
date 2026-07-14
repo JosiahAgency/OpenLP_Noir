@@ -133,3 +133,79 @@ def test_add_existing_version():
 
     # THEN: the data will not be appended to the list
     assert len(reference_list.version_list) == 1, 'The version data should not be appended'
+
+
+def test_format_versions_full():
+    """
+    Test formatting the versions with all parts enabled
+    """
+    # GIVEN: a version in the list
+    reference_list = VerseReferenceList()
+    reference_list.add_version('testVersion', 'testCopyright', 'testPermission')
+
+    # WHEN: formatting with the defaults
+    result = reference_list.format_versions()
+
+    # THEN: version, copyright and permission should be included
+    assert result == 'testVersion, testCopyright, testPermission'
+
+
+def test_format_versions_without_version():
+    """
+    Test formatting the versions with the version name disabled
+    """
+    # GIVEN: a version in the list
+    reference_list = VerseReferenceList()
+    reference_list.add_version('testVersion', 'testCopyright', 'testPermission')
+
+    # WHEN: formatting without the version name
+    result = reference_list.format_versions(version=False)
+
+    # THEN: only copyright and permission should be included
+    assert result == 'testCopyright, testPermission'
+
+
+def test_format_versions_without_copyright_and_permission():
+    """
+    Test formatting the versions with copyright and permission disabled
+    """
+    # GIVEN: a version in the list
+    reference_list = VerseReferenceList()
+    reference_list.add_version('testVersion', 'testCopyright', 'testPermission')
+
+    # WHEN: formatting without copyright and permission
+    result = reference_list.format_versions(copyright=False, permission=False)
+
+    # THEN: only the version name should be included
+    assert result == 'testVersion'
+
+
+def test_format_versions_nothing_enabled():
+    """
+    Test formatting the versions with all parts disabled
+    """
+    # GIVEN: a version in the list
+    reference_list = VerseReferenceList()
+    reference_list.add_version('testVersion', 'testCopyright', 'testPermission')
+
+    # WHEN: formatting with everything disabled
+    result = reference_list.format_versions(version=False, copyright=False, permission=False)
+
+    # THEN: the result should be empty
+    assert result == ''
+
+
+def test_format_versions_multiple_versions():
+    """
+    Test formatting multiple versions with the version name disabled
+    """
+    # GIVEN: two versions in the list
+    reference_list = VerseReferenceList()
+    reference_list.add_version('testVersion', 'testCopyright', 'testPermission')
+    reference_list.add_version('secondVersion', 'secondCopyright', '')
+
+    # WHEN: formatting without permission info
+    result = reference_list.format_versions(permission=False)
+
+    # THEN: the versions should be separated by a semicolon
+    assert result == 'testVersion, testCopyright; secondVersion, secondCopyright'

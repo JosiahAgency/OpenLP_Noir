@@ -986,10 +986,15 @@ class BibleMediaItem(MediaManagerItem):
             'bibles': bibles
         }
         # Add footer
-        service_item.raw_footer.append(verses.format_verses())
+        if self.settings_tab.show_reference_in_footer:
+            service_item.raw_footer.append(verses.format_verses())
         if data['second_bible']:
             verses.add_version(data['second_version'], data['second_copyright'], data['second_permissions'])
-        service_item.raw_footer.append(verses.format_versions())
+        footer_versions = verses.format_versions(version=self.settings_tab.show_version_in_footer,
+                                                 copyright=self.settings_tab.show_copyright_in_footer,
+                                                 permission=self.settings_tab.show_permission_in_footer)
+        if footer_versions:
+            service_item.raw_footer.append(footer_versions)
         # If there are no more items we check whether we have to add bible_text.
         if bible_text:
             raw_slides.append(bible_text.lstrip())

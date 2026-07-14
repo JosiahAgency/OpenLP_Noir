@@ -85,25 +85,31 @@ class VerseReferenceList(object):
             result = '{result} ({version})'.format(result=result, version=verse['version'])
         return result
 
-    def format_versions(self, copyright=True, permission=True):
+    def format_versions(self, version=True, copyright=True, permission=True):
         """
         Format a string with the bible versions used
 
+        :param version: If the version name should be included, default is true.
         :param copyright: If the copyright info should be included, default is true.
         :param permission: If the permission info should be included, default is true.
         :return: A formatted string with the bible versions used
         """
         result = ''
-        for index, version in enumerate(self.version_list):
-            if index > 0:
+        for bible_version in self.version_list:
+            parts = []
+            if version:
+                parts.append(bible_version['version'])
+            if copyright and bible_version['copyright'].strip():
+                parts.append(bible_version['copyright'])
+            if permission and bible_version['permission'].strip():
+                parts.append(bible_version['permission'])
+            if not parts:
+                continue
+            if result:
                 if result[-1] not in [';', ',', '.']:
                     result += ';'
                 result += ' '
-            result += version['version']
-            if copyright and version['copyright'].strip():
-                result += ', ' + version['copyright']
-            if permission and version['permission'].strip():
-                result += ', ' + version['permission']
+            result += ', '.join(parts)
         result = result.rstrip()
         if result.endswith(','):
             return result[:len(result) - 1]
