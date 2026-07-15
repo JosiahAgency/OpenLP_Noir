@@ -24,7 +24,9 @@ The :mod:`~openlp.core.ui.media.mediaplayer` module for media playing.
 import logging
 import os
 import re
+import sys
 import sysconfig
+from pathlib import Path
 
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtMultimedia import QAudioInput, QAudioOutput, QCamera, QMediaDevices, QMediaCaptureSession, QMediaPlayer
@@ -41,9 +43,13 @@ from openlp.core.ui.media import MediaType
 
 log = logging.getLogger(__name__)
 
-# A workaround for https://bugreports.qt.io/browse/PYSIDE-2935
-if is_win():
-    os.add_dll_directory(sysconfig.get_path('purelib') + '/PySide6/')
+# A workaround for https://bugreports.qt.io/browse/PYSIDE-2935. In a frozen
+# (PyInstaller) build there is no site-packages directory — the Qt DLLs sit
+# next to the executable, which is already on the DLL search path.
+if is_win() and not getattr(sys, 'frozen', False):
+    pyside_dir = Path(sysconfig.get_path('purelib')) / 'PySide6'
+    if pyside_dir.is_dir():
+        os.add_dll_directory(str(pyside_dir))
 
 
 class MediaPlayer(MediaBase, LogMixin):
