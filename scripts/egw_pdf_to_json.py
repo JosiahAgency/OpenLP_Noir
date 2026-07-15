@@ -291,5 +291,8 @@ def main():
         abbr=abbreviation, page=first['page'], text=first['text'][:70]))
 
 
+# SAMPLE COMMAND TO RUN: python egw_pdf_to_json.py "C:\Users\gjmwa\Downloads\en_GC.pdf" --abbreviation GC --alias "The Great Controversy" --alias steps
 if __name__ == '__main__':
     main()
+
+

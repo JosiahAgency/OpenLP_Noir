@@ -304,31 +304,31 @@ class SongsTab(SettingsTab):
         self.footer_reset_button.setText(translate('SongsPlugin.SongsTab', 'Reset Template'))
 
     def on_search_as_type_check_box_changed(self, check_state):
-        self.song_search = (check_state == QtCore.Qt.CheckState.Checked)
+        self.song_search = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_tool_bar_active_check_box_changed(self, check_state):
-        self.tool_bar = (check_state == QtCore.Qt.CheckState.Checked)
+        self.tool_bar = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_update_on_edit_check_box_changed(self, check_state):
-        self.update_edit = (check_state == QtCore.Qt.CheckState.Checked)
+        self.update_edit = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_add_from_service_check_box_changed(self, check_state):
-        self.update_load = (check_state == QtCore.Qt.CheckState.Checked)
+        self.update_load = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_first_slide_mode_combo_box_changed(self, index):
         self.first_slide_mode = SongFirstSlideMode(index)
 
     def on_auto_play_check_box_changed(self, check_state):
-        self.auto_play = (check_state == QtCore.Qt.CheckState.Checked)
+        self.auto_play = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_uppercase_check_box_changed(self, check_state):
-        self.uppercase = (check_state == QtCore.Qt.CheckState.Checked)
+        self.uppercase = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_disable_chords_import_check_box_changed(self, check_state):
-        self.disable_chords_import = (check_state == QtCore.Qt.CheckState.Checked)
+        self.disable_chords_import = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_song_key_warning_check_box_changed(self, check_state):
-        self.song_key_warning = (check_state == QtCore.Qt.CheckState.Checked)
+        self.song_key_warning = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_english_notation_button_clicked(self):
         self.chord_notation = 'english'
@@ -346,25 +346,25 @@ class SongsTab(SettingsTab):
         self.preview_enabled = checked
 
     def on_preview_intro_check_box_changed(self, check_state):
-        self.preview_intro = (check_state == QtCore.Qt.CheckState.Checked)
+        self.preview_intro = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_preview_verse_check_box_changed(self, check_state):
-        self.preview_verse = (check_state == QtCore.Qt.CheckState.Checked)
+        self.preview_verse = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_preview_chorus_check_box_changed(self, check_state):
-        self.preview_chorus = (check_state == QtCore.Qt.CheckState.Checked)
+        self.preview_chorus = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_preview_bridge_check_box_changed(self, check_state):
-        self.preview_bridge = (check_state == QtCore.Qt.CheckState.Checked)
+        self.preview_bridge = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_preview_pre_chorus_check_box_changed(self, check_state):
-        self.preview_pre_chorus = (check_state == QtCore.Qt.CheckState.Checked)
+        self.preview_pre_chorus = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_preview_ending_check_box_changed(self, check_state):
-        self.preview_ending = (check_state == QtCore.Qt.CheckState.Checked)
+        self.preview_ending = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_preview_other_check_box_changed(self, check_state):
-        self.preview_other = (check_state == QtCore.Qt.CheckState.Checked)
+        self.preview_other = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def load(self):
         """

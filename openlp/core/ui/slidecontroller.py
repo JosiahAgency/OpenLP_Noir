@@ -45,6 +45,7 @@ from openlp.core.lib.ui import create_action
 from openlp.core.state import State
 from openlp.core.ui import DisplayControllerType, HideMode
 from openlp.core.ui.icons import UiIcons
+from openlp.core.ui.style import UiThemes, is_ui_theme
 from openlp.core.ui.media import MediaPlayItem, media_empty_song
 from openlp.core.widgets.layouts import AspectRatioLayout
 from openlp.core.widgets.toolbar import MediaToolbar, OpenLPToolbar
@@ -219,14 +220,22 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         self.top_icon.setStyleSheet("padding: 0px 0px 0px 25px;")
         self.top_icon.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.type_label = QtWidgets.QLabel(self.panel)
-        self.type_label.setStyleSheet('padding: 0px 2px 0px 2px; font-weight: bold;')
+        self.type_label.setObjectName('slide_controller_type_label')
+        self.type_label.setProperty('isLive', 'true' if self.is_live else 'false')
+        self.type_label.setProperty('onAir', 'true' if self.is_live else 'false')
+        if not is_ui_theme(UiThemes.Noir):
+            # The Noir theme styles this label from the application stylesheet, which an
+            # inline widget stylesheet would override.
+            self.type_label.setStyleSheet('padding: 0px 2px 0px 2px; font-weight: bold;')
         if self.is_live:
             self.type_label.setText(UiStrings().Live)
         else:
             self.type_label.setText(UiStrings().Preview)
         # Info label for the title of the current item, at the top of the slide controller
         self.info_label = InfoLabel(self.panel)
-        self.info_label.setStyleSheet('font-style: italic;')
+        self.info_label.setObjectName('slide_controller_info_label')
+        if not is_ui_theme(UiThemes.Noir):
+            self.info_label.setStyleSheet('font-style: italic;')
         self.info_label.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Preferred)
         self.top_label_horizontal.addWidget(self.top_icon)
         self.top_label_horizontal.addWidget(self.type_label)
@@ -1117,6 +1126,13 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         """
         self.log_debug('set_hide_mode {text}'.format(text=hide_mode))
         self._current_hide_mode = hide_mode
+        # Reflect the on-air state in the live indicator (red while the output is showing)
+        if self.is_live:
+            self.type_label.setProperty('onAir', 'false' if hide_mode else 'true')
+            self.type_label.style().unpolish(self.type_label)
+            self.type_label.style().polish(self.type_label)
+            # The Noir slide cards also change their accent with the on-air state
+            self.preview_widget.viewport().update()
         # Update ui buttons
         if hide_mode is None:
             self.hide_menu.setDefaultAction(self.blank_screen)

@@ -163,6 +163,10 @@ class AlertsPlugin(Plugin):
                                               statustip=translate('AlertsPlugin', 'Show an alert message.'),
                                               visible=False, can_shortcuts=True, triggers=self.on_alerts_trigger)
         self.main_window.tools_menu.addAction(self.tools_alert_item)
+        # Also expose the alert action at the top level of the menu bar, before Help, for quick
+        # access during a live service. The same action backs both entries, so visibility and
+        # shortcuts stay in sync.
+        self.main_window.menu_bar.insertAction(self.main_window.help_menu.menuAction(), self.tools_alert_item)
 
     def toggle_alerts_state(self):
         """

@@ -176,9 +176,9 @@ class GeneralTab(SettingsTab):
         self.ui_theme_style_label.setObjectName('theme_style_label')
         self.ui_theme_style_combo_box = QtWidgets.QComboBox(self.ui_group_box)
         if has_ui_theme(UiThemes.QDarkStyle):
-            self.ui_theme_style_combo_box.addItems(['', '', '', ''])
+            self.ui_theme_style_combo_box.addItems(['', '', '', '', ''])
         else:
-            self.ui_theme_style_combo_box.addItems(['', '', ''])
+            self.ui_theme_style_combo_box.addItems(['', '', '', ''])
         self.ui_theme_style_combo_box.setObjectName('theme_style_combo_box')
         self.ui_layout.addRow(self.ui_theme_style_label)
         self.ui_layout.addRow(self.ui_theme_style_combo_box)
@@ -267,6 +267,9 @@ class GeneralTab(SettingsTab):
         self.ui_theme_style_combo_box.setItemText(2, translate('OpenLP.AdvancedTab', 'Default Dark'))
         if has_ui_theme(UiThemes.QDarkStyle):
             self.ui_theme_style_combo_box.setItemText(3, translate('OpenLP.AdvancedTab', 'QDarkStyle'))
+            self.ui_theme_style_combo_box.setItemText(4, translate('OpenLP.AdvancedTab', 'Noir'))
+        else:
+            self.ui_theme_style_combo_box.setItemText(3, translate('OpenLP.AdvancedTab', 'Noir'))
         self.hide_mouse_check_box.setText(translate('OpenLP.AdvancedTab', 'Hide mouse cursor when over display window'))
 
     def load(self):
@@ -328,6 +331,8 @@ class GeneralTab(SettingsTab):
             return 2
         if ui_theme == UiThemes.QDarkStyle:
             return 3 if has_ui_theme(UiThemes.QDarkStyle) else 2
+        if ui_theme == UiThemes.Noir:
+            return 4 if has_ui_theme(UiThemes.QDarkStyle) else 3
 
         return 0
 
@@ -339,9 +344,6 @@ class GeneralTab(SettingsTab):
         :param index "Interface Theme" ComboBox current index
         :return UiThemes enum item
         """
-        if not has_ui_theme(UiThemes.QDarkStyle) and index == 3:
-            index = 2
-
         if index == 0:
             return UiThemes.Automatic
         if index == 1:
@@ -349,7 +351,9 @@ class GeneralTab(SettingsTab):
         if index == 2:
             return UiThemes.DefaultDark
         if index == 3:
-            return UiThemes.QDarkStyle
+            return UiThemes.QDarkStyle if has_ui_theme(UiThemes.QDarkStyle) else UiThemes.Noir
+        if index == 4:
+            return UiThemes.Noir
 
         return UiThemes.Automatic
 
@@ -400,6 +404,6 @@ class GeneralTab(SettingsTab):
         self.logo_background_color = color
 
     def on_search_as_type_check_box_changed(self, check_state):
-        self.is_search_as_you_type_enabled = (check_state == QtCore.Qt.CheckState.Checked)
+        self.is_search_as_you_type_enabled = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
         self.settings_form.register_post_process('songs_config_updated')
         self.settings_form.register_post_process('custom_config_updated')

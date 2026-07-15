@@ -280,19 +280,19 @@ class BiblesTab(SettingsTab):
         """
         Event handler for the 'verse number visible' check box
         """
-        self.is_verse_number_visible = (check_state == QtCore.Qt.CheckState.Checked)
+        self.is_verse_number_visible = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
         self.check_is_verse_number_visible()
 
     def on_new_chapters_check_box_changed(self, check_state):
         self.show_new_chapters = False
         # We have a set value convert to True/False.
-        if check_state == QtCore.Qt.CheckState.Checked:
+        if QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked:
             self.show_new_chapters = True
 
     def on_bible_second_check_box(self, check_state):
         self.second_bibles = False
         # We have a set value convert to True/False.
-        if check_state == QtCore.Qt.CheckState.Checked:
+        if QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked:
             self.second_bibles = True
 
     def on_verse_separator_check_box_clicked(self, checked):
@@ -375,43 +375,43 @@ class BiblesTab(SettingsTab):
         """
         Event handler for the 'hide_combined_quick_error' check box
         """
-        self.reset_to_combined_quick_search = (check_state == QtCore.Qt.CheckState.Checked)
+        self.reset_to_combined_quick_search = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_hide_combined_quick_error_check_box_changed(self, check_state):
         """
         Event handler for the 'hide_combined_quick_error' check box
         """
-        self.hide_combined_quick_error = (check_state == QtCore.Qt.CheckState.Checked)
+        self.hide_combined_quick_error = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_bible_search_while_typing_check_box_changed(self, check_state):
         """
         Event handler for the 'hide_combined_quick_error' check box
         """
-        self.bible_search_while_typing = (check_state == QtCore.Qt.CheckState.Checked)
+        self.bible_search_while_typing = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_footer_reference_check_box_changed(self, check_state):
         """
         Event handler for the 'footer_reference' check box
         """
-        self.show_reference_in_footer = (check_state == QtCore.Qt.CheckState.Checked)
+        self.show_reference_in_footer = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_footer_version_check_box_changed(self, check_state):
         """
         Event handler for the 'footer_version' check box
         """
-        self.show_version_in_footer = (check_state == QtCore.Qt.CheckState.Checked)
+        self.show_version_in_footer = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_footer_copyright_check_box_changed(self, check_state):
         """
         Event handler for the 'footer_copyright' check box
         """
-        self.show_copyright_in_footer = (check_state == QtCore.Qt.CheckState.Checked)
+        self.show_copyright_in_footer = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_footer_permission_check_box_changed(self, check_state):
         """
         Event handler for the 'footer_permission' check box
         """
-        self.show_permission_in_footer = (check_state == QtCore.Qt.CheckState.Checked)
+        self.show_permission_in_footer = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def load(self):
         self.is_verse_number_visible = self.settings.value('bibles/is verse number visible')

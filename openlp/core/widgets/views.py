@@ -31,6 +31,8 @@ from openlp.core.common.mixins import RegistryProperties
 from openlp.core.common.platform import is_win
 from openlp.core.common.registry import Registry
 from openlp.core.lib.serviceitem import ItemCapabilities, ServiceItem
+from openlp.core.ui.style import NOIR_CUE, NOIR_INK_2, NOIR_INK_3, NOIR_INK_4, NOIR_ON_AIR, \
+    NOIR_TEXT_BODY, NOIR_TEXT_HI, NOIR_TEXT_MID, UiThemes, is_ui_theme
 from openlp.core.widgets.layouts import AspectRatioLayout
 
 
@@ -40,6 +42,146 @@ SCROLL_HINT = {
     2: QtWidgets.QAbstractItemView.ScrollHint.PositionAtCenter,
     3: QtWidgets.QAbstractItemView.ScrollHint.PositionAtBottom
 }
+
+# Data role holding the verse tag ('V1', 'C', ...) of a slide, painted as a chip
+# by NoirSlideDelegate
+VERSE_TAG_ROLE = QtCore.Qt.ItemDataRole.UserRole + 1
+
+
+class NoirSlideDelegate(QtWidgets.QStyledItemDelegate):
+    """
+    Paints the text slides of the Preview/Live slide lists as rounded cards
+    instead of plain table rows: a small verse chip on top, the slide text
+    below it, with distinct hover, selected and on-air states. Only installed
+    when the Noir UI theme is active. Non-text slides (thumbnails) keep the
+    default painting, as they are rendered by cell widgets.
+    """
+    CARD_MARGIN_X = 8
+    CARD_MARGIN_Y = 3
+    CARD_PADDING = 10
+    CARD_RADIUS = 8
+    CHIP_HEIGHT = 18
+    CHIP_SPACING = 6
+
+    def __init__(self, view, is_live=False):
+        super().__init__(view)
+        self.view = view
+        self.is_live = is_live
+
+    def _chip_font(self, base_font):
+        font = QtGui.QFont(base_font)
+        font.setPointSizeF(max(base_font.pointSizeF() - 2.5, 6.5))
+        font.setBold(True)
+        return font
+
+    def _chip_label(self, index):
+        verse_tag = index.data(VERSE_TAG_ROLE)
+        return str(verse_tag) if verse_tag else str(index.row() + 1)
+
+    def _accent_color(self):
+        """
+        The accent of the selected card: on-air red for the live controller
+        while output is showing, the cue blue otherwise.
+        """
+        controller = self.view.parent()
+        if self.is_live and getattr(controller, 'current_hide_mode', False) is None:
+            return QtGui.QColor(NOIR_ON_AIR)
+        return QtGui.QColor(NOIR_CUE)
+
+    def paint(self, painter, option, index):
+        text = index.data(QtCore.Qt.ItemDataRole.DisplayRole)
+        selected = bool(option.state & QtWidgets.QStyle.StateFlag.State_Selected)
+        hovered = bool(option.state & QtWidgets.QStyle.StateFlag.State_MouseOver)
+        accent = self._accent_color()
+        if not text:
+            # Thumbnail slides are rendered by cell widgets on top of the cell,
+            # so only the selection surface is painted here, behind them.
+            if selected or hovered:
+                painter.save()
+                painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+                card = QtCore.QRectF(option.rect).adjusted(2, 1, -2, -1)
+                if selected:
+                    fill = QtGui.QColor(accent)
+                    fill.setAlpha(34)
+                    border = QtGui.QColor(accent)
+                    border.setAlpha(150)
+                else:
+                    fill = QtGui.QColor(NOIR_INK_2)
+                    border = QtGui.QColor(NOIR_INK_3)
+                painter.setPen(QtGui.QPen(border, 1.5 if selected else 1))
+                painter.setBrush(fill)
+                painter.drawRoundedRect(card, self.CARD_RADIUS, self.CARD_RADIUS)
+                painter.restore()
+            return
+        card = QtCore.QRectF(option.rect).adjusted(self.CARD_MARGIN_X, self.CARD_MARGIN_Y,
+                                                   -self.CARD_MARGIN_X, -self.CARD_MARGIN_Y)
+        painter.save()
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        # Card surface
+        if selected:
+            fill = QtGui.QColor(accent)
+            fill.setAlpha(34)
+            border = QtGui.QColor(accent)
+            border.setAlpha(120)
+        elif hovered:
+            fill = QtGui.QColor(NOIR_INK_3)
+            border = QtGui.QColor(NOIR_INK_4)
+        else:
+            fill = QtGui.QColor(NOIR_INK_2)
+            border = QtGui.QColor(NOIR_INK_3)
+        painter.setPen(QtGui.QPen(border, 1))
+        painter.setBrush(fill)
+        painter.drawRoundedRect(card, self.CARD_RADIUS, self.CARD_RADIUS)
+        if selected:
+            # Accent bar down the left edge of the selected card
+            bar = QtCore.QRectF(card.left() + 4, card.top() + 6, 3, card.height() - 12)
+            painter.setPen(QtCore.Qt.PenStyle.NoPen)
+            painter.setBrush(accent)
+            painter.drawRoundedRect(bar, 1.5, 1.5)
+        content = card.adjusted(self.CARD_PADDING + 4, self.CARD_PADDING, -self.CARD_PADDING,
+                                -self.CARD_PADDING)
+        # The view font is used for measuring and painting; option.font can
+        # disagree with it while rows are being sized, which clips the text.
+        body_font = self.view.font()
+        # Verse chip
+        chip_font = self._chip_font(body_font)
+        chip_label = self._chip_label(index)
+        chip_metrics = QtGui.QFontMetricsF(chip_font)
+        chip_width = chip_metrics.horizontalAdvance(chip_label) + 14
+        chip = QtCore.QRectF(content.left(), content.top(), chip_width, self.CHIP_HEIGHT)
+        painter.setPen(QtCore.Qt.PenStyle.NoPen)
+        if selected:
+            chip_fill = QtGui.QColor(accent)
+            chip_text = QtGui.QColor('#FFFFFF') if self.is_live else QtGui.QColor('#0E1014')
+        else:
+            chip_fill = QtGui.QColor(NOIR_INK_4)
+            chip_text = QtGui.QColor(NOIR_TEXT_MID)
+        painter.setBrush(chip_fill)
+        painter.drawRoundedRect(chip, 4, 4)
+        painter.setFont(chip_font)
+        painter.setPen(chip_text)
+        painter.drawText(chip, QtCore.Qt.AlignmentFlag.AlignCenter, chip_label)
+        # Slide text
+        text_rect = QtCore.QRectF(content.left(), chip.bottom() + self.CHIP_SPACING,
+                                  content.width(), content.bottom() - chip.bottom() - self.CHIP_SPACING)
+        painter.setFont(body_font)
+        painter.setPen(QtGui.QColor(NOIR_TEXT_HI if selected else NOIR_TEXT_BODY))
+        painter.drawText(text_rect, QtCore.Qt.TextFlag.TextWordWrap, text)
+        painter.restore()
+
+    def sizeHint(self, option, index):
+        text = index.data(QtCore.Qt.ItemDataRole.DisplayRole)
+        if not text:
+            return super().sizeHint(option, index)
+        width = self.view.viewport().width() - 2 * self.CARD_MARGIN_X - 2 * self.CARD_PADDING - 4
+        if width <= 0:
+            width = 200
+        metrics = QtGui.QFontMetrics(self.view.font())
+        text_rect = metrics.boundingRect(QtCore.QRect(0, 0, int(width), 0),
+                                         QtCore.Qt.TextFlag.TextWordWrap, text)
+        height = (2 * self.CARD_MARGIN_Y + 2 * self.CARD_PADDING + self.CHIP_HEIGHT +
+                  self.CHIP_SPACING + text_rect.height() + metrics.descent())
+        return QtCore.QSize(option.rect.width(), int(height))
 
 
 def handle_mime_data_urls(mime_data):
@@ -102,6 +244,22 @@ class ListPreviewWidget(QtWidgets.QTableWidget, RegistryProperties):
         self.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setAlternatingRowColors(True)
+        self.is_noir = is_ui_theme(UiThemes.Noir)
+        if self.is_noir:
+            # The Noir theme paints text slides as rounded cards with their own
+            # hover/selected states, so the table chrome has to go.
+            self.setAlternatingRowColors(False)
+            self.setShowGrid(False)
+            self.setMouseTracking(True)
+            self.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollMode.ScrollPerPixel)
+            self.setItemDelegate(NoirSlideDelegate(self, is_live=bool(getattr(self.parent(), 'is_live', False))))
+            # The delegate paints all selection states itself; a transparent
+            # highlight stops the view painting its own row underlay behind
+            # the cards.
+            palette = self.palette()
+            palette.setColor(QtGui.QPalette.ColorRole.Highlight, QtCore.Qt.GlobalColor.transparent)
+            palette.setColor(QtGui.QPalette.ColorRole.HighlightedText, QtGui.QColor(NOIR_TEXT_HI))
+            self.setPalette(palette)
         # Initialize variables.
         self.service_item = ServiceItem()
         self.screen_ratio = screen_ratio
@@ -200,6 +358,7 @@ class ListPreviewWidget(QtWidgets.QTableWidget, RegistryProperties):
                     verse_def = '%s%s' % (verse_def[0], verse_def[1:])
                     two_line_def = '%s\n%s' % (verse_def[0], verse_def[1:])
                     row = two_line_def
+                    item.setData(VERSE_TAG_ROLE, verse_def)
                 else:
                     row += 1
                 item.setText(slide['text'])
@@ -249,6 +408,10 @@ class ListPreviewWidget(QtWidgets.QTableWidget, RegistryProperties):
                 self.setRowHeight(slide_index, 1)
                 self.setRowHeight(slide_index, int(slide_height))
         self.setVerticalHeaderLabels(text)
+        if self.is_noir:
+            # The verse tag is painted on the card itself, so the row header is
+            # only needed for thumbnail slides
+            self.verticalHeader().setVisible(not self.service_item.is_text())
         if self.service_item.is_text():
             self.resizeRowsToContents()
         self.setColumnWidth(0, self.viewport().width())

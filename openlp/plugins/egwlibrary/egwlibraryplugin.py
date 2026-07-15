@@ -89,11 +89,11 @@ class EGWLibraryPlugin(Plugin):
         }
         # Middle Header Bar
         tooltips = {
-            'load': translate('EGWLibraryPlugin', 'Load a new book.'),
-            'import': translate('EGWLibraryPlugin', 'Import books into the library.'),
-            'new': translate('EGWLibraryPlugin', 'Add a new book.'),
-            'edit': translate('EGWLibraryPlugin', 'Edit the selected book.'),
-            'delete': translate('EGWLibraryPlugin', 'Delete the selected book from the library.'),
+            'load': translate('EGWLibraryPlugin', 'Load a new EGW book.'),
+            'import': translate('EGWLibraryPlugin', 'Import EGW books into the library.'),
+            'new': translate('EGWLibraryPlugin', 'Add a new EGW book.'),
+            'edit': translate('EGWLibraryPlugin', 'Edit the selected EGW book.'),
+            'delete': translate('EGWLibraryPlugin', 'Delete the selected EGW book from the library.'),
             'preview': translate('EGWLibraryPlugin', 'Preview the selected paragraphs.'),
             'live': translate('EGWLibraryPlugin', 'Send the selected paragraphs live.'),
             'service': translate('EGWLibraryPlugin', 'Add the selected paragraphs to the service.')

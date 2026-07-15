@@ -65,7 +65,7 @@ class CustomTab(SettingsTab):
         """
         self.display_footer = False
         # we have a set value convert to True/False
-        if check_state == QtCore.Qt.CheckState.Checked:
+        if QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked:
             self.display_footer = True
 
     def on_add_from_service_check_box_changed(self, check_state):
@@ -74,7 +74,7 @@ class CustomTab(SettingsTab):
 
         :param check_state: The current check box state
         """
-        self.update_load = (check_state == QtCore.Qt.CheckState.Checked)
+        self.update_load = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def load(self):
         """

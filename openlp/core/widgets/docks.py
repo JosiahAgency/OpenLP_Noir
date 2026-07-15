@@ -28,6 +28,7 @@ from PySide6 import QtWidgets
 from openlp.core.display.screens import ScreenList
 from openlp.core.lib import build_icon
 from openlp.core.lib.plugin import StringContent
+from openlp.core.ui.style import UiThemes, get_noir_toolbox_icon, is_ui_theme
 
 
 log = logging.getLogger(__name__)
@@ -81,7 +82,10 @@ class MediaDockManager(object):
                 match = True
                 break
         if not match:
-            self.media_dock.addItem(media_item, media_item.plugin.icon, visible_title['title'])
+            icon = media_item.plugin.icon
+            if is_ui_theme(UiThemes.Noir):
+                icon = get_noir_toolbox_icon(icon)
+            self.media_dock.addItem(media_item, icon, visible_title['title'])
 
     def remove_dock(self, media_item):
         """

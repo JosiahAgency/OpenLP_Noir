@@ -21,8 +21,11 @@
 """
 Package to test the openlp.core.ui.generaltab package.
 """
+from unittest.mock import patch
+
 from openlp.core.ui.generaltab import GeneralTab
 from openlp.core.ui.settingsform import SettingsForm
+from openlp.core.ui.style import UiThemes
 
 from PySide6 import QtCore, QtTest
 
@@ -56,6 +59,68 @@ def test_change_search_as_type(settings):
     assert 2 == len(settings_form.processes), 'Two post save processes should be created'
     assert "songs_config_updated" in settings_form.processes, 'The songs plugin should be called'
     assert "custom_config_updated" in settings_form.processes, 'The custom plugin should be called'
+
+
+@patch('openlp.core.ui.generaltab.has_ui_theme')
+def test_get_ui_theme_index_noir_with_qdarkstyle(mocked_has_ui_theme):
+    """
+    Test that the Noir theme maps to combo box index 4 when QDarkStyle is available
+    """
+    # GIVEN: QDarkStyle is available
+    mocked_has_ui_theme.return_value = True
+
+    # WHEN: the index for the Noir theme is requested
+    index = GeneralTab.get_ui_theme_index(UiThemes.Noir)
+
+    # THEN: the index should be 4
+    assert index == 4
+
+
+@patch('openlp.core.ui.generaltab.has_ui_theme')
+def test_get_ui_theme_index_noir_without_qdarkstyle(mocked_has_ui_theme):
+    """
+    Test that the Noir theme maps to combo box index 3 when QDarkStyle is not available
+    """
+    # GIVEN: QDarkStyle is not available
+    mocked_has_ui_theme.return_value = False
+
+    # WHEN: the index for the Noir theme is requested
+    index = GeneralTab.get_ui_theme_index(UiThemes.Noir)
+
+    # THEN: the index should be 3
+    assert index == 3
+
+
+@patch('openlp.core.ui.generaltab.has_ui_theme')
+def test_get_ui_theme_name_noir_with_qdarkstyle(mocked_has_ui_theme):
+    """
+    Test that combo box index 4 maps to the Noir theme when QDarkStyle is available
+    """
+    # GIVEN: QDarkStyle is available
+    mocked_has_ui_theme.return_value = True
+
+    # WHEN: the theme names for indexes 3 and 4 are requested
+    theme_at_3 = GeneralTab.get_ui_theme_name(3)
+    theme_at_4 = GeneralTab.get_ui_theme_name(4)
+
+    # THEN: index 3 should be QDarkStyle and index 4 should be Noir
+    assert theme_at_3 == UiThemes.QDarkStyle
+    assert theme_at_4 == UiThemes.Noir
+
+
+@patch('openlp.core.ui.generaltab.has_ui_theme')
+def test_get_ui_theme_name_noir_without_qdarkstyle(mocked_has_ui_theme):
+    """
+    Test that combo box index 3 maps to the Noir theme when QDarkStyle is not available
+    """
+    # GIVEN: QDarkStyle is not available
+    mocked_has_ui_theme.return_value = False
+
+    # WHEN: the theme name for index 3 is requested
+    theme = GeneralTab.get_ui_theme_name(3)
+
+    # THEN: the theme should be Noir
+    assert theme == UiThemes.Noir
 
 
 def test_slide_numbers_in_footer(settings):

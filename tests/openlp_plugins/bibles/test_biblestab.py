@@ -116,3 +116,25 @@ def test_save_footer_settings(form):
     assert form.settings.value('bibles/footer show version') is False
     assert form.settings.value('bibles/footer show copyright') is False
     assert form.settings.value('bibles/footer show permission') is True
+
+
+def test_check_box_toggles_persist(form):
+    """
+    Test that checking a box back on is saved as True. The stateChanged signal
+    delivers a plain int, so a naive comparison with Qt.CheckState.Checked is
+    always False and every toggle would be stored (and saved) as False.
+    """
+    # GIVEN: A loaded form where checkboxes have been unchecked and re-checked by the user
+    form.load()
+    form.footer_version_check_box.setChecked(False)
+    form.footer_version_check_box.setChecked(True)
+    form.is_verse_number_visible_check_box.setChecked(False)
+    form.is_verse_number_visible_check_box.setChecked(True)
+
+    # WHEN: Save is invoked (without rebuilding the global reference separators)
+    with patch('openlp.plugins.bibles.lib.biblestab.update_reference_separators'):
+        form.save()
+
+    # THEN: The re-checked boxes should be saved as True
+    assert form.settings.value('bibles/footer show version') is True
+    assert form.settings.value('bibles/is verse number visible') is True

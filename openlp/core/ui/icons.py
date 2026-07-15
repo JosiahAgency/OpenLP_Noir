@@ -30,10 +30,140 @@ from openlp.core.common import Singleton
 from openlp.core.common.applocation import AppLocation
 from openlp.core.common.registry import Registry
 from openlp.core.lib import build_icon
-from openlp.core.ui.style import is_ui_theme_dark
+from openlp.core.ui.style import NOIR_CUE, NOIR_ON_AIR, NOIR_SUCCESS, NOIR_TEXT_HI, NOIR_TEXT_LOW, \
+    NOIR_WARNING, UiThemes, is_ui_theme, is_ui_theme_dark
 
 
 log = logging.getLogger(__name__)
+
+# The Noir icon set. Phosphor icons share a single stroke weight and geometric
+# grid, so every icon in the application reads as part of one family. Colors
+# come from the Noir palette tokens rather than raw named colors.
+NOIR_ICON_LIST = {
+    'active': {'icon': 'ph.hands-clapping'},
+    'add': {'icon': 'ph.plus-circle'},
+    'alert': {'icon': 'ph.megaphone'},
+    'arrow_down': {'icon': 'ph.arrow-down'},
+    'arrow_left': {'icon': 'ph.arrow-left'},
+    'arrow_right': {'icon': 'ph.arrow-right'},
+    'arrow_up': {'icon': 'ph.arrow-up'},
+    'audio': {'icon': 'ph.music-note'},
+    'authentication': {'icon': 'ph.shield-warning', 'attr': NOIR_WARNING},
+    'address': {'icon': 'ph.book-open'},
+    'back': {'icon': 'ph.skip-back'},
+    'backspace': {'icon': 'ph.x'},
+    'bible': {'icon': 'ph.book-open'},
+    'blank': {'icon': 'ph.eye-slash'},
+    'blank_theme': {'icon': 'ph.image-square'},
+    'bold': {'icon': 'ph.text-bolder'},
+    'book': {'icon': 'ph.book-open'},
+    'bottom': {'icon': 'ph.caret-double-down'},
+    'box': {'icon': 'ph.package'},
+    'clapperboard': {'icon': 'ph.film-strip'},
+    'clock': {'icon': 'ph.clock'},
+    'clone': {'icon': 'ph.copy'},
+    'close': {'icon': 'ph.x-circle'},
+    'copy': {'icon': 'ph.copy-simple'},
+    'copyright': {'icon': 'ph.copyright'},
+    'custom': {'icon': 'ph.note-pencil'},
+    'database': {'icon': 'ph.database'},
+    'default': {'icon': 'ph.info'},
+    'desktop': {'icon': 'ph.monitor'},
+    'delete': {'icon': 'ph.trash'},
+    'device_stream': {'icon': 'ph.video-camera'},
+    'donate': {'icon': 'ph.heart'},
+    'download': {'icon': 'ph.download-simple'},
+    'edit': {'icon': 'ph.pencil-simple'},
+    'email': {'icon': 'ph.envelope-simple'},
+    'error': {'icon': 'ph.warning-circle', 'attr': NOIR_ON_AIR},
+    'exception': {'icon': 'ph.bug'},
+    'exit': {'icon': 'ph.sign-out'},
+    'favourite': {'icon': 'ph.star'},
+    'folder': {'icon': 'ph.folder-simple'},
+    'group': {'icon': 'ph.folders'},
+    'inactive': {'icon': 'ph.hands-clapping', 'attr': NOIR_TEXT_LOW},
+    'info': {'icon': 'ph.info'},
+    'italic': {'icon': 'ph.text-italic'},
+    'light_bulb': {'icon': 'ph.lightbulb'},
+    'live': {'icon': 'ph.broadcast'},
+    'live_presentation': {'icon': 'ph.presentation-chart'},
+    'live_theme': {'icon': 'ph.paint-brush-broad'},
+    'live_black': {'icon': 'ph.monitor'},
+    'live_desktop': {'icon': 'ph.monitor-play'},
+    'loop': {'icon': 'ph.repeat'},
+    'manual': {'icon': 'ph.book-bookmark'},
+    'media': {'icon': 'ph.play-circle'},
+    'minus': {'icon': 'ph.minus'},
+    'move_start': {'icon': 'ph.arrow-line-up'},
+    'move_up': {'icon': 'ph.arrow-up'},
+    'move_down': {'icon': 'ph.arrow-down'},
+    'move_end': {'icon': 'ph.arrow-line-down'},
+    'music': {'icon': 'ph.music-notes'},
+    'network_stream': {'icon': 'ph.link-simple'},
+    'new': {'icon': 'ph.file-plus'},
+    'new_group': {'icon': 'ph.folder-simple-plus'},
+    'notes': {'icon': 'ph.note'},
+    'obs_studio': {'icon': 'ph.record'},
+    'open': {'icon': 'ph.folder-open'},
+    'pause': {'icon': 'ph.pause'},
+    'planning_center': {'icon': 'ph.cloud-arrow-down'},
+    'play': {'icon': 'ph.play'},
+    'player': {'icon': 'ph.device-tablet'},
+    'play_slides': {'icon': 'ph.play-circle'},
+    'plugin_list': {'icon': 'ph.puzzle-piece'},
+    'plus': {'icon': 'ph.plus'},
+    'presentation': {'icon': 'ph.presentation'},
+    'preview': {'icon': 'ph.eye'},
+    'projector': {'icon': 'ph.projector-screen'},
+    'projector_connect': {'icon': 'ph.link'},
+    'projector_cooldown': {'icon': 'ph.projector-screen', 'attr': NOIR_CUE},
+    'projector_disconnect': {'icon': 'ph.link-break', 'attr': NOIR_TEXT_LOW},
+    'projector_error': {'icon': 'ph.projector-screen', 'attr': NOIR_ON_AIR},
+    'projector_hdmi': {'icon': 'ph.screencast'},
+    'projector_power_off': {'icon': 'ph.power', 'attr': NOIR_ON_AIR},
+    'projector_power_on': {'icon': 'ph.power', 'attr': NOIR_SUCCESS},
+    'projector_off': {'icon': 'ph.projector-screen', 'attr': NOIR_TEXT_LOW},
+    'projector_on': {'icon': 'ph.projector-screen', 'attr': NOIR_SUCCESS},
+    'projector_select_connect': {'icon': 'ph.link', 'attr': NOIR_SUCCESS},
+    'projector_select_disconnect': {'icon': 'ph.link-break', 'attr': NOIR_ON_AIR},
+    'projector_warmup': {'icon': 'ph.projector-screen', 'attr': NOIR_WARNING},
+    'picture': {'icon': 'ph.image'},
+    'print': {'icon': 'ph.printer'},
+    'remote': {'icon': 'ph.wifi-high'},
+    'repeat': {'icon': 'ph.repeat'},
+    'save': {'icon': 'ph.floppy-disk'},
+    'search': {'icon': 'ph.magnifying-glass'},
+    'search_ccli': {'icon': 'ph.hash'},
+    'search_comb': {'icon': 'ph.columns'},
+    'search_lyrics': {'icon': 'ph.text-align-left'},
+    'search_minus': {'icon': 'ph.magnifying-glass-minus'},
+    'search_plus': {'icon': 'ph.magnifying-glass-plus'},
+    'search_ref': {'icon': 'ph.bookmark-simple'},
+    'search_text': {'icon': 'ph.text-aa'},
+    'select_all': {'icon': 'ph.check-square'},
+    'select_none': {'icon': 'ph.square'},
+    'settings': {'icon': 'ph.gear-six'},
+    'shortcuts': {'icon': 'ph.keyboard'},
+    'song_usage': {'icon': 'ph.chart-line'},
+    'song_usage_active': {'icon': 'ph.minus-circle'},
+    'song_usage_inactive': {'icon': 'ph.plus-circle'},
+    'sort': {'icon': 'ph.sort-ascending'},
+    'stop': {'icon': 'ph.stop'},
+    'square': {'icon': 'ph.square'},
+    'text': {'icon': 'ph.file-text'},
+    'time': {'icon': 'ph.clock-counter-clockwise'},
+    'theme': {'icon': 'ph.paint-brush-broad'},
+    'top': {'icon': 'ph.caret-double-up'},
+    'undo': {'icon': 'ph.arrow-counter-clockwise'},
+    'upload': {'icon': 'ph.upload-simple'},
+    'user': {'icon': 'ph.user'},
+    'usermo': {'icon': 'ph.user-plus'},
+    'users': {'icon': 'ph.users'},
+    'video': {'icon': 'ph.film-strip'},
+    'view_list': {'icon': 'ph.list-dashes'},
+    'view_grid': {'icon': 'ph.squares-four'},
+    'volunteer': {'icon': 'ph.users-three'}
+}
 
 
 class UiIcons(metaclass=Singleton):
@@ -52,7 +182,7 @@ class UiIcons(metaclass=Singleton):
             "color_disabled": palette.color(QtGui.QPalette.ColorGroup.Disabled, QtGui.QPalette.ColorRole.WindowText)
         }
         qta.set_defaults(**self._default_icon_colors)
-        self._icon_list = {
+        legacy_icon_list = {
             'active': {'icon': 'mdi.human-handsup'},
             'add': {'icon': 'mdi.plus-circle'},
             'alert': {'icon': 'mdi.alert'},
@@ -178,6 +308,7 @@ class UiIcons(metaclass=Singleton):
             'view_grid': {'icon': 'mdi.view-grid'},
             'volunteer': {'icon': 'mdi.account-group'}
         }
+        self._icon_list = NOIR_ICON_LIST if is_ui_theme(UiThemes.Noir) else legacy_icon_list
         self.load_icons(self._icon_list)
         self.main_icon = build_icon(':/icon/openlp-logo.svg')
 
@@ -186,6 +317,7 @@ class UiIcons(metaclass=Singleton):
         Load the list of icons to be processed
         """
         is_dark = is_ui_theme_dark()
+        is_noir = is_ui_theme(UiThemes.Noir)
         for key in icon_list:
             try:
                 icon = icon_list[key]['icon']
@@ -193,7 +325,10 @@ class UiIcons(metaclass=Singleton):
                     attr = icon_list[key]['attr']
                     setattr(self, key, qta.icon(icon, color=attr))
                 except KeyError:
-                    if is_dark:
+                    if is_noir:
+                        # Softer than pure white, matching the Noir text ramp
+                        setattr(self, key, qta.icon(icon, color=NOIR_TEXT_HI))
+                    elif is_dark:
                         setattr(self, key, qta.icon(icon, color='white'))
                     else:
                         setattr(self, key, qta.icon(icon))
@@ -213,8 +348,9 @@ class UiIcons(metaclass=Singleton):
         if icon_name not in self._icon_list:
             raise KeyError("Icon '{icon}' is not defined.".format(icon=icon_name))
         icon = self._icon_list[icon_name]['icon']
-        is_dark = is_ui_theme_dark()
-        if is_dark:
+        if is_ui_theme(UiThemes.Noir):
+            args = {"color": NOIR_TEXT_HI, **kwargs}
+        elif is_ui_theme_dark():
             args = {"color": "white", **kwargs}
         else:
             args = kwargs

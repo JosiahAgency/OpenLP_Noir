@@ -81,19 +81,19 @@ class EGWLibraryTab(SettingsTab):
         """
         Event handler for the 'search_while_typing' check box
         """
-        self.search_while_typing = (check_state == QtCore.Qt.CheckState.Checked)
+        self.search_while_typing = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_footer_reference_check_box_changed(self, check_state):
         """
         Event handler for the 'footer_reference' check box
         """
-        self.show_reference_in_footer = (check_state == QtCore.Qt.CheckState.Checked)
+        self.show_reference_in_footer = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def on_footer_copyright_check_box_changed(self, check_state):
         """
         Event handler for the 'footer_copyright' check box
         """
-        self.show_copyright_in_footer = (check_state == QtCore.Qt.CheckState.Checked)
+        self.show_copyright_in_footer = (QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked)
 
     def load(self):
         self.search_while_typing = self.settings.value('egwlibrary/is search while typing enabled')

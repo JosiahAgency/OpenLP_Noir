@@ -21,6 +21,9 @@
 """
 The :mod:`~openlp.core.ui.dark` module looks for and loads a dark theme
 """
+import logging
+import tempfile
+from pathlib import Path
 from subprocess import Popen, PIPE
 from enum import Enum
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -33,6 +36,8 @@ try:
     HAS_DARK_THEME = True
 except ImportError:
     HAS_DARK_THEME = False
+
+log = logging.getLogger(__name__)
 
 WIN_REPAIR_STYLESHEET = """
 QMainWindow::separator
@@ -76,6 +81,647 @@ QProgressBar{
 }
 """
 
+# Noir theme tokens. A five-value cool-biased ink ramp with a single "cue" accent
+# reserved for selection, focus and live state, plus an on-air red used only for
+# live output that is actually showing. Success/warning are muted so the cue and
+# on-air colors stay the loudest things on screen.
+NOIR_INK_0 = '#0E1014'
+NOIR_INK_1 = '#14171C'
+NOIR_INK_2 = '#1B1F26'
+NOIR_INK_3 = '#242933'
+NOIR_INK_4 = '#303743'
+NOIR_LINE = '#262C36'
+NOIR_LINE_SOFT = '#2E3542'
+NOIR_TEXT_HI = '#E8EBF0'
+NOIR_TEXT_BODY = '#C7CDD8'
+NOIR_TEXT_MID = '#9AA3B2'
+NOIR_TEXT_LOW = '#5C6675'
+NOIR_CUE = '#4D9FFF'
+NOIR_CUE_HOVER = '#71B4FF'
+NOIR_CUE_DIM = 'rgba(77, 159, 255, 0.14)'
+NOIR_CUE_LINE = 'rgba(77, 159, 255, 0.45)'
+NOIR_ON_AIR = '#C13A30'
+NOIR_ON_AIR_DIM = 'rgba(193, 58, 48, 0.14)'
+NOIR_ON_AIR_LINE = 'rgba(193, 58, 48, 0.55)'
+NOIR_SUCCESS = '#4CB782'
+NOIR_WARNING = '#D9A23C'
+# Preferred UI font families, best first. Qt walks the list until it finds one
+# that is installed, so older systems fall back gracefully.
+NOIR_FONT_FAMILIES = ['Segoe UI Variable Text', 'Segoe UI', 'Inter', 'Roboto', 'Noto Sans', 'Cantarell']
+
+NOIR_STYLESHEET = """
+/* ------------------------------ Window chrome ------------------------------ */
+QMainWindow::separator {{
+    border: none;
+    background: {ink1};
+    width: 3px;
+    height: 3px;
+}}
+
+QDockWidget::title {{
+    background: {ink1};
+    border: none;
+    border-bottom: 1px solid {line};
+    padding: 6px 12px 5px 12px;
+    color: {text_low};
+    font-size: 8pt;
+    font-weight: 600;
+}}
+
+QMenuBar {{
+    background: {ink1};
+    border-bottom: 1px solid {line};
+    padding: 1px 4px;
+}}
+
+QMenuBar::item {{
+    background: transparent;
+    color: {text_mid};
+    padding: 5px 10px;
+    border-radius: 6px;
+}}
+
+QMenuBar::item:selected {{
+    background: {ink3};
+    color: {text_hi};
+}}
+
+QMenuBar::item:pressed {{
+    background: {ink4};
+    color: {text_hi};
+}}
+
+QMenu {{
+    background: {ink2};
+    border: 1px solid {line_soft};
+    border-radius: 8px;
+    padding: 5px;
+}}
+
+QMenu::item {{
+    background: transparent;
+    color: {text_body};
+    padding: 6px 26px 6px 10px;
+    border-radius: 5px;
+}}
+
+QMenu::item:selected {{
+    background: {ink4};
+    color: {text_hi};
+}}
+
+QMenu::item:disabled {{
+    color: {text_low};
+}}
+
+QMenu::separator {{
+    height: 1px;
+    background: {line};
+    margin: 5px 8px;
+}}
+
+QToolTip {{
+    background: {ink3};
+    color: {text_hi};
+    border: 1px solid {line_soft};
+    border-radius: 6px;
+    padding: 5px 8px;
+}}
+
+QStatusBar {{
+    background: {ink1};
+    border-top: 1px solid {line};
+    color: {text_mid};
+}}
+
+QStatusBar::item {{
+    border: none;
+}}
+
+QSplitter::handle {{
+    background: transparent;
+}}
+
+/* -------------------------------- Toolbars -------------------------------- */
+QToolBar {{
+    border: none;
+    background: transparent;
+    margin: 0;
+    padding: 2px;
+    spacing: 2px;
+}}
+
+QToolBar::separator {{
+    background: {line};
+    width: 1px;
+    height: 1px;
+    margin: 5px 6px;
+}}
+
+QToolBar QToolButton {{
+    border: none;
+    border-radius: 6px;
+    padding: 4px;
+    background: transparent;
+    color: {text_body};
+}}
+
+QToolBar QToolButton:hover {{
+    background: {ink4};
+    color: {text_hi};
+}}
+
+QToolBar QToolButton:pressed {{
+    background: {ink2};
+}}
+
+QToolBar QToolButton:checked {{
+    background: {cue_dim};
+    border: 1px solid {cue_line};
+}}
+
+/* --------------------------------- Buttons --------------------------------- */
+QPushButton {{
+    background: {ink3};
+    color: {text_hi};
+    border: 1px solid {line_soft};
+    border-radius: 6px;
+    padding: 5px 14px;
+}}
+
+QPushButton:hover {{
+    background: {ink4};
+}}
+
+QPushButton:pressed {{
+    background: {ink2};
+}}
+
+QPushButton:checked {{
+    background: {cue_dim};
+    border-color: {cue_line};
+}}
+
+QPushButton:disabled {{
+    background: {ink2};
+    color: {text_low};
+    border-color: {line};
+}}
+
+QPushButton:default {{
+    background: {cue};
+    color: {ink0};
+    border: 1px solid {cue};
+}}
+
+QPushButton:default:hover {{
+    background: {cue_hover};
+}}
+
+QPushButton:flat {{
+    background: transparent;
+    border: none;
+}}
+
+QPushButton:flat:hover {{
+    background: {ink3};
+}}
+
+/* ---------------------------------- Inputs --------------------------------- */
+QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox, QDateEdit,
+QTimeEdit, QDateTimeEdit, QKeySequenceEdit, QFontComboBox, QComboBox {{
+    background: {ink3};
+    border: 1px solid {line_soft};
+    border-radius: 6px;
+    padding: 4px 8px;
+    selection-background-color: {cue};
+    selection-color: {ink0};
+}}
+
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QSpinBox:focus,
+QDoubleSpinBox:focus, QDateEdit:focus, QTimeEdit:focus, QDateTimeEdit:focus,
+QKeySequenceEdit:focus, QComboBox:focus {{
+    border: 1px solid {cue};
+}}
+
+QLineEdit:disabled, QTextEdit:disabled, QPlainTextEdit:disabled, QSpinBox:disabled,
+QDoubleSpinBox:disabled, QComboBox:disabled {{
+    background: {ink2};
+    color: {text_low};
+    border-color: {line};
+}}
+
+QComboBox {{
+    padding-right: 26px;
+}}
+
+QComboBox::drop-down {{
+    subcontrol-origin: padding;
+    subcontrol-position: center right;
+    width: 24px;
+    border: none;
+}}
+
+QComboBox QAbstractItemView {{
+    background: {ink2};
+    border: 1px solid {line_soft};
+    border-radius: 8px;
+    padding: 4px;
+    selection-background-color: {ink4};
+    selection-color: {text_hi};
+}}
+
+QSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::up-button,
+QDoubleSpinBox::down-button, QDateEdit::up-button, QDateEdit::down-button,
+QTimeEdit::up-button, QTimeEdit::down-button, QDateTimeEdit::up-button,
+QDateTimeEdit::down-button {{
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    width: 18px;
+    margin: 1px;
+}}
+
+QSpinBox::up-button:hover, QSpinBox::down-button:hover, QDoubleSpinBox::up-button:hover,
+QDoubleSpinBox::down-button:hover, QDateEdit::up-button:hover, QDateEdit::down-button:hover,
+QTimeEdit::up-button:hover, QTimeEdit::down-button:hover, QDateTimeEdit::up-button:hover,
+QDateTimeEdit::down-button:hover {{
+    background: {ink4};
+}}
+
+/* ---------------------------- Checks and radios ---------------------------- */
+QCheckBox, QRadioButton {{
+    spacing: 8px;
+}}
+
+QCheckBox::indicator, QGroupBox::indicator, QListView::indicator, QListWidget::indicator,
+QTreeView::indicator, QTreeWidget::indicator, QTableView::indicator, QTableWidget::indicator {{
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1px solid {ink4};
+    background: {ink3};
+}}
+
+QRadioButton::indicator {{
+    width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    border: 1px solid {ink4};
+    background: {ink3};
+}}
+
+QCheckBox::indicator:hover, QRadioButton::indicator:hover, QGroupBox::indicator:hover {{
+    border-color: {cue_line};
+}}
+
+QCheckBox::indicator:checked, QGroupBox::indicator:checked, QListView::indicator:checked,
+QListWidget::indicator:checked, QTreeView::indicator:checked, QTreeWidget::indicator:checked,
+QTableView::indicator:checked, QTableWidget::indicator:checked {{
+    background: {cue};
+    border-color: {cue};
+}}
+
+QRadioButton::indicator:checked {{
+    border-color: {cue};
+}}
+
+QCheckBox::indicator:disabled, QRadioButton::indicator:disabled {{
+    background: {ink2};
+    border-color: {line};
+}}
+
+/* ----------------------------------- Tabs ---------------------------------- */
+QTabWidget::pane {{
+    border: 1px solid {line};
+    border-radius: 8px;
+    top: -1px;
+}}
+
+QTabBar::tab {{
+    background: transparent;
+    color: {text_mid};
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 7px 16px;
+    margin-right: 2px;
+}}
+
+QTabBar::tab:hover {{
+    color: {text_hi};
+}}
+
+QTabBar::tab:selected {{
+    color: {text_hi};
+    border-bottom: 2px solid {cue};
+}}
+
+/* ------------------------------- Group boxes ------------------------------- */
+QGroupBox {{
+    background: {ink2};
+    border: 1px solid {line};
+    border-radius: 8px;
+    margin-top: 12px;
+    padding-top: 8px;
+}}
+
+QGroupBox::title {{
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 4px;
+    color: {text_mid};
+    font-weight: 600;
+}}
+
+/* -------------------------------- Item views ------------------------------- */
+QHeaderView::section {{
+    background: {ink1};
+    color: {text_mid};
+    border: none;
+    border-bottom: 1px solid {line};
+    padding: 5px 8px;
+    font-weight: 600;
+}}
+
+QListView, QListWidget, QTreeView, QTreeWidget, QTableView, QTableWidget {{
+    background: {ink0};
+    alternate-background-color: {ink0};
+    border: 1px solid {line};
+    border-radius: 8px;
+    padding: 2px;
+}}
+
+QListView::item, QListWidget::item, QTreeView::item, QTreeWidget::item {{
+    padding: 6px 8px;
+    border-radius: 6px;
+    margin: 1px 3px;
+    color: {text_body};
+}}
+
+QListView::item:hover, QListWidget::item:hover, QTreeView::item:hover, QTreeWidget::item:hover {{
+    background: {ink2};
+    color: {text_hi};
+}}
+
+QListView::item:selected, QListWidget::item:selected, QTreeView::item:selected,
+QTreeWidget::item:selected {{
+    background: {cue_dim};
+    color: {text_hi};
+}}
+
+QListView::item:selected:!active, QListWidget::item:selected:!active,
+QTreeView::item:selected:!active, QTreeWidget::item:selected:!active {{
+    background: {ink3};
+}}
+
+QTableView::item, QTableWidget::item {{
+    padding: 4px 6px;
+}}
+
+QTreeView::branch {{
+    background: transparent;
+}}
+
+/* -------------------------------- Scrollbars ------------------------------- */
+QScrollBar:vertical {{
+    background: transparent;
+    width: 10px;
+    margin: 0;
+}}
+
+QScrollBar:horizontal {{
+    background: transparent;
+    height: 10px;
+    margin: 0;
+}}
+
+QScrollBar::handle:vertical {{
+    background: {ink4};
+    border-radius: 5px;
+    min-height: 24px;
+}}
+
+QScrollBar::handle:horizontal {{
+    background: {ink4};
+    border-radius: 5px;
+    min-width: 24px;
+}}
+
+QScrollBar::handle:vertical:hover, QScrollBar::handle:horizontal:hover {{
+    background: {line_hover};
+}}
+
+QScrollBar::add-line, QScrollBar::sub-line {{
+    height: 0;
+    width: 0;
+}}
+
+QScrollBar::add-page, QScrollBar::sub-page {{
+    background: transparent;
+}}
+
+/* --------------------------- Sliders and progress -------------------------- */
+QSlider::groove:horizontal {{
+    height: 4px;
+    background: {ink3};
+    border-radius: 2px;
+}}
+
+QSlider::sub-page:horizontal {{
+    background: {cue};
+    border-radius: 2px;
+}}
+
+QSlider::handle:horizontal {{
+    width: 14px;
+    height: 14px;
+    margin: -5px 0;
+    border-radius: 7px;
+    background: {text_hi};
+}}
+
+QSlider::handle:horizontal:hover {{
+    background: {cue_hover};
+}}
+
+QProgressBar {{
+    background: {ink3};
+    border: none;
+    border-radius: 4px;
+    height: 8px;
+    text-align: center;
+    color: {text_mid};
+}}
+
+QProgressBar::chunk {{
+    background: {cue};
+    border-radius: 4px;
+}}
+
+/* Slide controller header chips. The Preview chip stays achromatic; the Live
+   chip uses the cue accent on standby and turns on-air red while the output
+   is actually showing (Show Presentation active). */
+QLabel#slide_controller_type_label {{
+    font-weight: bold;
+    padding: 3px 10px;
+    border-radius: 3px;
+    margin: 4px 2px;
+    background-color: {ink3};
+    color: {text_mid};
+}}
+
+QLabel#slide_controller_type_label[isLive="true"] {{
+    background-color: {cue};
+    color: {ink0};
+}}
+
+QLabel#slide_controller_type_label[isLive="true"][onAir="true"] {{
+    background-color: {on_air};
+    color: #FFFFFF;
+}}
+
+QLabel#slide_controller_info_label {{
+    color: {text_mid};
+    padding-left: 4px;
+}}
+""".format(ink0=NOIR_INK_0, ink1=NOIR_INK_1, ink2=NOIR_INK_2, ink3=NOIR_INK_3, ink4=NOIR_INK_4,
+           line=NOIR_LINE, line_soft=NOIR_LINE_SOFT, line_hover='#3A4250',
+           text_hi=NOIR_TEXT_HI, text_body=NOIR_TEXT_BODY, text_mid=NOIR_TEXT_MID, text_low=NOIR_TEXT_LOW,
+           cue=NOIR_CUE, cue_hover=NOIR_CUE_HOVER, cue_dim=NOIR_CUE_DIM, cue_line=NOIR_CUE_LINE,
+           on_air=NOIR_ON_AIR)
+
+# The vertical metrics compensate for Qt drawing the tab icon top-aligned to
+# the raw widget rect: the pill's bottom margin lifts its visual center up
+# toward the fixed icon box, and get_noir_toolbox_icon() drops the glyph the
+# rest of the way. Change these together.
+NOIR_MEDIA_MANAGER_STYLE = """
+::tab#media_tool_box {{
+    background: {ink2};
+    border: none;
+    border-radius: 6px;
+    margin: 2px 6px 5px 6px;
+    padding: 0px 10px;
+    min-height: 26px;
+    text-align: left;
+    color: {text_mid};
+    font-weight: 600;
+}}
+
+::tab:hover#media_tool_box {{
+    background: {ink3};
+    color: {text_hi};
+}}
+
+::tab:selected#media_tool_box {{
+    background: {cue_dim};
+    color: {text_hi};
+}}
+""".format(ink2=NOIR_INK_2, ink3=NOIR_INK_3, text_hi=NOIR_TEXT_HI, text_mid=NOIR_TEXT_MID,
+           cue_dim=NOIR_CUE_DIM)
+
+# Tiny SVG glyphs for stylesheet subcontrols (combo box arrows, check marks and
+# tree branch carets). Qt stylesheets can only load images from files, so these
+# are written to a temp directory at runtime; see get_noir_asset_stylesheet().
+NOIR_ASSET_SVGS = {
+    'caret-down': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4" '
+                  'fill="none" stroke="{mid}" stroke-width="1.8" stroke-linecap="round" '
+                  'stroke-linejoin="round"/></svg>'.format(mid=NOIR_TEXT_MID),
+    'caret-up': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M4 10l4-4 4 4" '
+                'fill="none" stroke="{mid}" stroke-width="1.8" stroke-linecap="round" '
+                'stroke-linejoin="round"/></svg>'.format(mid=NOIR_TEXT_MID),
+    'caret-right': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M6 4l4 4-4 4" '
+                   'fill="none" stroke="{mid}" stroke-width="1.8" stroke-linecap="round" '
+                   'stroke-linejoin="round"/></svg>'.format(mid=NOIR_TEXT_MID),
+    'check': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7" '
+             'fill="none" stroke="{ink0}" stroke-width="2" stroke-linecap="round" '
+             'stroke-linejoin="round"/></svg>'.format(ink0=NOIR_INK_0),
+    'radio-dot': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">'
+                 '<circle cx="8" cy="8" r="4" fill="{cue}"/></svg>'.format(cue=NOIR_CUE),
+}
+
+NOIR_ASSET_STYLESHEET = """
+QComboBox::down-arrow {{
+    image: url({assets}/caret-down.svg);
+    width: 12px;
+    height: 12px;
+}}
+
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow, QDateEdit::up-arrow, QTimeEdit::up-arrow,
+QDateTimeEdit::up-arrow {{
+    image: url({assets}/caret-up.svg);
+    width: 10px;
+    height: 10px;
+}}
+
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow, QDateEdit::down-arrow, QTimeEdit::down-arrow,
+QDateTimeEdit::down-arrow {{
+    image: url({assets}/caret-down.svg);
+    width: 10px;
+    height: 10px;
+}}
+
+QCheckBox::indicator:checked, QGroupBox::indicator:checked, QListView::indicator:checked,
+QListWidget::indicator:checked, QTreeView::indicator:checked, QTreeWidget::indicator:checked,
+QTableView::indicator:checked, QTableWidget::indicator:checked {{
+    image: url({assets}/check.svg);
+}}
+
+QRadioButton::indicator:checked {{
+    image: url({assets}/radio-dot.svg);
+}}
+
+QTreeView::branch:has-children:!has-siblings:closed,
+QTreeView::branch:closed:has-children:has-siblings {{
+    image: url({assets}/caret-right.svg);
+}}
+
+QTreeView::branch:open:has-children:!has-siblings,
+QTreeView::branch:open:has-children:has-siblings {{
+    image: url({assets}/caret-down.svg);
+}}
+"""
+
+
+def get_noir_asset_stylesheet():
+    """
+    Write the Noir SVG glyphs to a temp directory and return the stylesheet
+    chunk that references them. Returns an empty string if the files cannot
+    be written, in which case Qt falls back to its default subcontrol glyphs.
+
+    :return str: The asset stylesheet chunk, or an empty string
+    """
+    try:
+        asset_dir = Path(tempfile.gettempdir()) / 'openlp-noir-assets'
+        asset_dir.mkdir(parents=True, exist_ok=True)
+        for name, svg in NOIR_ASSET_SVGS.items():
+            asset_path = asset_dir / '{name}.svg'.format(name=name)
+            if not asset_path.exists() or asset_path.read_text(encoding='utf8') != svg:
+                asset_path.write_text(svg, encoding='utf8')
+        return NOIR_ASSET_STYLESHEET.format(assets=asset_dir.as_posix())
+    except OSError:
+        log.exception('Unable to write the Noir theme assets')
+        return ''
+
+
+def get_noir_toolbox_icon(icon):
+    """
+    Rebuild a media manager tab icon with transparent headroom. Qt paints a
+    QToolBox tab icon top-aligned to the raw widget rect, so without this the
+    glyph pokes out of the top of the rounded Noir tab; the inset drops it to
+    the vertical center of the pill defined by NOIR_MEDIA_MANAGER_STYLE.
+
+    :param QtGui.QIcon icon: The original tab icon
+    :return QtGui.QIcon: The icon with the glyph shifted down
+    """
+    size = 40
+    inset = 10
+    pixmap = QtGui.QPixmap(size, size)
+    pixmap.fill(QtCore.Qt.GlobalColor.transparent)
+    painter = QtGui.QPainter(pixmap)
+    icon.paint(painter, QtCore.QRect(0, inset, size - inset, size - inset))
+    painter.end()
+    return QtGui.QIcon(pixmap)
+
 
 class UiThemes(Enum):
     """
@@ -85,6 +731,7 @@ class UiThemes(Enum):
     DefaultLight = 'light:default'
     DefaultDark = 'dark:default'
     QDarkStyle = 'dark:qdarkstyle'
+    Noir = 'dark:noir'
 
 
 def is_ui_theme_dark():
@@ -171,7 +818,9 @@ def set_default_theme(app):
     """
     Setup theme
     """
-    if is_ui_theme(UiThemes.DefaultDark) or (is_ui_theme(UiThemes.Automatic) and is_ui_theme_dark()):
+    if is_ui_theme(UiThemes.Noir):
+        set_noir_palette(app)
+    elif is_ui_theme(UiThemes.DefaultDark) or (is_ui_theme(UiThemes.Automatic) and is_ui_theme_dark()):
         set_default_darkmode(app)
     elif is_ui_theme(UiThemes.DefaultLight):
         set_default_lightmode(app)
@@ -228,6 +877,54 @@ def set_default_darkmode(app):
     app.setPalette(dark_palette)
 
 
+def set_noir_palette(app):
+    """
+    Setup the Noir palette on the application if the Noir theme is enabled in the OpenLP Settings.
+    """
+    app.setStyle('Fusion')
+    window = QtGui.QColor(NOIR_INK_1)
+    base = QtGui.QColor(NOIR_INK_0)
+    panel = QtGui.QColor(NOIR_INK_2)
+    raised = QtGui.QColor(NOIR_INK_3)
+    hover = QtGui.QColor(NOIR_INK_4)
+    text_hi = QtGui.QColor(NOIR_TEXT_HI)
+    disabled = QtGui.QColor(NOIR_TEXT_LOW)
+    cue = QtGui.QColor(NOIR_CUE)
+    noir_palette = QtGui.QPalette()
+    noir_palette.setColor(QtGui.QPalette.ColorRole.Window, window)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.WindowText, text_hi)
+    noir_palette.setColor(QtGui.QPalette.ColorGroup.Disabled, QtGui.QPalette.ColorRole.WindowText, disabled)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.Base, base)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.AlternateBase, panel)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.ToolTipBase, panel)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.ToolTipText, text_hi)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.Text, text_hi)
+    noir_palette.setColor(QtGui.QPalette.ColorGroup.Disabled, QtGui.QPalette.ColorRole.Text, disabled)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.PlaceholderText, disabled)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.Button, raised)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.ButtonText, text_hi)
+    noir_palette.setColor(QtGui.QPalette.ColorGroup.Disabled, QtGui.QPalette.ColorRole.ButtonText, disabled)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.BrightText, QtGui.QColor(NOIR_ON_AIR))
+    noir_palette.setColor(QtGui.QPalette.ColorRole.Link, cue)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.Highlight, cue)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.HighlightedText, base)
+    noir_palette.setColor(QtGui.QPalette.ColorGroup.Disabled, QtGui.QPalette.ColorRole.HighlightedText, disabled)
+    # Fixes ugly (not to mention hard to read) disabled menu items.
+    # Source: https://bugreports.qt.io/browse/QTBUG-10322?focusedCommentId=371060#comment-371060
+    noir_palette.setColor(QtGui.QPalette.ColorGroup.Disabled,
+                          QtGui.QPalette.ColorRole.Light,
+                          QtCore.Qt.GlobalColor.transparent)
+    # Fixes ugly media manager headers.
+    noir_palette.setColor(QtGui.QPalette.ColorRole.Mid, hover)
+    app.setPalette(noir_palette)
+    # Typography: prefer a modern variable-width UI font, falling back down the
+    # stack on systems where it is not installed.
+    font = QtGui.QFont()
+    font.setFamilies(NOIR_FONT_FAMILIES)
+    font.setPointSizeF(10.0)
+    app.setFont(font)
+
+
 def get_alternate_rows_repair_stylesheet(base_color_name):
     return 'QTableWidget, QListWidget, QTreeWidget {alternate-background-color: ' + base_color_name + ';}\n'
 
@@ -249,6 +946,9 @@ def get_application_stylesheet():
             stylesheet += alternate_rows_repair_stylesheet
         if is_win():
             stylesheet += WIN_REPAIR_STYLESHEET
+        if is_ui_theme(UiThemes.Noir):
+            stylesheet += NOIR_STYLESHEET
+            stylesheet += get_noir_asset_stylesheet()
     stylesheet += 'QWidget#slide_controller_toolbar QToolButton::checked {' \
         '  background-color: palette(highlight);' \
         '  color: palette(highlighted-text);' \
@@ -262,7 +962,9 @@ def get_library_stylesheet():
 
     :return str: The correct stylesheet as a string
     """
-    if not is_ui_theme(UiThemes.QDarkStyle):
-        return MEDIA_MANAGER_STYLE
-    else:
+    if is_ui_theme(UiThemes.QDarkStyle):
         return ''
+    elif is_ui_theme(UiThemes.Noir):
+        return NOIR_MEDIA_MANAGER_STYLE
+    else:
+        return MEDIA_MANAGER_STYLE

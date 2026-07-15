@@ -372,7 +372,7 @@ class ApiTab(SettingsTab):
         """
         self.twelve_hour = False
         # we have a set value convert to True/False
-        if check_state == QtCore.Qt.CheckState.Checked:
+        if QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked:
             self.twelve_hour = True
 
     def on_thumbnails_check_box_changed(self, check_state):
@@ -381,7 +381,7 @@ class ApiTab(SettingsTab):
         """
         self.thumbnails = False
         # we have a set value convert to True/False
-        if check_state == QtCore.Qt.CheckState.Checked:
+        if QtCore.Qt.CheckState(check_state) == QtCore.Qt.CheckState.Checked:
             self.thumbnails = True
 
     def on_check_for_updates_button_clicked(self):

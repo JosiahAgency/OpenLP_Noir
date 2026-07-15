@@ -376,7 +376,7 @@ class PrintServiceForm(QtWidgets.QDialog, Ui_PrintServiceDialog, RegistryPropert
         """
         Called when html copy check box is selected.
         """
-        if value == QtCore.Qt.CheckState.Checked:
+        if QtCore.Qt.CheckState(value) == QtCore.Qt.CheckState.Checked:
             self.copyTextButton.setText(UiStrings().CopyToHtml)
         else:
             self.copyTextButton.setText(UiStrings().CopyToText)
@@ -386,7 +386,7 @@ class PrintServiceForm(QtWidgets.QDialog, Ui_PrintServiceDialog, RegistryPropert
         Disable or enable the ``page_break_after_text`` checkbox  as it should only
         be enabled, when the ``slide_text_check_box`` is enabled.
         """
-        self.page_break_after_text.setDisabled(state == QtCore.Qt.CheckState.Unchecked)
+        self.page_break_after_text.setDisabled(QtCore.Qt.CheckState(state) == QtCore.Qt.CheckState.Unchecked)
 
     def save_options(self):
         """
