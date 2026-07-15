@@ -558,14 +558,57 @@ QProgressBar::chunk {{
     border-radius: 4px;
 }}
 
-/* Slide controller header chips. The Preview chip stays achromatic; the Live
-   chip uses the cue accent on standby and turns on-air red while the output
-   is actually showing (Show Presentation active). */
+/* Library sidebar: a slim icon rail with one button per plugin, and a header
+   naming the active section. Replaces the stacked QToolBox tabs. */
+QWidget#library_rail {{
+    background: {ink1};
+    border-right: 1px solid {line};
+}}
+
+QToolButton#library_rail_button {{
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    padding: 0;
+}}
+
+QToolButton#library_rail_button:hover {{
+    background: {ink3};
+}}
+
+QToolButton#library_rail_button:pressed {{
+    background: {ink2};
+}}
+
+QToolButton#library_rail_button:checked {{
+    background: {cue_dim};
+    border: 1px solid {cue_line};
+}}
+
+QLabel#library_header {{
+    color: {text_hi};
+    font-size: 11pt;
+    font-weight: 600;
+    padding: 8px 10px 6px 10px;
+}}
+
+/* Slide controller panels. Each controller announces its identity: a neutral
+   accent line and chip for Preview, red for Live. The Live chip uses the cue
+   accent on standby and turns on-air red while the output is actually
+   showing (Show Presentation active). */
+QWidget#slide_controller_panel {{
+    border-top: 2px solid {ink4};
+}}
+
+QWidget#slide_controller_panel[isLive="true"] {{
+    border-top: 2px solid {on_air};
+}}
+
 QLabel#slide_controller_type_label {{
     font-weight: bold;
     padding: 3px 10px;
-    border-radius: 3px;
-    margin: 4px 2px;
+    border-radius: 4px;
+    margin: 2px;
     background-color: {ink3};
     color: {text_mid};
 }}
@@ -581,8 +624,15 @@ QLabel#slide_controller_type_label[isLive="true"][onAir="true"] {{
 }}
 
 QLabel#slide_controller_info_label {{
-    color: {text_mid};
+    color: {text_hi};
+    font-weight: 600;
     padding-left: 4px;
+}}
+
+QLabel#slide_controller_count_label {{
+    color: {text_mid};
+    font-weight: 600;
+    padding: 3px 6px;
 }}
 """.format(ink0=NOIR_INK_0, ink1=NOIR_INK_1, ink2=NOIR_INK_2, ink3=NOIR_INK_3, ink4=NOIR_INK_4,
            line=NOIR_LINE, line_soft=NOIR_LINE_SOFT, line_hover='#3A4250',

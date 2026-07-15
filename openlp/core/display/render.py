@@ -707,6 +707,10 @@ class ThemePreviewRenderer(DisplayWindow, LogMixin):
             else:
                 # Clean up line endings.
                 pages = self._paginate_slide(text.split('\n'), line_end)
+        # Other text items whose words may be split across slides (e.g. EGW Library
+        # paragraphs, which are single long lines that _paginate_slide cannot break)
+        elif item.is_capable(ItemCapabilities.CanWordSplit):
+            pages = self._paginate_slide_words(text.split('\n'), line_end)
         else:
             pages = self._paginate_slide(text.split('\n'), line_end)
         new_pages = []

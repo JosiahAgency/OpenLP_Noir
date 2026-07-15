@@ -31,8 +31,8 @@ from openlp.core.common.mixins import RegistryProperties
 from openlp.core.common.platform import is_win
 from openlp.core.common.registry import Registry
 from openlp.core.lib.serviceitem import ItemCapabilities, ServiceItem
-from openlp.core.ui.style import NOIR_CUE, NOIR_INK_2, NOIR_INK_3, NOIR_INK_4, NOIR_ON_AIR, \
-    NOIR_TEXT_BODY, NOIR_TEXT_HI, NOIR_TEXT_MID, UiThemes, is_ui_theme
+from openlp.core.ui.style import NOIR_CUE, NOIR_INK_1, NOIR_INK_2, NOIR_INK_3, NOIR_INK_4, NOIR_ON_AIR, \
+    NOIR_TEXT_BODY, NOIR_TEXT_HI, NOIR_TEXT_LOW, NOIR_TEXT_MID, UiThemes, is_ui_theme
 from openlp.core.widgets.layouts import AspectRatioLayout
 
 
@@ -50,31 +50,34 @@ VERSE_TAG_ROLE = QtCore.Qt.ItemDataRole.UserRole + 1
 
 class NoirSlideDelegate(QtWidgets.QStyledItemDelegate):
     """
-    Paints the text slides of the Preview/Live slide lists as rounded cards
-    instead of plain table rows: a small verse chip on top, the slide text
-    below it, with distinct hover, selected and on-air states. Only installed
-    when the Noir UI theme is active. Non-text slides (thumbnails) keep the
-    default painting, as they are rendered by cell widgets.
+    Paints the text slides of the Preview/Live slide lists as a presentation
+    timeline: a rail of step nodes runs down the left edge, one node per slide
+    carrying its verse tag, with a rounded card holding the slide text. Slides
+    before the current one dim, and the current node and card take the accent
+    color — on-air red on the live controller while output is showing, the cue
+    blue otherwise. Only installed when the Noir UI theme is active. Non-text
+    slides (thumbnails) only get the selection surface painted behind their
+    cell widgets.
     """
     CARD_MARGIN_X = 8
     CARD_MARGIN_Y = 3
     CARD_PADDING = 10
     CARD_RADIUS = 8
-    CHIP_HEIGHT = 18
-    CHIP_SPACING = 6
+    RAIL_WIDTH = 36
+    NODE_HEIGHT = 20
 
     def __init__(self, view, is_live=False):
         super().__init__(view)
         self.view = view
         self.is_live = is_live
 
-    def _chip_font(self, base_font):
+    def _node_font(self, base_font):
         font = QtGui.QFont(base_font)
         font.setPointSizeF(max(base_font.pointSizeF() - 2.5, 6.5))
         font.setBold(True)
         return font
 
-    def _chip_label(self, index):
+    def _node_label(self, index):
         verse_tag = index.data(VERSE_TAG_ROLE)
         return str(verse_tag) if verse_tag else str(index.row() + 1)
 
@@ -113,11 +116,34 @@ class NoirSlideDelegate(QtWidgets.QStyledItemDelegate):
                 painter.drawRoundedRect(card, self.CARD_RADIUS, self.CARD_RADIUS)
                 painter.restore()
             return
-        card = QtCore.QRectF(option.rect).adjusted(self.CARD_MARGIN_X, self.CARD_MARGIN_Y,
-                                                   -self.CARD_MARGIN_X, -self.CARD_MARGIN_Y)
+        rect = QtCore.QRectF(option.rect)
+        row = index.row()
+        current_row = self.view.currentRow()
+        is_past = -1 < current_row and row < current_row
         painter.save()
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        # The view font is used for measuring and painting; option.font can
+        # disagree with it while rows are being sized, which clips the text.
+        body_font = self.view.font()
+        body_metrics = QtGui.QFontMetricsF(body_font)
+        # Timeline rail with the step node centered on the first text line
+        rail_x = rect.left() + self.CARD_MARGIN_X + self.RAIL_WIDTH / 2
+        node_center_y = rect.top() + self.CARD_MARGIN_Y + self.CARD_PADDING + body_metrics.height() / 2
+        node_font = self._node_font(body_font)
+        node_label = self._node_label(index)
+        node_metrics = QtGui.QFontMetricsF(node_font)
+        node_width = max(float(self.NODE_HEIGHT), node_metrics.horizontalAdvance(node_label) + 12)
+        node = QtCore.QRectF(rail_x - node_width / 2, node_center_y - self.NODE_HEIGHT / 2,
+                             node_width, self.NODE_HEIGHT)
+        rail_pen = QtGui.QPen(QtGui.QColor(NOIR_INK_3), 2)
+        painter.setPen(rail_pen)
+        if row > 0:
+            painter.drawLine(QtCore.QPointF(rail_x, rect.top()), QtCore.QPointF(rail_x, node.top() - 3))
+        if row < self.view.rowCount() - 1:
+            painter.drawLine(QtCore.QPointF(rail_x, node.bottom() + 3), QtCore.QPointF(rail_x, rect.bottom()))
         # Card surface
+        card = rect.adjusted(self.CARD_MARGIN_X + self.RAIL_WIDTH + 4, self.CARD_MARGIN_Y,
+                             -self.CARD_MARGIN_X, -self.CARD_MARGIN_Y)
         if selected:
             fill = QtGui.QColor(accent)
             fill.setAlpha(34)
@@ -132,55 +158,44 @@ class NoirSlideDelegate(QtWidgets.QStyledItemDelegate):
         painter.setPen(QtGui.QPen(border, 1))
         painter.setBrush(fill)
         painter.drawRoundedRect(card, self.CARD_RADIUS, self.CARD_RADIUS)
+        # Step node: filled with the accent when current, hollow otherwise
         if selected:
-            # Accent bar down the left edge of the selected card
-            bar = QtCore.QRectF(card.left() + 4, card.top() + 6, 3, card.height() - 12)
             painter.setPen(QtCore.Qt.PenStyle.NoPen)
             painter.setBrush(accent)
-            painter.drawRoundedRect(bar, 1.5, 1.5)
-        content = card.adjusted(self.CARD_PADDING + 4, self.CARD_PADDING, -self.CARD_PADDING,
-                                -self.CARD_PADDING)
-        # The view font is used for measuring and painting; option.font can
-        # disagree with it while rows are being sized, which clips the text.
-        body_font = self.view.font()
-        # Verse chip
-        chip_font = self._chip_font(body_font)
-        chip_label = self._chip_label(index)
-        chip_metrics = QtGui.QFontMetricsF(chip_font)
-        chip_width = chip_metrics.horizontalAdvance(chip_label) + 14
-        chip = QtCore.QRectF(content.left(), content.top(), chip_width, self.CHIP_HEIGHT)
-        painter.setPen(QtCore.Qt.PenStyle.NoPen)
-        if selected:
-            chip_fill = QtGui.QColor(accent)
-            chip_text = QtGui.QColor('#FFFFFF') if self.is_live else QtGui.QColor('#0E1014')
+            node_text = QtGui.QColor('#FFFFFF') if self.is_live else QtGui.QColor('#0E1014')
         else:
-            chip_fill = QtGui.QColor(NOIR_INK_4)
-            chip_text = QtGui.QColor(NOIR_TEXT_MID)
-        painter.setBrush(chip_fill)
-        painter.drawRoundedRect(chip, 4, 4)
-        painter.setFont(chip_font)
-        painter.setPen(chip_text)
-        painter.drawText(chip, QtCore.Qt.AlignmentFlag.AlignCenter, chip_label)
-        # Slide text
-        text_rect = QtCore.QRectF(content.left(), chip.bottom() + self.CHIP_SPACING,
-                                  content.width(), content.bottom() - chip.bottom() - self.CHIP_SPACING)
+            painter.setPen(QtGui.QPen(QtGui.QColor(NOIR_INK_4), 1.5))
+            painter.setBrush(QtGui.QColor(NOIR_INK_1 if is_past else NOIR_INK_2))
+            node_text = QtGui.QColor(NOIR_TEXT_LOW if is_past else NOIR_TEXT_MID)
+        painter.drawRoundedRect(node, self.NODE_HEIGHT / 2, self.NODE_HEIGHT / 2)
+        painter.setFont(node_font)
+        painter.setPen(node_text)
+        painter.drawText(node, QtCore.Qt.AlignmentFlag.AlignCenter, node_label)
+        # Slide text: bright when current, dimmed once the slide has been shown
+        content = card.adjusted(self.CARD_PADDING, self.CARD_PADDING, -self.CARD_PADDING, -self.CARD_PADDING)
+        if selected:
+            text_color = NOIR_TEXT_HI
+        elif is_past:
+            text_color = NOIR_TEXT_MID
+        else:
+            text_color = NOIR_TEXT_BODY
         painter.setFont(body_font)
-        painter.setPen(QtGui.QColor(NOIR_TEXT_HI if selected else NOIR_TEXT_BODY))
-        painter.drawText(text_rect, QtCore.Qt.TextFlag.TextWordWrap, text)
+        painter.setPen(QtGui.QColor(text_color))
+        painter.drawText(content, QtCore.Qt.TextFlag.TextWordWrap, text)
         painter.restore()
 
     def sizeHint(self, option, index):
         text = index.data(QtCore.Qt.ItemDataRole.DisplayRole)
         if not text:
             return super().sizeHint(option, index)
-        width = self.view.viewport().width() - 2 * self.CARD_MARGIN_X - 2 * self.CARD_PADDING - 4
+        width = (self.view.viewport().width() - 2 * self.CARD_MARGIN_X - self.RAIL_WIDTH - 4 -
+                 2 * self.CARD_PADDING)
         if width <= 0:
             width = 200
         metrics = QtGui.QFontMetrics(self.view.font())
         text_rect = metrics.boundingRect(QtCore.QRect(0, 0, int(width), 0),
                                          QtCore.Qt.TextFlag.TextWordWrap, text)
-        height = (2 * self.CARD_MARGIN_Y + 2 * self.CARD_PADDING + self.CHIP_HEIGHT +
-                  self.CHIP_SPACING + text_rect.height() + metrics.descent())
+        height = 2 * self.CARD_MARGIN_Y + 2 * self.CARD_PADDING + text_rect.height() + metrics.descent()
         return QtCore.QSize(option.rect.width(), int(height))
 
 
@@ -260,6 +275,9 @@ class ListPreviewWidget(QtWidgets.QTableWidget, RegistryProperties):
             palette.setColor(QtGui.QPalette.ColorRole.Highlight, QtCore.Qt.GlobalColor.transparent)
             palette.setColor(QtGui.QPalette.ColorRole.HighlightedText, QtGui.QColor(NOIR_TEXT_HI))
             self.setPalette(palette)
+            # Rows before the current slide render dimmed, so a selection move
+            # must repaint the whole timeline, not just the two changed rows
+            self.itemSelectionChanged.connect(lambda: self.viewport().update())
         # Initialize variables.
         self.service_item = ServiceItem()
         self.screen_ratio = screen_ratio

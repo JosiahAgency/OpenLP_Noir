@@ -226,7 +226,7 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         if not is_ui_theme(UiThemes.Noir):
             # The Noir theme styles this label from the application stylesheet, which an
             # inline widget stylesheet would override.
-            self.type_label.setStyleSheet('padding: 0px 2px 0px 2px; font-weight: bold;')
+            self.type_label.setStyleSheet('padding: 0px 20px 0px 2px; font-weight: bold;')
         if self.is_live:
             self.type_label.setText(UiStrings().Live)
         else:
@@ -237,9 +237,23 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         if not is_ui_theme(UiThemes.Noir):
             self.info_label.setStyleSheet('font-style: italic;')
         self.info_label.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Preferred)
+        # Slide position indicator ("3 / 12"), only shown by the Noir theme
+        self.slide_count_label = QtWidgets.QLabel(self.panel)
+        self.slide_count_label.setObjectName('slide_controller_count_label')
         self.top_label_horizontal.addWidget(self.top_icon)
         self.top_label_horizontal.addWidget(self.type_label)
         self.top_label_horizontal.addWidget(self.info_label, stretch=1)
+        self.top_label_horizontal.addWidget(self.slide_count_label)
+        if is_ui_theme(UiThemes.Noir):
+            # The Live/Preview chip carries the identity, so the duplicate icon goes;
+            # the panel itself gets an accent line to tell the two controllers apart.
+            self.top_icon.hide()
+            self.top_label_horizontal.setContentsMargins(8, 6, 8, 4)
+            self.top_label_horizontal.setSpacing(6)
+            self.panel.setObjectName('slide_controller_panel')
+            self.panel.setProperty('isLive', 'true' if self.is_live else 'false')
+            # Plain QWidgets only honor stylesheet borders/backgrounds with this set
+            self.panel.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
         # Splitter
         self.splitter = QtWidgets.QSplitter(self.panel)
         self.splitter.setOrientation(QtCore.Qt.Orientation.Vertical)
@@ -1255,8 +1269,26 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
                 self.preview_display.go_to_slide(self.selected_row)
             if (not self.current_hide_mode and self.preview_display.hide_mode):
                 self.preview_display.show_display()
+        self.update_slide_count_label()
         # Used for updating the main view in Web Remote.
         self.output_has_changed()
+
+    def update_slide_count_label(self):
+        """
+        Update the "current / total" slide position indicator in the panel header.
+        Only the Noir theme shows this label.
+        """
+        if not is_ui_theme(UiThemes.Noir):
+            return
+        try:
+            total = int(self.preview_widget.slide_count())
+            current = int(self.preview_widget.current_slide_number()) + 1
+        except (TypeError, ValueError):
+            return
+        if total > 0 and current > 0:
+            self.slide_count_label.setText('{current} / {total}'.format(current=current, total=total))
+        else:
+            self.slide_count_label.setText('')
 
     def output_has_changed(self):
         """

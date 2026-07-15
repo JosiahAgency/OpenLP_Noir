@@ -26,6 +26,7 @@ from unittest.mock import MagicMock, patch
 from openlp.core.display.render import compare_chord_lyric_width, find_formatting_tags, remove_tags, render_chords, \
     render_chords_for_printing, render_tags, ThemePreviewRenderer
 from openlp.core.lib.formattingtags import FormattingTags
+from openlp.core.lib.serviceitem import ItemCapabilities
 
 
 @patch('openlp.core.display.render.FormattingTags.get_html_tags')
@@ -265,3 +266,34 @@ def test_format_slide_no_split(settings):
 
     # THEN: The formatted slides should have all the text and no blank slides
     assert formatted_slides == ['line one<br>line two']
+
+
+def test_format_slide_word_split_capability(settings):
+    """
+    Test that a long single-line paragraph is split across multiple slides for
+    items with the CanWordSplit capability (e.g. EGW Library) instead of
+    overflowing a single slide.
+    """
+    # GIVEN: A renderer where only ~100 characters fit per slide, and an item
+    #        that is not a Bible but can word split
+    with patch('openlp.core.display.render.ThemePreviewRenderer.__init__') as init_fn:
+        init_fn.return_value = None
+        preview_renderer = ThemePreviewRenderer()
+    paragraph = ('In the beginning was the Word and the Word was with God and through Him '
+                 'all things were made and without Him nothing was made that has been made')
+    preview_renderer._is_initialised = True
+    preview_renderer.log_debug = MagicMock()
+    preview_renderer.set_theme = MagicMock()
+    preview_renderer.theme_level = MagicMock()
+    preview_renderer._text_fits_on_slide = MagicMock(side_effect=lambda a: len(a) < 100)
+    preview_renderer.force_page = False
+    mocked_item = MagicMock()
+    mocked_item.name = 'egwlibrary'
+    mocked_item.is_capable = lambda capability: capability == ItemCapabilities.CanWordSplit
+
+    # WHEN: format_slide is run
+    formatted_slides = preview_renderer.format_slide(paragraph, mocked_item)
+
+    # THEN: The paragraph should be split over multiple slides without losing any words
+    assert len(formatted_slides) > 1, 'The long paragraph should be split into multiple slides'
+    assert ' '.join(formatted_slides).split() == paragraph.split(), 'No words should be lost or duplicated'
