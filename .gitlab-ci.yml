@@ -145,6 +145,9 @@ test-macos:
     - uv python pin $PYTHON_VERSION_WINDOWS_AND_MACOS
     - !reference [.install_dependencies, script]
     - !reference [.run_tests, script]
+  rules:
+    # Run only on the main upstream repository and avoid tag releases
+    - if: $CI_PROJECT_NAMESPACE == "openlp" && $CI_COMMIT_TAG == null
 
 test-windows:
   stage: test
