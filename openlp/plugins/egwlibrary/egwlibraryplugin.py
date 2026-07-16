@@ -74,6 +74,28 @@ class EGWLibraryPlugin(Plugin):
         """
         return self.manager.session is not None
 
+    def uses_theme(self, theme):
+        """
+        Called to find out if the EGW Library plugin is currently using a theme.
+
+        :param theme: The theme
+        :return: 1 if the theme is being used, otherwise returns 0
+        """
+        if str(self.settings_tab.egw_theme) == theme:
+            return 1
+        return 0
+
+    def rename_theme(self, old_theme, new_theme):
+        """
+        Rename the theme the EGW Library plugin is using, making the plugin use the new name.
+
+        :param old_theme: The name of the theme the plugin should stop using. Unused for this particular plugin.
+        :param new_theme: The new name the plugin should now use.
+        :return: None
+        """
+        self.settings_tab.egw_theme = new_theme
+        self.settings_tab.save()
+
     def set_plugin_text_strings(self):
         """
         Called to define all translatable texts of the plugin.

@@ -435,6 +435,9 @@ class EGWLibraryMediaItem(MediaManagerItem):
         if len(reference_text) > 80:
             reference_text = '{first} — {last}'.format(first=references[0], last=references[-1])
         service_item.title = reference_text
+        # Service Item: Theme
+        if self.plugin.settings_tab and self.plugin.settings_tab.egw_theme:
+            service_item.theme = self.plugin.settings_tab.egw_theme
         # Footer, following the Bible footer pattern
         if self.settings.value('egwlibrary/footer show reference'):
             service_item.raw_footer.append('{books}: {references}'.format(

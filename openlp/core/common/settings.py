@@ -369,6 +369,7 @@ class Settings(QtCore.QSettings):
         'egwlibrary/is search while typing enabled': True,
         'egwlibrary/footer show reference': True,
         'egwlibrary/footer show copyright': True,
+        'egwlibrary/egw theme': '',
         'formattingTags/html_tags': '',
         'core/auto open': False,
         'core/auto preview': False,
