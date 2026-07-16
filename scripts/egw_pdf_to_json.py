@@ -48,7 +48,6 @@ try:
 except ImportError:
     sys.exit('This script requires PyMuPDF. Install it with: pip install PyMuPDF')
 
-
 # A margin page marker like "[83]": the printed page 83 starts at this line.
 MARKER_PATTERN = re.compile(r'^\[(\d+)\]$')
 # A chapter heading like "Chapter 1—God With Us" (the dash varies).
@@ -291,8 +290,7 @@ def main():
         abbr=abbreviation, page=first['page'], text=first['text'][:70]))
 
 
-# SAMPLE COMMAND TO RUN: python egw_pdf_to_json.py "C:\Users\gjmwa\Downloads\en_GC.pdf" --abbreviation GC --alias "The Great Controversy" --alias steps
+# SAMPLE COMMAND TO RUN: python egw_pdf_to_json.py
+# "C:\Users\gjmwa\Downloads\en_GC.pdf" --abbreviation GC --alias "The Great Controversy" --alias steps
 if __name__ == '__main__':
     main()
-
-
