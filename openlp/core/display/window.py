@@ -397,6 +397,11 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
         """
         Handle the result from the asynchronous call
         """
+        # Depending on the PySide6 version the web channel may deliver a QJsonValue instead of a
+        # plain Python value. A QJsonValue object is always truthy, which (amongst others) broke
+        # the doesContentFit check and stopped slides from ever being split. Unwrap it.
+        if isinstance(result, QtCore.QJsonValue):
+            result = result.toVariant()
         self.__script_result = result
         self.__script_done = True
 

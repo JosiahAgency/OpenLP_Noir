@@ -724,8 +724,8 @@ class ThemePreviewRenderer(DisplayWindow, LogMixin):
         """
         Figure out how much text can appear on a slide, using the current theme settings.
 
-        **Note:** The smallest possible "unit" of text for a slide is one line. If the line is too long it will be cut
-        off when displayed.
+        **Note:** The smallest possible "unit" of text for a slide is one line. If a single line is too big for the
+        main area on its own, it is split further word by word over as many slides as needed.
 
         :param lines: The text to be fitted on the slide split into lines.
         :param line_end: The text added after each line. Either ``' '`` or ``'<br>``.
@@ -740,11 +740,18 @@ class ThemePreviewRenderer(DisplayWindow, LogMixin):
         if not self._text_fits_on_slide(separator.join(html_lines)):
             previous_html, previous_raw = self._binary_chop(
                 formatted, previous_html, previous_raw, html_lines, lines, separator, '')
-        else:
-            previous_raw = separator.join(lines)
-            previous_html = True
-        if previous_html:
-            formatted.append(previous_raw)
+            if previous_html:
+                formatted.append(previous_raw)
+            # The binary chop cannot split below one line, so a page holding a single line which is too big for the
+            # main area can still overflow. Split any such page further, word by word.
+            pages = []
+            for page in formatted:
+                if self._text_fits_on_slide(render_tags(page)):
+                    pages.append(page)
+                else:
+                    pages.extend(self._paginate_slide_words(page.split('<br>'), line_end))
+            return pages
+        formatted.append(separator.join(lines))
         return formatted
 
     def _paginate_slide_words(self, lines, line_end):
@@ -863,7 +870,9 @@ class ThemePreviewRenderer(DisplayWindow, LogMixin):
             return True
         self.clear_slides()
         self.log_debug('_text_fits_on_slide: 1\n{text}'.format(text=text))
-        self.run_in_display('setTextSlide', text.replace('"', '\\"'), is_sync=True)
+        # run_in_display JSON-encodes the parameters, so the text must not be escaped here,
+        # otherwise stray backslashes end up in the measured text and skew the result.
+        self.run_in_display('setTextSlide', text, is_sync=True)
         self.log_debug('_text_fits_on_slide: 2')
         does_text_fit = self.run_in_display('doesContentFit', is_sync=True)
         return does_text_fit

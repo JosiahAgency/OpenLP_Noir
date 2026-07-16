@@ -237,7 +237,7 @@ function _getStyle(element, style) {
  * @returns {string} The text now with <br> tags
  */
 function _nl2br(text) {
-  return text.replace("\r\n", "\n").replace("\n", "<br>");
+  return text.replace(/\r\n/g, "\n").replace(/\n/g, "<br>");
 }
 
 /**
@@ -267,10 +267,12 @@ function _fromCamelCase(text) {
  * @private
  * @param {string} selector - The selector for this style
  * @param {Object} rules - The rules to apply to the style
+ * @param {string} [styleId] - Explicit id for the <style> element, needed when the
+ *                             selector contains characters that make a bad element id
  */
-function _createStyle(selector, rules) {
+function _createStyle(selector, rules, styleId) {
   var style;
-  var id = selector.replace("#", "").replace(" .", "-").replace(".", "-").replace(" ", "_");
+  var id = styleId || selector.replace("#", "").replace(" .", "-").replace(".", "-").replace(" ", "_");
   if ($("style#" + id).length != 0) {
     style = $("style#" + id)[0];
   }
@@ -291,7 +293,8 @@ function _createStyle(selector, rules) {
     style.styleSheet.cssText = rulesString;
   }
   else {
-    style.appendChild(document.createTextNode(rulesString));
+    // Replace any previous rules, otherwise the style element grows on every update
+    style.textContent = rulesString;
   }
 }
 
@@ -458,13 +461,24 @@ var Display = {
    * Checks if the present slide content fits within the slide
   */
   doesContentFit: function () {
-    var currSlide = $("section.text-slides");
-    if (currSlide.length === 0) {
-      currSlide = Display._footerContainer;
-    } else {
-      currSlide = currSlide[0];
+    var textSlides = $("section.text-slides");
+    if (textSlides.length === 0) {
+      var footer = Display._footerContainer;
+      return footer.clientHeight >= footer.scrollHeight;
     }
-    return currSlide.clientHeight >= currSlide.scrollHeight;
+    var container = textSlides[0];
+    // The slide sections are absolutely positioned within the main area container,
+    // so the container's own scrollHeight misses content which overflows upwards
+    // (middle/bottom vertical alignment). Measure the content of each slide
+    // directly instead and compare it against the space the theme allows.
+    var contentHeight = 0;
+    for (var i = 0; i < container.children.length; i++) {
+      contentHeight = Math.max(contentHeight, container.children[i].scrollHeight);
+    }
+    var containerStyle = window.getComputedStyle(container);
+    var availableHeight = container.clientHeight - (parseFloat(containerStyle.paddingTop) || 0) -
+                          (parseFloat(containerStyle.paddingBottom) || 0);
+    return availableHeight >= contentHeight;
   },
   /**
    * Generate the OpenLP startup splashscreen
@@ -733,7 +747,7 @@ var Display = {
         slide.innerHTML = html;
       }
       if (!Display._themeApplied) {
-        Display.applyTheme(slide.parent);
+        Display.applyTheme(slide.parentElement);
       }
     } else {
       Display._clearSlidesList();
@@ -1093,7 +1107,7 @@ var Display = {
   calculateLineCount: function (fontSize) {
     var p = $(".slides > section > section > p");
     if (p.length == 0) {
-      Display.addSlide("v1", "Arky arky");
+      Display.setTextSlide("Arky arky");
       p = $(".slides > section > section > p");
     }
     p = p[0];
@@ -1259,11 +1273,19 @@ var Display = {
       return;
     }
 
+    // The main area geometry has to be applied via a stylesheet rule rather than
+    // inline styles: Reveal's layout() clears the inline "top" of every section
+    // (center is disabled), which would silently discard the theme's Y position.
+    // "!important" keeps the theme's boundaries authoritative over Reveal's own
+    // section rules (width: 100%, stack height: 100%).
+    _createStyle(".reveal .slides > section.text-slides", {
+      top: `${Display._theme.font_main_y}px !important`,
+      left: `${Display._theme.font_main_x}px !important`,
+      width: `${Display._theme.font_main_width}px !important`,
+      height: `${Display._theme.font_main_height}px !important`
+    }, "main-area-geometry");
+
     var mainStyle = {
-      width: `${Display._theme.font_main_width}px`,
-      height: `${Display._theme.font_main_height}px`,
-      top: `${Display._theme.font_main_y}px`,
-      left: `${Display._theme.font_main_x}px`,
       color: Display._theme.font_main_color,
       "font-family": Display._theme.font_main_name,
       "font-size": `${Display._theme.font_main_size}pt`,
@@ -1278,7 +1300,7 @@ var Display = {
 
       "justify-content":
         VerticalAlignCSS[Display._theme.display_vertical_align] ||
-        VerticalAlignCSS[HorizontalAlign.Center],
+        VerticalAlignCSS[VerticalAlign.Middle],
 
       "padding-bottom":
         Display._theme.display_vertical_align === VerticalAlign.Bottom ?
@@ -1295,7 +1317,9 @@ var Display = {
         ),
         ...(
           Display._theme.font_main_shadow ?
-          _buildTextShadow(Display._theme.font_main_shadow_size, Display._theme.main_outline_size || 0, Display._theme.font_main_shadow_color) :
+          _buildTextShadow(Display._theme.font_main_shadow_size,
+                           Display._theme.font_main_outline ? Display._theme.font_main_outline_size : 0,
+                           Display._theme.font_main_shadow_color) :
           []
         )
       ].join(", ")
@@ -1329,7 +1353,7 @@ var Display = {
 
       "justify-content":
         VerticalAlignCSS[Display._theme.display_vertical_align_footer] ||
-        VerticalAlignCSS[HorizontalAlign.Top],
+        VerticalAlignCSS[VerticalAlign.Top],
 
       "padding-bottom":
         Display._theme.display_vertical_align_footer === VerticalAlign.Bottom ?

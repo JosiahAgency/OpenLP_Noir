@@ -137,7 +137,8 @@ test-macos:
     - export HOMEBREW_NO_ENV_HINTS=TRUE
     - "# Installing PyICU"
     - brew install pkg-config icu4c
-    - export PATH="$PATH:/opt/homebrew/opt/icu4c/bin:/opt/homebrew/opt/icu4c/sbin"
+    -
+      export PATH="$PATH:/opt/homebrew/opt/icu4c/bin:/opt/homebrew/opt/icu4c/sbin"
     - export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/opt/homebrew/opt/icu4c/lib/pkgconfig"
     - "# Installing UV"
     - curl --show-error --silent --fail --location https://astral.sh/uv/install.sh | sh

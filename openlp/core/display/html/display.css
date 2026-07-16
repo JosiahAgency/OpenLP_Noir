@@ -113,6 +113,15 @@ section.text-slides.stack.present {
   text-align-last: unset !important;
 }
 
+/*
+ * The main text area must never draw outside the boundaries configured in the
+ * theme. border-box keeps the alignment padding inside the configured size.
+ */
+.reveal .slides > section.text-slides {
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
 #global-background {
   background-size: cover;
   background-position: 50% 50%;
@@ -189,6 +198,9 @@ section.text-slides.stack.present {
   position: absolute;
   display: flex;
   flex-direction: column;
+  /* Keep the footer text strictly within the theme's footer area */
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .footer .footer-item {

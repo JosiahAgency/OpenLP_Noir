@@ -833,11 +833,14 @@ describe("Display.setTextSlides", function () {
     Display.setTheme(theme);
     Display.setTextSlides(slides);
 
-    const slidesDiv = $(".text-slides")[0];
-    expect(slidesDiv.style['top']).toEqual('789px');
-    expect(slidesDiv.style['left']).toEqual('1000px');
-    expect(slidesDiv.style['width']).toEqual('1230px');
-    expect(slidesDiv.style['height']).toEqual('4560px');
+    // The geometry is applied through a stylesheet rule rather than inline styles,
+    // because Reveal's layout() clears the inline "top" of every section.
+    const geometryStyle = document.getElementById("main-area-geometry");
+    expect(geometryStyle.textContent).toContain(".reveal .slides > section.text-slides");
+    expect(geometryStyle.textContent).toContain("top: 789px !important");
+    expect(geometryStyle.textContent).toContain("left: 1000px !important");
+    expect(geometryStyle.textContent).toContain("width: 1230px !important");
+    expect(geometryStyle.textContent).toContain("height: 4560px !important");
   })
 
   it("should work correctly with different footer contents per slide", function () {
@@ -1146,7 +1149,7 @@ describe("Reveal slidechanged event", function () {
     }
     Display.setTextSlides(slides);
 
-    var currentSlide = Display._slidesContainer.querySelector('*:nth-child(2)');
+    var currentSlide = Display._slidesContainer.querySelectorAll('section.text-slides > section')[1];
     currentSlide.id = '1';
     Display._onSlideChanged({currentSlide: currentSlide});
   });
