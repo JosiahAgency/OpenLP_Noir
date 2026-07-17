@@ -38,7 +38,9 @@ from openlp.core.ui.icons import UiIcons
 from openlp.core.widgets.dialogs import FileDialog
 from openlp.plugins.egwlibrary.lib import format_paragraph_reference, parse_reference
 from openlp.plugins.egwlibrary.lib.db import Alias
-from openlp.plugins.egwlibrary.lib.importer import EGWImportError, import_json_file
+from openlp.plugins.egwlibrary.lib.importer import EGWImportError, import_book, import_json_file
+from openlp.plugins.egwlibrary.lib.pdfimport import EGWPdfError, convert_pdf_book
+from openlp.plugins.egwlibrary.lib.pdfimportdialog import PdfBookDetailsDialog
 
 log = logging.getLogger(__name__)
 
@@ -181,12 +183,14 @@ class EGWLibraryMediaItem(MediaManagerItem):
 
     def on_import_click(self):
         """
-        Import one or more books from JSON files.
+        Import one or more books from JSON files or EGW Estate PDF exports.
         """
         file_paths, _ = FileDialog.getOpenFileNames(
             self, translate('EGWLibraryPlugin.MediaItem', 'Import EGW Library Book(s)'),
             self.settings.value('egwlibrary/last directory import'),
-            translate('EGWLibraryPlugin.MediaItem', 'EGW Library book files (*.json)'))
+            translate('EGWLibraryPlugin.MediaItem',
+                      'EGW Library book files (*.json *.pdf);;JSON book files (*.json);;'
+                      'EGW Estate PDF exports (*.pdf)'))
         if not file_paths:
             return
         self.application.set_busy_cursor()
@@ -194,9 +198,12 @@ class EGWLibraryMediaItem(MediaManagerItem):
         errors = []
         for file_path in file_paths:
             try:
-                for book, paragraph_count in import_json_file(self.manager, file_path):
-                    imported.append('{title} ({count})'.format(title=book.title, count=paragraph_count))
-            except EGWImportError as import_error:
+                if file_path.suffix.lower() == '.pdf':
+                    self._import_pdf(file_path, imported)
+                else:
+                    for book, paragraph_count in import_json_file(self.manager, file_path):
+                        imported.append('{title} ({count})'.format(title=book.title, count=paragraph_count))
+            except (EGWImportError, EGWPdfError) as import_error:
                 errors.append(str(import_error))
         self.settings.setValue('egwlibrary/last directory import', file_paths[0].parent)
         self.populate_book_combo_box()
@@ -210,6 +217,29 @@ class EGWLibraryMediaItem(MediaManagerItem):
                 translate('EGWLibraryPlugin.MediaItem',
                           'Imported the following book(s), with the paragraph count in brackets:\n{books}'
                           ).format(books='\n'.join(imported)))
+
+    def _import_pdf(self, file_path, imported):
+        """
+        Convert an EGW Estate PDF export and import it, letting the user confirm or
+        correct the guessed book details first.
+
+        :param file_path: A Path to the PDF.
+        :param imported: The list of "Title (count)" strings to append to on success.
+        :raises EGWPdfError | EGWImportError: When conversion or import fails.
+        """
+        book_data, warnings = convert_pdf_book(file_path)
+        # The details dialog needs a normal cursor; on_import_click set the busy one
+        self.application.set_normal_cursor()
+        try:
+            details_dialog = PdfBookDetailsDialog(self, file_path.name, book_data, warnings)
+            if not details_dialog.exec():
+                # The user chose not to import this PDF
+                return
+            book_data = details_dialog.book_data()
+        finally:
+            self.application.set_busy_cursor()
+        book, paragraph_count = import_book(self.manager, book_data)
+        imported.append('{title} ({count})'.format(title=book.title, count=paragraph_count))
 
     def on_delete_click(self):
         """
