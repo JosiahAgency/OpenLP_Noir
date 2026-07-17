@@ -40,7 +40,10 @@ test-pypi:
   script:
     - pip install -e '.[darkstyle,mysql,odbc,postgresql,spellcheck,sword-bibles,test]'
     - sh scripts/generate_resources.sh
-    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings
+    # The PyMuPDF tests run in their own process: mupdf segfaults when it shares a
+    # process with LibreOffice's pyuno (loaded by the presentations tests).
+    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings --ignore tests/openlp_plugins/egwlibrary/test_pdfimport.py
+    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings tests/openlp_plugins/egwlibrary/test_pdfimport.py
   rules:
     - if: $CI_COMMIT_TAG == null
 
@@ -52,7 +55,11 @@ test-debian:
     - pipx ensurepath
     - source ~/.bashrc
     - sh scripts/generate_resources.sh
-    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings --cov openlp --cov-report term --cov-report xml:coverage.xml
+    # The PyMuPDF tests run in their own process: mupdf segfaults when it shares a
+    # process with LibreOffice's pyuno (loaded by the presentations tests). The
+    # second run appends its coverage and emits the combined reports.
+    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings --cov openlp --cov-report= --ignore tests/openlp_plugins/egwlibrary/test_pdfimport.py
+    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings --cov openlp --cov-append --cov-report term --cov-report xml:coverage.xml tests/openlp_plugins/egwlibrary/test_pdfimport.py
     - mv .coverage linux.coverage
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:
@@ -73,7 +80,10 @@ test-ubuntu:
     - pipx ensurepath
     - source ~/.bashrc
     - sh scripts/generate_resources.sh
-    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings
+    # The PyMuPDF tests run in their own process: mupdf segfaults when it shares a
+    # process with LibreOffice's pyuno (loaded by the presentations tests).
+    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings --ignore tests/openlp_plugins/egwlibrary/test_pdfimport.py
+    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings tests/openlp_plugins/egwlibrary/test_pdfimport.py
   rules:
     - if: $CI_COMMIT_TAG == null
 
@@ -82,7 +92,10 @@ test-fedora:
   image: $IMAGE_BASE/fedora
   script:
     - sh scripts/generate_resources.sh
-    - xvfb-run -s '-screen 0 1024x768x24' pytest-3 --color=no --disable-warnings
+    # The PyMuPDF tests run in their own process: mupdf segfaults when it shares a
+    # process with LibreOffice's pyuno (loaded by the presentations tests).
+    - xvfb-run -s '-screen 0 1024x768x24' pytest-3 --color=no --disable-warnings --ignore tests/openlp_plugins/egwlibrary/test_pdfimport.py
+    - xvfb-run -s '-screen 0 1024x768x24' pytest-3 --color=no --disable-warnings tests/openlp_plugins/egwlibrary/test_pdfimport.py
     # - xwfb-run -c weston -s \\-geometry -s 1024x768x24 -- pytest
   rules:
     - if: $CI_COMMIT_TAG == null
@@ -92,7 +105,10 @@ test-arch:
   image: $IMAGE_BASE/arch
   script:
     - sh scripts/generate_resources.sh
-    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings
+    # The PyMuPDF tests run in their own process: mupdf segfaults when it shares a
+    # process with LibreOffice's pyuno (loaded by the presentations tests).
+    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings --ignore tests/openlp_plugins/egwlibrary/test_pdfimport.py
+    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings tests/openlp_plugins/egwlibrary/test_pdfimport.py
   rules:
     - if: $CI_COMMIT_TAG == null
 

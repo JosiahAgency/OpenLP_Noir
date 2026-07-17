@@ -82,9 +82,18 @@ def iter_lines(doc):
     printed page starts, so at equal height the marker is ordered first — the page
     number must change before that line's text is processed.
     """
+    fitz = _get_fitz()
+    # Only the text lines are used, so don't ask mupdf to decode and embed the
+    # page images into the dict (slow on scanned pages, and image extraction has
+    # been a crash magnet in older PyMuPDF builds).
+    flags = getattr(fitz, 'TEXTFLAGS_DICT', None)
+    preserve_images = getattr(fitz, 'TEXT_PRESERVE_IMAGES', 0)
+    text_kwargs = {}
+    if flags is not None:
+        text_kwargs['flags'] = flags & ~preserve_images
     for page in doc:
         entries = []
-        for block in page.get_text('dict')['blocks']:
+        for block in page.get_text('dict', **text_kwargs)['blocks']:
             if block['type'] != 0:
                 continue
             for line in block['lines']:
