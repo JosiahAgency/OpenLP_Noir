@@ -105,9 +105,20 @@ NOIR_ON_AIR_DIM = 'rgba(193, 58, 48, 0.14)'
 NOIR_ON_AIR_LINE = 'rgba(193, 58, 48, 0.55)'
 NOIR_SUCCESS = '#4CB782'
 NOIR_WARNING = '#D9A23C'
+# Interaction accents that fall outside the ink ramp: the scrollbar/splitter
+# grip hover, and the text color painted on top of the on-air red.
+NOIR_LINE_HOVER = '#3A4250'
+NOIR_TEXT_ON_ACCENT = '#FFFFFF'
 # Preferred UI font families, best first. Qt walks the list until it finds one
 # that is installed, so older systems fall back gracefully.
 NOIR_FONT_FAMILIES = ['Segoe UI Variable Text', 'Segoe UI', 'Inter', 'Roboto', 'Noto Sans', 'Cantarell']
+# Type scale. Body is the application font set in set_noir_palette(); the
+# named steps below are interpolated into NOIR_STYLESHEET so every panel
+# label, section header and title stays on the same four-step scale.
+NOIR_TYPE_BODY_PT = 10.0
+NOIR_TYPE_CAPTION = '8pt'
+NOIR_TYPE_SECTION = '11pt'
+NOIR_TYPE_TITLE = '13pt'
 
 NOIR_STYLESHEET = """
 /* ------------------------------ Window chrome ------------------------------ */
@@ -123,8 +134,8 @@ QDockWidget::title {{
     border: none;
     border-bottom: 1px solid {line};
     padding: 6px 12px 5px 12px;
-    color: {text_low};
-    font-size: 8pt;
+    color: {text_mid};
+    font-size: {type_caption};
     font-weight: 600;
 }}
 
@@ -202,6 +213,10 @@ QSplitter::handle {{
     background: transparent;
 }}
 
+QSplitter::handle:hover, QMainWindow::separator:hover {{
+    background: {ink4};
+}}
+
 /* -------------------------------- Toolbars -------------------------------- */
 QToolBar {{
     border: none;
@@ -219,9 +234,9 @@ QToolBar::separator {{
 }}
 
 QToolBar QToolButton {{
-    border: none;
+    border: 1px solid transparent;
     border-radius: 6px;
-    padding: 4px;
+    padding: 3px;
     background: transparent;
     color: {text_body};
 }}
@@ -229,6 +244,10 @@ QToolBar QToolButton {{
 QToolBar QToolButton:hover {{
     background: {ink4};
     color: {text_hi};
+}}
+
+QToolBar QToolButton:focus {{
+    border-color: {cue_line};
 }}
 
 QToolBar QToolButton:pressed {{
@@ -259,6 +278,10 @@ QPushButton:pressed {{
 
 QPushButton:checked {{
     background: {cue_dim};
+    border-color: {cue_line};
+}}
+
+QPushButton:focus {{
     border-color: {cue_line};
 }}
 
@@ -451,6 +474,13 @@ QListView, QListWidget, QTreeView, QTreeWidget, QTableView, QTableWidget {{
     padding: 2px;
 }}
 
+/* Keyboard focus is load-bearing during live operation: the panel that will
+   receive the next keystroke gets a soft cue outline. */
+QListView:focus, QListWidget:focus, QTreeView:focus, QTreeWidget:focus,
+QTableView:focus, QTableWidget:focus {{
+    border: 1px solid {cue_line};
+}}
+
 QListView::item, QListWidget::item, QTreeView::item, QTreeWidget::item {{
     padding: 6px 8px;
     border-radius: 6px;
@@ -480,6 +510,22 @@ QTableView::item, QTableWidget::item {{
 
 QTreeView::branch {{
     background: transparent;
+}}
+
+QTreeView::branch:selected, QTreeView::branch:hover {{
+    background: transparent;
+}}
+
+/* The service list is painted entirely by NoirServiceDelegate: the generic
+   item-view backgrounds above would show as square underlays behind the
+   rounded cards, so they are switched off here. */
+QTreeWidget#service_manager_list::item,
+QTreeWidget#service_manager_list::item:hover,
+QTreeWidget#service_manager_list::item:selected,
+QTreeWidget#service_manager_list::item:selected:!active {{
+    background: transparent;
+    padding: 0;
+    margin: 0;
 }}
 
 /* -------------------------------- Scrollbars ------------------------------- */
@@ -566,7 +612,7 @@ QWidget#library_rail {{
 }}
 
 QToolButton#library_rail_button {{
-    border: none;
+    border: 1px solid transparent;
     border-radius: 8px;
     background: transparent;
     padding: 0;
@@ -574,6 +620,10 @@ QToolButton#library_rail_button {{
 
 QToolButton#library_rail_button:hover {{
     background: {ink3};
+}}
+
+QToolButton#library_rail_button:focus {{
+    border-color: {cue_line};
 }}
 
 QToolButton#library_rail_button:pressed {{
@@ -587,7 +637,7 @@ QToolButton#library_rail_button:checked {{
 
 QLabel#library_header {{
     color: {text_hi};
-    font-size: 11pt;
+    font-size: {type_section};
     font-weight: 600;
     padding: 8px 10px 6px 10px;
 }}
@@ -620,7 +670,14 @@ QLabel#slide_controller_type_label[isLive="true"] {{
 
 QLabel#slide_controller_type_label[isLive="true"][onAir="true"] {{
     background-color: {on_air};
-    color: #FFFFFF;
+    color: {text_on_accent};
+}}
+
+/* Blanked output is an explicit state, not just the absence of red: the chip
+   turns warning amber while a hide mode is active. */
+QLabel#slide_controller_type_label[isLive="true"][onAir="false"] {{
+    background-color: {warning};
+    color: {ink0};
 }}
 
 QLabel#slide_controller_info_label {{
@@ -629,16 +686,66 @@ QLabel#slide_controller_info_label {{
     padding-left: 4px;
 }}
 
+/* The output preview surface joins the card language: a framed ink0 stage
+   that letterboxes the rendered display. */
+QFrame#preview_frame {{
+    background: {ink0};
+    border: 1px solid {line};
+    border-radius: 8px;
+}}
+
+/* Settings dialog: the tab list reads as a navigation sidebar, not a plain
+   list — chrome background and roomier rows. */
+QListWidget#setting_list_widget {{
+    background: {ink1};
+    padding: 6px 2px;
+}}
+
+QListWidget#setting_list_widget::item {{
+    padding: 8px 10px;
+    margin: 1px 4px;
+}}
+
+/* Theme manager: in grid view the thumbnails read as cards with the name
+   centered beneath the preview. */
+QListWidget#theme_list_widget::item {{
+    padding: 8px;
+    margin: 3px;
+}}
+
 QLabel#slide_controller_count_label {{
     color: {text_mid};
     font-weight: 600;
     padding: 3px 6px;
 }}
+
+/* Output state segment in the status bar: answers "what is the projector
+   showing right now" from anywhere in the app. */
+QLabel#output_state_label {{
+    font-size: {type_caption};
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 4px;
+    margin: 1px 2px;
+    background: {ink3};
+    color: {text_mid};
+}}
+
+QLabel#output_state_label[outputState="onair"] {{
+    background: {on_air};
+    color: {text_on_accent};
+}}
+
+QLabel#output_state_label[outputState="hidden"] {{
+    background: {warning};
+    color: {ink0};
+}}
 """.format(ink0=NOIR_INK_0, ink1=NOIR_INK_1, ink2=NOIR_INK_2, ink3=NOIR_INK_3, ink4=NOIR_INK_4,
-           line=NOIR_LINE, line_soft=NOIR_LINE_SOFT, line_hover='#3A4250',
+           line=NOIR_LINE, line_soft=NOIR_LINE_SOFT, line_hover=NOIR_LINE_HOVER,
            text_hi=NOIR_TEXT_HI, text_body=NOIR_TEXT_BODY, text_mid=NOIR_TEXT_MID, text_low=NOIR_TEXT_LOW,
            cue=NOIR_CUE, cue_hover=NOIR_CUE_HOVER, cue_dim=NOIR_CUE_DIM, cue_line=NOIR_CUE_LINE,
-           on_air=NOIR_ON_AIR)
+           on_air=NOIR_ON_AIR, warning=NOIR_WARNING, text_on_accent=NOIR_TEXT_ON_ACCENT,
+           type_caption=NOIR_TYPE_CAPTION, type_section=NOIR_TYPE_SECTION)
 
 # The vertical metrics compensate for Qt drawing the tab icon top-aligned to
 # the raw widget rect: the pill's bottom margin lifts its visual center up
@@ -971,7 +1078,7 @@ def set_noir_palette(app):
     # stack on systems where it is not installed.
     font = QtGui.QFont()
     font.setFamilies(NOIR_FONT_FAMILIES)
-    font.setPointSizeF(10.0)
+    font.setPointSizeF(NOIR_TYPE_BODY_PT)
     app.setFont(font)
 
 

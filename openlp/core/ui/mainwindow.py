@@ -59,6 +59,7 @@ from openlp.core.ui.printserviceform import PrintServiceForm
 from openlp.core.ui.servicemanager import ServiceManager
 from openlp.core.ui.settingsform import SettingsForm
 from openlp.core.ui.shortcutlistform import ShortcutListForm
+from openlp.core.ui import HideMode
 from openlp.core.ui.style import PROGRESSBAR_STYLE, UiThemes, get_library_stylesheet, is_ui_theme
 from openlp.core.ui.thememanager import ThemeManager
 from openlp.core.version import get_version
@@ -138,6 +139,15 @@ class Ui_MainWindow(object):
         self.default_theme_label = QtWidgets.QLabel(self.status_bar)
         self.default_theme_label.setObjectName('default_theme_label')
         self.status_bar.addPermanentWidget(self.default_theme_label)
+        if is_ui_theme(UiThemes.Noir):
+            # Persistent output-state segment: what the projector is showing right
+            # now, readable from anywhere in the app. Driven by the live
+            # controller through the 'live_output_state_changed' registry event.
+            self.output_state_label = QtWidgets.QLabel(self.status_bar)
+            self.output_state_label.setObjectName('output_state_label')
+            self.output_state_label.setText(translate('OpenLP.MainWindow', 'ON AIR'))
+            self.output_state_label.setProperty('outputState', 'onair')
+            self.status_bar.addPermanentWidget(self.output_state_label)
         # Create the MediaManager
         self.media_manager_dock = OpenLPDockWidget(main_window, 'media_manager_dock',
                                                    UiIcons().box)
@@ -549,6 +559,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow, LogMixin, RegistryPropert
         Registry().register_function('theme_change_global', self.default_theme_changed)
         Registry().register_function('config_screen_changed', self.screen_changed)
         Registry().register_function('bootstrap_post_set_up', self.bootstrap_post_set_up)
+        if is_ui_theme(UiThemes.Noir):
+            Registry().register_function('live_output_state_changed', self.on_live_output_state_changed)
         # Reset the cursor
         self.application.set_normal_cursor()
         # Starting up web services
@@ -1194,11 +1206,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow, LogMixin, RegistryPropert
             title = '{title} - {name}'.format(title=UiStrings().OpenLP, name=file_name)
         self.setWindowTitle(title)
 
-    def show_status_message(self, message: str):
+    def show_status_message(self, message: str, timeout: int = 0):
         """
         Show a message in the status bar
+
+        :param message: The message to show
+        :param timeout: How long to show it for, in milliseconds; 0 keeps it
+            until the next message replaces it
         """
-        self.status_bar.showMessage(message)
+        self.status_bar.showMessage(message, timeout)
 
     def default_theme_changed(self):
         """
@@ -1207,6 +1223,27 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow, LogMixin, RegistryPropert
         theme_name = self.settings.value('themes/global theme')
         self.default_theme_label.setText(translate('OpenLP.MainWindow',
                                                    'Default Theme: {theme}').format(theme=theme_name))
+
+    def on_live_output_state_changed(self, hide_mode=None):
+        """
+        Update the status bar output-state segment when the live output is
+        shown or hidden (Noir theme only).
+
+        :param hide_mode: The active HideMode, or None while output is showing
+        """
+        if hide_mode is None:
+            self.output_state_label.setText(translate('OpenLP.MainWindow', 'ON AIR'))
+            self.output_state_label.setProperty('outputState', 'onair')
+        else:
+            if hide_mode == HideMode.Theme:
+                self.output_state_label.setText(translate('OpenLP.MainWindow', 'THEME ONLY'))
+            elif hide_mode == HideMode.Screen:
+                self.output_state_label.setText(translate('OpenLP.MainWindow', 'OUTPUT HIDDEN'))
+            else:
+                self.output_state_label.setText(translate('OpenLP.MainWindow', 'BLANKED'))
+            self.output_state_label.setProperty('outputState', 'hidden')
+        self.output_state_label.style().unpolish(self.output_state_label)
+        self.output_state_label.style().polish(self.output_state_label)
 
     def toggle_media_manager(self):
         """

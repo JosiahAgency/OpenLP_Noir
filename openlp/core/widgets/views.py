@@ -26,13 +26,14 @@ from pathlib import Path
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from openlp.core.common.i18n import UiStrings
+from openlp.core.common.i18n import UiStrings, translate
 from openlp.core.common.mixins import RegistryProperties
 from openlp.core.common.platform import is_win
 from openlp.core.common.registry import Registry
 from openlp.core.lib.serviceitem import ItemCapabilities, ServiceItem
-from openlp.core.ui.style import NOIR_CUE, NOIR_INK_1, NOIR_INK_2, NOIR_INK_3, NOIR_INK_4, NOIR_ON_AIR, \
-    NOIR_TEXT_BODY, NOIR_TEXT_HI, NOIR_TEXT_LOW, NOIR_TEXT_MID, UiThemes, is_ui_theme
+from openlp.core.ui.style import NOIR_CUE, NOIR_INK_0, NOIR_INK_1, NOIR_INK_2, NOIR_INK_3, NOIR_INK_4, \
+    NOIR_ON_AIR, NOIR_TEXT_BODY, NOIR_TEXT_HI, NOIR_TEXT_LOW, NOIR_TEXT_MID, NOIR_TEXT_ON_ACCENT, \
+    UiThemes, is_ui_theme
 from openlp.core.widgets.layouts import AspectRatioLayout
 
 
@@ -46,6 +47,10 @@ SCROLL_HINT = {
 # Data role holding the verse tag ('V1', 'C', ...) of a slide, painted as a chip
 # by NoirSlideDelegate
 VERSE_TAG_ROLE = QtCore.Qt.ItemDataRole.UserRole + 1
+# Data roles used by NoirServiceDelegate: a caption line of metadata painted
+# under the item title, and whether the item is currently on the live output
+SERVICE_META_ROLE = QtCore.Qt.ItemDataRole.UserRole + 2
+SERVICE_LIVE_ROLE = QtCore.Qt.ItemDataRole.UserRole + 3
 
 
 class NoirSlideDelegate(QtWidgets.QStyledItemDelegate):
@@ -66,10 +71,16 @@ class NoirSlideDelegate(QtWidgets.QStyledItemDelegate):
     RAIL_WIDTH = 36
     NODE_HEIGHT = 20
 
+    # Compact mode clamps each card to this many text lines
+    COMPACT_LINES = 2
+
     def __init__(self, view, is_live=False):
         super().__init__(view)
         self.view = view
         self.is_live = is_live
+        # Compact density: cards clamp to COMPACT_LINES lines so long services
+        # stay scannable. Refreshed from settings on each service item load.
+        self.compact = False
 
     def _node_font(self, base_font):
         font = QtGui.QFont(base_font)
@@ -162,7 +173,7 @@ class NoirSlideDelegate(QtWidgets.QStyledItemDelegate):
         if selected:
             painter.setPen(QtCore.Qt.PenStyle.NoPen)
             painter.setBrush(accent)
-            node_text = QtGui.QColor('#FFFFFF') if self.is_live else QtGui.QColor('#0E1014')
+            node_text = QtGui.QColor(NOIR_TEXT_ON_ACCENT) if self.is_live else QtGui.QColor(NOIR_INK_0)
         else:
             painter.setPen(QtGui.QPen(QtGui.QColor(NOIR_INK_4), 1.5))
             painter.setBrush(QtGui.QColor(NOIR_INK_1 if is_past else NOIR_INK_2))
@@ -173,6 +184,10 @@ class NoirSlideDelegate(QtWidgets.QStyledItemDelegate):
         painter.drawText(node, QtCore.Qt.AlignmentFlag.AlignCenter, node_label)
         # Slide text: bright when current, dimmed once the slide has been shown
         content = card.adjusted(self.CARD_PADDING, self.CARD_PADDING, -self.CARD_PADDING, -self.CARD_PADDING)
+        if self.compact:
+            # Quantize the text box to whole lines so a clipped line never
+            # paints a sliver of glyph tops
+            content.setHeight(min(content.height(), self.COMPACT_LINES * body_metrics.lineSpacing()))
         if selected:
             text_color = NOIR_TEXT_HI
         elif is_past:
@@ -195,7 +210,173 @@ class NoirSlideDelegate(QtWidgets.QStyledItemDelegate):
         metrics = QtGui.QFontMetrics(self.view.font())
         text_rect = metrics.boundingRect(QtCore.QRect(0, 0, int(width), 0),
                                          QtCore.Qt.TextFlag.TextWordWrap, text)
-        height = 2 * self.CARD_MARGIN_Y + 2 * self.CARD_PADDING + text_rect.height() + metrics.descent()
+        text_height = text_rect.height()
+        if self.compact:
+            # Compact density: the card clamps to a fixed number of lines and
+            # drawText simply drops the lines that no longer fit
+            text_height = min(text_height, self.COMPACT_LINES * metrics.lineSpacing())
+        height = 2 * self.CARD_MARGIN_Y + 2 * self.CARD_PADDING + text_height + metrics.descent()
+        return QtCore.QSize(option.rect.width(), int(height))
+
+
+class NoirServiceDelegate(QtWidgets.QStyledItemDelegate):
+    """
+    Paints the service manager as a run sheet: each top-level service item is
+    a card carrying the plugin icon in a chip, the item title and a caption
+    line of metadata, and the item currently showing on the live output gets
+    an on-air edge bar and badge. Slide children stay as light text rows.
+    Only installed when the Noir UI theme is active.
+    """
+    CARD_MARGIN_X = 4
+    CARD_MARGIN_Y = 2
+    CARD_PADDING = 8
+    CARD_RADIUS = 8
+    CHIP_SIZE = 30
+    EDGE_BAR_WIDTH = 3
+
+    def __init__(self, view):
+        super().__init__(view)
+        self.view = view
+
+    def _title_font(self, base_font):
+        font = QtGui.QFont(base_font)
+        font.setWeight(QtGui.QFont.Weight.DemiBold)
+        return font
+
+    def _caption_font(self, base_font):
+        font = QtGui.QFont(base_font)
+        font.setPointSizeF(max(base_font.pointSizeF() - 1.5, 6.5))
+        return font
+
+    def paint(self, painter, option, index):
+        if index.parent().isValid():
+            self._paint_slide_row(painter, option, index)
+        else:
+            self._paint_item_card(painter, option, index)
+
+    def _paint_slide_row(self, painter, option, index):
+        """A slide child: a light rounded row, no card chrome"""
+        selected = bool(option.state & QtWidgets.QStyle.StateFlag.State_Selected)
+        hovered = bool(option.state & QtWidgets.QStyle.StateFlag.State_MouseOver)
+        painter.save()
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        row = QtCore.QRectF(option.rect).adjusted(2, 1, -4, -1)
+        if selected:
+            fill = QtGui.QColor(NOIR_CUE)
+            fill.setAlpha(34)
+            painter.setPen(QtCore.Qt.PenStyle.NoPen)
+            painter.setBrush(fill)
+            painter.drawRoundedRect(row, 6, 6)
+        elif hovered:
+            painter.setPen(QtCore.Qt.PenStyle.NoPen)
+            painter.setBrush(QtGui.QColor(NOIR_INK_2))
+            painter.drawRoundedRect(row, 6, 6)
+        font = self.view.font()
+        metrics = QtGui.QFontMetricsF(font)
+        text_rect = row.adjusted(8, 0, -6, 0)
+        text = metrics.elidedText(str(index.data(QtCore.Qt.ItemDataRole.DisplayRole) or ''),
+                                  QtCore.Qt.TextElideMode.ElideRight, text_rect.width())
+        painter.setFont(font)
+        painter.setPen(QtGui.QColor(NOIR_TEXT_HI if selected else NOIR_TEXT_BODY))
+        painter.drawText(text_rect, QtCore.Qt.AlignmentFlag.AlignVCenter, text)
+        painter.restore()
+
+    def _paint_item_card(self, painter, option, index):
+        """A top-level service item: icon chip, title, metadata, on-air marker"""
+        selected = bool(option.state & QtWidgets.QStyle.StateFlag.State_Selected)
+        hovered = bool(option.state & QtWidgets.QStyle.StateFlag.State_MouseOver)
+        is_live = bool(index.data(SERVICE_LIVE_ROLE))
+        painter.save()
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        card = QtCore.QRectF(option.rect).adjusted(self.CARD_MARGIN_X, self.CARD_MARGIN_Y,
+                                                   -self.CARD_MARGIN_X, -self.CARD_MARGIN_Y)
+        # Card surface: selection fills with the cue, the live item is outlined
+        # in on-air red whether or not it is selected
+        if selected:
+            fill = QtGui.QColor(NOIR_CUE)
+            fill.setAlpha(34)
+            border = QtGui.QColor(NOIR_CUE)
+            border.setAlpha(120)
+        elif hovered:
+            fill = QtGui.QColor(NOIR_INK_3)
+            border = QtGui.QColor(NOIR_INK_4)
+        else:
+            fill = QtGui.QColor(NOIR_INK_2)
+            border = QtGui.QColor(NOIR_INK_3)
+        if is_live:
+            border = QtGui.QColor(NOIR_ON_AIR)
+            border.setAlpha(150)
+        painter.setPen(QtGui.QPen(border, 1))
+        painter.setBrush(fill)
+        painter.drawRoundedRect(card, self.CARD_RADIUS, self.CARD_RADIUS)
+        if is_live:
+            bar = QtCore.QRectF(card.left() + 1.5, card.top() + 7, self.EDGE_BAR_WIDTH, card.height() - 14)
+            painter.setPen(QtCore.Qt.PenStyle.NoPen)
+            painter.setBrush(QtGui.QColor(NOIR_ON_AIR))
+            painter.drawRoundedRect(bar, self.EDGE_BAR_WIDTH / 2, self.EDGE_BAR_WIDTH / 2)
+        # Plugin icon in a rounded chip
+        chip = QtCore.QRectF(card.left() + self.CARD_PADDING,
+                             card.center().y() - self.CHIP_SIZE / 2, self.CHIP_SIZE, self.CHIP_SIZE)
+        painter.setPen(QtGui.QPen(QtGui.QColor(NOIR_INK_4), 1))
+        painter.setBrush(QtGui.QColor(NOIR_INK_3))
+        painter.drawRoundedRect(chip, 8, 8)
+        icon = index.data(QtCore.Qt.ItemDataRole.DecorationRole)
+        if icon is not None and not icon.isNull():
+            icon_rect = chip.adjusted(6, 6, -6, -6).toRect()
+            icon.paint(painter, icon_rect)
+        # On-air badge, right-aligned; the text block shortens to make room
+        base_font = self.view.font()
+        caption_font = self._caption_font(base_font)
+        badge_space = 0
+        if is_live:
+            badge_font = QtGui.QFont(caption_font)
+            badge_font.setBold(True)
+            badge_metrics = QtGui.QFontMetricsF(badge_font)
+            badge_text = translate('OpenLP.ServiceManager', 'ON AIR')
+            badge_width = badge_metrics.horizontalAdvance(badge_text) + 16
+            badge_height = badge_metrics.height() + 6
+            badge = QtCore.QRectF(card.right() - self.CARD_PADDING - badge_width,
+                                  card.center().y() - badge_height / 2, badge_width, badge_height)
+            painter.setPen(QtCore.Qt.PenStyle.NoPen)
+            painter.setBrush(QtGui.QColor(NOIR_ON_AIR))
+            painter.drawRoundedRect(badge, badge_height / 2, badge_height / 2)
+            painter.setFont(badge_font)
+            painter.setPen(QtGui.QColor(NOIR_TEXT_ON_ACCENT))
+            painter.drawText(badge, QtCore.Qt.AlignmentFlag.AlignCenter, badge_text)
+            badge_space = badge_width + 8
+        # Title line over a metadata caption line
+        title_font = self._title_font(base_font)
+        title_metrics = QtGui.QFontMetricsF(title_font)
+        caption_metrics = QtGui.QFontMetricsF(caption_font)
+        text_left = chip.right() + 10
+        text_width = card.right() - self.CARD_PADDING - badge_space - text_left
+        text_height = title_metrics.height() + 1 + caption_metrics.height()
+        text_top = card.center().y() - text_height / 2
+        title = title_metrics.elidedText(str(index.data(QtCore.Qt.ItemDataRole.DisplayRole) or ''),
+                                         QtCore.Qt.TextElideMode.ElideRight, text_width)
+        painter.setFont(title_font)
+        painter.setPen(QtGui.QColor(NOIR_TEXT_HI))
+        painter.drawText(QtCore.QRectF(text_left, text_top, text_width, title_metrics.height()),
+                         QtCore.Qt.AlignmentFlag.AlignVCenter, title)
+        caption = index.data(SERVICE_META_ROLE)
+        if caption:
+            caption = caption_metrics.elidedText(str(caption), QtCore.Qt.TextElideMode.ElideRight, text_width)
+            painter.setFont(caption_font)
+            painter.setPen(QtGui.QColor(NOIR_TEXT_MID))
+            painter.drawText(QtCore.QRectF(text_left, text_top + title_metrics.height() + 1, text_width,
+                                           caption_metrics.height()),
+                             QtCore.Qt.AlignmentFlag.AlignVCenter, caption)
+        painter.restore()
+
+    def sizeHint(self, option, index):
+        base_font = self.view.font()
+        base_metrics = QtGui.QFontMetrics(base_font)
+        if index.parent().isValid():
+            return QtCore.QSize(option.rect.width(), base_metrics.height() + 10)
+        title_metrics = QtGui.QFontMetrics(self._title_font(base_font))
+        caption_metrics = QtGui.QFontMetrics(self._caption_font(base_font))
+        text_height = title_metrics.height() + 1 + caption_metrics.height()
+        height = 2 * self.CARD_MARGIN_Y + 2 * self.CARD_PADDING + max(text_height, self.CHIP_SIZE)
         return QtCore.QSize(option.rect.width(), int(height))
 
 
@@ -359,6 +540,12 @@ class ListPreviewWidget(QtWidgets.QTableWidget, RegistryProperties):
         :param width: The width of the column
         :param slide_number: The slide number to pre-select
         """
+        if self.is_noir:
+            delegate = self.itemDelegate()
+            if isinstance(delegate, NoirSlideDelegate):
+                # Pick up density changes made in the settings dialog on the
+                # next item load, before the rows are measured
+                delegate.compact = bool(self.settings.value('advanced/compact slide cards'))
         self.service_item = service_item
         self.setRowCount(0)
         self.clear_list()
@@ -567,6 +754,36 @@ class ListWidgetWithDnD(QtWidgets.QListWidget):
         for row in range(self.count()):
             yield self.item(row)
 
+    def _is_noir_theme(self):
+        """
+        Whether the Noir empty state should be painted. Guarded because the
+        widget can be built before (or without) a settings registry.
+        """
+        try:
+            return is_ui_theme(UiThemes.Noir)
+        except (KeyError, AttributeError):
+            return False
+
+    def _paint_noir_empty_state(self, painter, viewport):
+        """
+        A centered empty state: a dimmed search glyph over the hint text,
+        instead of a bare line of text at the top of a black void.
+        """
+        from openlp.core.ui.icons import UiIcons
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        rect = viewport.rect()
+        icon_size = 36
+        center_x = rect.width() / 2
+        base_y = rect.height() / 2
+        painter.setOpacity(0.4)
+        UiIcons().search.paint(painter, QtCore.QRect(int(center_x - icon_size / 2),
+                                                     int(base_y - icon_size - 6), icon_size, icon_size))
+        painter.setOpacity(1.0)
+        painter.setPen(QtGui.QColor(NOIR_TEXT_MID))
+        painter.drawText(QtCore.QRect(16, int(base_y + 4), max(rect.width() - 32, 0), rect.height() // 2),
+                         (QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.TextFlag.TextWordWrap),
+                         self.no_results_text)
+
     def paintEvent(self, event):
         """
         Re-implement paintEvent so that we can add 'No Results' text when the listWidget is empty.
@@ -578,6 +795,9 @@ class ListWidgetWithDnD(QtWidgets.QListWidget):
         if not self.count():
             viewport = self.viewport()
             painter = QtGui.QPainter(viewport)
+            if self._is_noir_theme():
+                self._paint_noir_empty_state(painter, viewport)
+                return
             font = QtGui.QFont()
             font.setItalic(True)
             painter.setFont(font)

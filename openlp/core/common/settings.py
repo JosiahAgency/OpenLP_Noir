@@ -254,6 +254,7 @@ class Settings(QtCore.QSettings):
         'advanced/disable transparent display': True,
         'advanced/alternate rows': not is_win(),
         'advanced/autoscrolling': {'dist': 1, 'pos': 0},
+        'advanced/compact slide cards': False,
         'advanced/current media plugin': -1,
         'advanced/data path': None,
         # 7 stands for now, 0 to 6 is Monday to Sunday.

@@ -143,6 +143,9 @@ class GeneralTab(SettingsTab):
         self.expand_service_item_check_box = QtWidgets.QCheckBox(self.ui_group_box)
         self.expand_service_item_check_box.setObjectName('expand_service_item_check_box')
         self.ui_layout.addRow(self.expand_service_item_check_box)
+        self.compact_slide_cards_check_box = QtWidgets.QCheckBox(self.ui_group_box)
+        self.compact_slide_cards_check_box.setObjectName('compact_slide_cards_check_box')
+        self.ui_layout.addRow(self.compact_slide_cards_check_box)
         self.slide_max_height_label = QtWidgets.QLabel(self.ui_group_box)
         self.slide_max_height_label.setObjectName('slide_max_height_label')
         self.slide_max_height_combo_box = QtWidgets.QComboBox(self.ui_group_box)
@@ -227,6 +230,8 @@ class GeneralTab(SettingsTab):
                                                                       'Preview items when clicked in Service'))
         self.expand_service_item_check_box.setText(translate('OpenLP.AdvancedTab',
                                                              'Expand new service items on creation'))
+        self.compact_slide_cards_check_box.setText(translate('OpenLP.AdvancedTab',
+                                                             'Compact slide cards in Preview/Live (Noir theme)'))
         self.slide_max_height_label.setText(translate('OpenLP.AdvancedTab',
                                                       'Max height for non-text slides\nin slide controller:'))
         self.slide_max_height_combo_box.setItemText(0, translate('OpenLP.AdvancedTab', 'Disabled'))
@@ -298,6 +303,7 @@ class GeneralTab(SettingsTab):
         self.single_click_service_preview_check_box.setChecked(
             self.settings.value('advanced/single click service preview'))
         self.expand_service_item_check_box.setChecked(self.settings.value('advanced/expand service item'))
+        self.compact_slide_cards_check_box.setChecked(self.settings.value('advanced/compact slide cards'))
         slide_max_height_value = self.settings.value('advanced/slide max height')
         for i in range(0, self.slide_max_height_combo_box.count()):
             if self.slide_max_height_combo_box.itemData(i) == slide_max_height_value:
@@ -378,6 +384,7 @@ class GeneralTab(SettingsTab):
         self.settings.setValue('advanced/single click service preview',
                                self.single_click_service_preview_check_box.isChecked())
         self.settings.setValue('advanced/expand service item', self.expand_service_item_check_box.isChecked())
+        self.settings.setValue('advanced/compact slide cards', self.compact_slide_cards_check_box.isChecked())
         slide_max_height_index = self.slide_max_height_combo_box.currentIndex()
         slide_max_height_value = self.slide_max_height_combo_box.itemData(slide_max_height_index)
         self.settings.setValue('advanced/slide max height', slide_max_height_value)

@@ -23,12 +23,12 @@ The :mod:`~openlp.core.widgets.docks` module contains a customised base dock wid
 """
 import logging
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from openlp.core.display.screens import ScreenList
 from openlp.core.lib import build_icon
 from openlp.core.lib.plugin import StringContent
-from openlp.core.ui.style import UiThemes, get_noir_toolbox_icon, is_ui_theme
+from openlp.core.ui.style import NOIR_CUE, UiThemes, get_noir_toolbox_icon, is_ui_theme
 
 
 log = logging.getLogger(__name__)
@@ -56,6 +56,49 @@ class OpenLPDockWidget(QtWidgets.QDockWidget):
         else:
             self.setMinimumWidth(main_window_docbars)
 
+    def setWindowTitle(self, title):
+        """
+        The Noir theme renders dock titles as uppercase panel labels. The View
+        menu keeps its own action text, so only the title bar is affected.
+        """
+        if is_ui_theme(UiThemes.Noir):
+            title = title.upper()
+        super().setWindowTitle(title)
+
+
+class LibraryRail(QtWidgets.QWidget):
+    """
+    The icon rail of the LibrarySidebar. On top of the stylesheet background
+    it paints a small cue-colored bar on the rail edge beside the active
+    section's button — a "you are here" marker that reads at a glance, distinct
+    from the pressed/checked fill of the button itself.
+    """
+    INDICATOR_WIDTH = 3
+    INDICATOR_HEIGHT = 18
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._active_button = None
+
+    def set_active_button(self, button):
+        """Move the active-section indicator beside the given button"""
+        self._active_button = button
+        self.update()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if not self._active_button:
+            return
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        center_y = self._active_button.geometry().center().y()
+        bar = QtCore.QRectF(0, center_y - self.INDICATOR_HEIGHT / 2,
+                            self.INDICATOR_WIDTH, self.INDICATOR_HEIGHT)
+        painter.setPen(QtCore.Qt.PenStyle.NoPen)
+        painter.setBrush(QtGui.QColor(NOIR_CUE))
+        painter.drawRoundedRect(bar, self.INDICATOR_WIDTH / 2, self.INDICATOR_WIDTH / 2)
+        painter.end()
+
 
 class LibrarySidebar(QtWidgets.QWidget):
     """
@@ -78,7 +121,7 @@ class LibrarySidebar(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         # Icon rail
-        self.rail = QtWidgets.QWidget(self)
+        self.rail = LibraryRail(self)
         self.rail.setObjectName('library_rail')
         self.rail.setAttribute(QtCore.Qt.WidgetAttribute.WA_StyledBackground, True)
         self.rail.setFixedWidth(52)
@@ -110,6 +153,7 @@ class LibrarySidebar(QtWidgets.QWidget):
         for position, button in enumerate(self._buttons):
             button.setChecked(position == index)
         self.header.setText(self._titles[index] if 0 <= index < len(self._titles) else '')
+        self.rail.set_active_button(self._buttons[index] if 0 <= index < len(self._buttons) else None)
 
     def addItem(self, widget, icon, text):
         """
@@ -147,14 +191,40 @@ class LibrarySidebar(QtWidgets.QWidget):
         if current != -1:
             self._apply_current(current)
             self.currentChanged.emit(current)
+        else:
+            # The last page went away: drop the dangling indicator reference
+            # before the deleted button is painted
+            self.header.setText('')
+            self.rail.set_active_button(None)
 
     def setCurrentIndex(self, index):
         if not 0 <= index < self.stack.count() or index == self.stack.currentIndex():
             self._apply_current(self.stack.currentIndex())
             return
         self.stack.setCurrentIndex(index)
+        self._fade_in_current()
         self._apply_current(index)
         self.currentChanged.emit(index)
+
+    def _fade_in_current(self):
+        """
+        Fade the newly shown section in over ~120ms. Feedback, not decoration:
+        the brief transition confirms the section actually switched. The
+        opacity effect is removed as soon as the animation finishes so it
+        cannot slow down normal painting.
+        """
+        widget = self.stack.currentWidget()
+        if widget is None or not widget.isVisible():
+            return
+        effect = QtWidgets.QGraphicsOpacityEffect(widget)
+        widget.setGraphicsEffect(effect)
+        animation = QtCore.QPropertyAnimation(effect, b'opacity', widget)
+        animation.setDuration(120)
+        animation.setStartValue(0.0)
+        animation.setEndValue(1.0)
+        animation.setEasingCurve(QtCore.QEasingCurve.Type.OutCubic)
+        animation.finished.connect(lambda fading_widget=widget: fading_widget.setGraphicsEffect(None))
+        animation.start(QtCore.QAbstractAnimation.DeletionPolicy.DeleteWhenStopped)
 
     def count(self):
         return self.stack.count()

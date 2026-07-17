@@ -51,8 +51,10 @@ from openlp.core.ui.media import get_supported_media_suffix
 from openlp.core.ui.serviceitemeditform import ServiceItemEditForm
 from openlp.core.ui.servicenoteform import ServiceNoteForm
 from openlp.core.ui.starttimeform import StartTimeForm
+from openlp.core.ui.style import UiThemes, is_ui_theme
 from openlp.core.widgets.dialogs import FileDialog
 from openlp.core.widgets.toolbar import OpenLPToolbar
+from openlp.core.widgets.views import NoirServiceDelegate, SERVICE_LIVE_ROLE, SERVICE_META_ROLE
 
 
 class ServiceManagerList(QtWidgets.QTreeWidget):
@@ -175,6 +177,17 @@ class Ui_ServiceManager(object):
         self.service_manager_list.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.service_manager_list.customContextMenuRequested.connect(self.context_menu)
         self.service_manager_list.setObjectName('service_manager_list')
+        if is_ui_theme(UiThemes.Noir):
+            # The Noir theme paints service items as run-sheet cards with an
+            # on-air marker; the delegate needs mouse tracking for hover states
+            self.service_manager_list.setItemDelegate(NoirServiceDelegate(self.service_manager_list))
+            self.service_manager_list.setMouseTracking(True)
+            # The delegate paints all selection states itself; a transparent
+            # highlight stops the view painting its own row underlay (which
+            # shows beside the cards in the branch column).
+            palette = self.service_manager_list.palette()
+            palette.setColor(QtGui.QPalette.ColorRole.Highlight, QtCore.Qt.GlobalColor.transparent)
+            self.service_manager_list.setPalette(palette)
         # enable drop
         self.service_manager_list.dropEvent = self.drop_event
         self.layout.addWidget(self.service_manager_list)
@@ -334,6 +347,9 @@ class ServiceManager(QtWidgets.QWidget, RegistryBase, Ui_ServiceManager, LogMixi
         self.list_double_clicked = False
         self.servicefile_version = None
         self.tree_widget_items = []
+        # unique_identifier of the service item currently on the live output,
+        # painted with an on-air marker by the Noir service delegate
+        self.live_item_identifier = None
         # repaint_service_list debouncer
         self.repaint_service_list_timer = QtCore.QTimer(self)
         self.repaint_service_list_timer.setInterval(100)
@@ -362,6 +378,7 @@ class ServiceManager(QtWidgets.QWidget, RegistryBase, Ui_ServiceManager, LogMixi
         Registry().register_function('theme_change_global', self.regenerate_service_items)
         Registry().register_function('theme_change_service', self.regenerate_changed_service_items)
         Registry().register_function('mediaitem_suffix_reset', self.reset_supported_suffixes)
+        Registry().register_function('slidecontroller_live_started', self.on_live_item_started)
 
     def bootstrap_post_set_up(self):
         """
@@ -1340,6 +1357,48 @@ class ServiceManager(QtWidgets.QWidget, RegistryBase, Ui_ServiceManager, LogMixi
         ):
             self.delete_item()
 
+    def on_live_item_started(self, item):
+        """
+        The live controller started showing an item: remember it and move the
+        on-air marker in the service list. Items sent live straight from the
+        library match no service row, which correctly clears the marker.
+
+        :param item: A list holding the service item that went live
+        """
+        service_item = item[0] if isinstance(item, list) and item else item
+        self.live_item_identifier = getattr(service_item, 'unique_identifier', None)
+        self._update_live_markers()
+
+    def _update_live_markers(self):
+        """Move the on-air marker to the service row matching the live item"""
+        for index, item in enumerate(self.service_items):
+            tree_item = self.service_manager_list.topLevelItem(index)
+            if tree_item is not None:
+                is_live_item = item['service_item'].unique_identifier == self.live_item_identifier
+                tree_item.setData(0, SERVICE_LIVE_ROLE, is_live_item)
+        self.service_manager_list.viewport().update()
+
+    def _service_item_caption(self, service_item):
+        """
+        The metadata caption painted under the item title by the Noir service
+        delegate: plugin, slide count, and a notes flag.
+
+        :param service_item: The service item to describe
+        """
+        parts = []
+        if service_item.name:
+            parts.append(service_item.name.title())
+        slide_count = len(service_item.get_frames())
+        if slide_count == 1:
+            parts.append(translate('OpenLP.ServiceManager', '1 slide'))
+        else:
+            parts.append(translate('OpenLP.ServiceManager', '{count} slides').format(count=slide_count))
+        if service_item.theme and service_item.theme != -1:
+            parts.append(str(service_item.theme))
+        if service_item.notes:
+            parts.append(translate('OpenLP.ServiceManager', 'Notes'))
+        return ' · '.join(parts)
+
     def repaint_service_list(self, service_item: int, service_item_child: int):
         """
         Clear the existing service list and prepaint all the items. This is used when moving items as the move takes
@@ -1455,6 +1514,9 @@ class ServiceManager(QtWidgets.QWidget, RegistryBase, Ui_ServiceManager, LogMixi
                     tips.append(meta)
             tree_widget_item.setToolTip(0, '<br>'.join(tips))
             tree_widget_item.setData(0, QtCore.Qt.ItemDataRole.UserRole, item['order'])
+            tree_widget_item.setData(0, SERVICE_META_ROLE, self._service_item_caption(service_item_from_item))
+            tree_widget_item.setData(0, SERVICE_LIVE_ROLE,
+                                     service_item_from_item.unique_identifier == self.live_item_identifier)
             tree_widget_item.setSelected(item['selected'])
             # Add the children to their parent tree_widget_item.
             for slide_index, slide in enumerate(service_item_from_item.get_frames()):
@@ -1620,8 +1682,32 @@ class ServiceManager(QtWidgets.QWidget, RegistryBase, Ui_ServiceManager, LogMixi
             # if rebuilding list make sure live is fixed.
             if rebuild:
                 self.live_controller.replace_service_manager_item(item)
+            if repaint:
+                # Confirm the add where the operator can see it; a silent add is
+                # the classic "did that do anything?" moment. Bulk loads pass
+                # repaint=False, so they stay quiet.
+                self._show_add_feedback(item)
         self.drop_position = -1
         self.set_modified()
+
+    def _show_add_feedback(self, item):
+        """
+        Flash a short status bar confirmation that an item landed in the service.
+
+        :param item: The service item (or list of items) that was added
+        """
+        try:
+            if isinstance(item, list) and len(item) != 1:
+                message = translate('OpenLP.ServiceManager',
+                                    'Added {count} items to the service').format(count=len(item))
+            else:
+                single_item = item[0] if isinstance(item, list) else item
+                message = translate('OpenLP.ServiceManager',
+                                    'Added to service: {title}').format(title=single_item.get_display_title())
+            self.main_window.show_status_message(message, 3000)
+        except AttributeError:
+            # No main window (or status bar) around, e.g. under test
+            pass
 
     def delete_item(self):
         """

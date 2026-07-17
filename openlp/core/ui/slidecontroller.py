@@ -240,6 +240,15 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         # Slide position indicator ("3 / 12"), only shown by the Noir theme
         self.slide_count_label = QtWidgets.QLabel(self.panel)
         self.slide_count_label.setObjectName('slide_controller_count_label')
+        if is_ui_theme(UiThemes.Noir):
+            # Tabular figures stop the counter jittering as the numbers change
+            try:
+                count_font = self.slide_count_label.font()
+                count_font.setFeature(QtGui.QFont.Tag('tnum'), 1)
+                self.slide_count_label.setFont(count_font)
+            except AttributeError:
+                # QFont.setFeature needs Qt >= 6.7; older builds keep default figures
+                pass
         self.top_label_horizontal.addWidget(self.top_icon)
         self.top_label_horizontal.addWidget(self.type_label)
         self.top_label_horizontal.addWidget(self.info_label, stretch=1)
@@ -1145,10 +1154,23 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         # Reflect the on-air state in the live indicator (red while the output is showing)
         if self.is_live:
             self.type_label.setProperty('onAir', 'false' if hide_mode else 'true')
+            if is_ui_theme(UiThemes.Noir):
+                # Blanked output is an explicit chip state, not just the absence of red
+                if hide_mode == HideMode.Blank:
+                    self.type_label.setText(translate('OpenLP.SlideController', 'Blanked'))
+                elif hide_mode == HideMode.Theme:
+                    self.type_label.setText(translate('OpenLP.SlideController', 'Theme'))
+                elif hide_mode == HideMode.Screen:
+                    self.type_label.setText(translate('OpenLP.SlideController', 'Hidden'))
+                else:
+                    self.type_label.setText(UiStrings().Live)
             self.type_label.style().unpolish(self.type_label)
             self.type_label.style().polish(self.type_label)
             # The Noir slide cards also change their accent with the on-air state
             self.preview_widget.viewport().update()
+            # Anything interested in the output state (e.g. the status bar segment)
+            # hears about the change without holding a reference to the controller
+            Registry().execute('live_output_state_changed', hide_mode)
         # Update ui buttons
         if hide_mode is None:
             self.hide_menu.setDefaultAction(self.blank_screen)
