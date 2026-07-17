@@ -115,11 +115,16 @@ class AboutForm(QtWidgets.QDialog):
 
         :param self: The QDialog object to translate
         """
-        self.setWindowTitle('{about} OpenLP'.format(about=UiStrings().About))
+        self.setWindowTitle('{about} OpenLP - NCSDA Version'.format(about=UiStrings().About))
         self.about_text_edit.setHtml(
             translate('OpenLP.AboutForm',
                       '<p>OpenLP {{version}}{{revision}} - Open Source Lyrics Projection<br>'
                       'Copyright {crs} 2004-{yr} OpenLP Developers</p>'
+                      '<p><b>NCSDA Version</b> - This is a customised edition of OpenLP and is <b>not</b> the '
+                      'standard OpenLP release. It adds features such as the EGW Library plugin with direct PDF '
+                      'import and a redesigned interface. These customisations are developed and maintained by '
+                      '<b>George Josiah</b>. Please report issues with this edition to its developer rather than '
+                      'the OpenLP project.</p>'
                       '<p>Find out more about OpenLP: <a href="https://openlp.org/">https://openlp.org/</a></p>'
                       '<p>This program is free software: you can redistribute it and/or modify it under the terms of '
                       'the GNU General Public License as published by the Free Software Foundation, either version 3 '
@@ -131,6 +136,14 @@ class AboutForm(QtWidgets.QDialog):
                       'along with this program.  If not, see <a href="https://www.gnu.org/licenses/">'
                       'https://www.gnu.org/licenses/</a>.</p>').format(crs='\xa9', yr=datetime.date.today().year))
         self.about_notebook.setTabText(self.about_notebook.indexOf(self.about_tab), UiStrings().About)
+        ncsda_credit = translate('OpenLP.AboutForm',
+                                 '<h3>NCSDA Version</h3>'
+                                 '<p>The NCSDA Version of OpenLP is developed and maintained by '
+                                 '<b>George Josiah</b>, building on the work of the OpenLP project. '
+                                 'The customisations in this edition, including the EGW Library plugin '
+                                 'and the redesigned interface, are his work and are not part of '
+                                 'standard OpenLP.</p>'
+                                 '<h3>OpenLP</h3>')
         developers = translate('OpenLP.AboutForm',
                                'OpenLP is written and maintained by volunteers all over the world in their spare '
                                'time. If you would like to see this project succeed, please consider contributing to '
@@ -169,8 +182,10 @@ class AboutForm(QtWidgets.QDialog):
                                  '<p>And last but not least, final credit goes to God our Father, for sending His Son '
                                  'to die on the cross, setting us free from sin. We bring this software to you for '
                                  'free because He has set us free.</p>')
-        self.credits_text_edit.setHtml('<p>{developers}</p><p>{built_with}</p>{build_tech}<p>{final_credit}</p>'.format(
-            developers=developers, built_with=built_with, build_tech=build_tech, final_credit=final_credit))
+        self.credits_text_edit.setHtml(
+            '{ncsda_credit}<p>{developers}</p><p>{built_with}</p>{build_tech}<p>{final_credit}</p>'.format(
+                ncsda_credit=ncsda_credit, developers=developers, built_with=built_with, build_tech=build_tech,
+                final_credit=final_credit))
         self.about_notebook.setTabText(self.about_notebook.indexOf(self.credits_tab),
                                        translate('OpenLP.AboutForm', 'Credits'))
         license = ('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"'

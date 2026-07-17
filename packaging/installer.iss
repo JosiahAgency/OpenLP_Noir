@@ -4,7 +4,10 @@
 ; The setup executable is written to dist\installer\.
 
 #define MyAppName "OpenLP Noir"
-#define MyAppVersion "3.1.3"
+; Overridden by build.ps1 via /DMyAppVersion=<openlp/.version>; 3.1.3 is the fallback
+#ifndef MyAppVersion
+  #define MyAppVersion "3.1.3"
+#endif
 #define MyAppPublisher "OpenLP Developers"
 #define MyAppURL "https://openlp.org/"
 #define MyAppExeName "OpenLP.exe"

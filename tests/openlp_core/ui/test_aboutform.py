@@ -58,6 +58,22 @@ def test_about_form_build_number(mocked_get_version, mock_settings):
         "The build number should be set correctly"
 
 
+def test_about_form_ncsda_attribution(mock_settings):
+    """
+    Test that the NCSDA Version notice and developer attribution are shown
+    """
+    # WHEN: The about form is created
+    about_form = AboutForm(None)
+    about_text = about_form.about_text_edit.toPlainText()
+    credits_text = about_form.credits_text_edit.toPlainText()
+
+    # THEN: Both the About and Credits tabs should identify this as the NCSDA Version by George Josiah
+    assert 'NCSDA Version' in about_text, "The About tab should state this is the NCSDA Version"
+    assert 'George Josiah' in about_text, "The About tab should credit George Josiah"
+    assert 'NCSDA Version' in credits_text, "The Credits tab should state this is the NCSDA Version"
+    assert 'George Josiah' in credits_text, "The Credits tab should credit George Josiah"
+
+
 def test_about_form_date(mock_settings):
     """
     Test that the copyright date is included correctly
