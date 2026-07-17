@@ -802,3 +802,73 @@ def test_media_pause_dual(media_env):
     mocked_controller.audio_player.pause.assert_called_once()
     mocked_controller.media_player.pause.assert_not_called()
     mocked_controller.output_has_changed.assert_called_once()
+
+
+def test_media_blank_no_media_loaded(media_env, settings, registry: Registry):
+    """
+    Test that media_blank does nothing when the live item has no media loaded (e.g. a
+    plain song): previously it hid the main display via an empty play item.
+    """
+    # GIVEN: A live controller whose play item has no media
+    mocked_live_controller = MagicMock()
+    mocked_live_controller.media_play_item = MediaPlayItem()
+    registry.register('live_controller', mocked_live_controller)
+    media_env.live_kill_timer = MagicMock(**{'isActive.return_value': False})
+    media_env._media_set_visibility = MagicMock()
+    media_env.media_pause = MagicMock()
+
+    # WHEN: media_blank is called for a live item
+    with patch.object(Registry(), 'execute') as mocked_execute:
+        media_env.media_blank([None, True, HideMode.Blank])
+
+    # THEN: The media controller should not have touched the display or the (absent) media
+    mocked_execute.assert_not_called()
+    media_env._media_set_visibility.assert_not_called()
+    media_env.media_pause.assert_not_called()
+
+
+def test_media_unblank_no_media_loaded(media_env, settings, registry: Registry):
+    """
+    Test that media_unblank does nothing when the live item has no media loaded:
+    previously it ran media_play on an empty play item, which hid the main display
+    right after Show Presentation had shown it.
+    """
+    # GIVEN: A live controller whose play item has no media
+    mocked_live_controller = MagicMock()
+    mocked_live_controller.media_play_item = MediaPlayItem()
+    registry.register('live_controller', mocked_live_controller)
+    media_env.live_kill_timer = MagicMock(**{'isActive.return_value': False})
+    media_env.media_play = MagicMock()
+    media_env._media_set_visibility = MagicMock()
+
+    # WHEN: media_unblank is called for a live item
+    with patch.object(Registry(), 'execute') as mocked_execute:
+        media_env.media_unblank([None, True])
+
+    # THEN: Nothing should have been played and the display should not have been touched
+    mocked_execute.assert_not_called()
+    media_env.media_play.assert_not_called()
+    media_env._media_set_visibility.assert_not_called()
+
+
+def test_media_unblank_with_media_loaded(media_env, settings, registry: Registry):
+    """
+    Test that media_unblank still shows the display and plays the media when the live
+    item does have media loaded (e.g. a song with linked audio).
+    """
+    # GIVEN: A live controller with loaded, currently not playing, audio media
+    mocked_live_controller = MagicMock()
+    mocked_live_controller.media_play_item = MediaPlayItem()
+    mocked_live_controller.media_play_item.media_type = MediaType.Audio
+    mocked_live_controller.media_play_item.is_playing = MediaState.Paused
+    registry.register('live_controller', mocked_live_controller)
+    media_env.live_kill_timer = MagicMock(**{'isActive.return_value': False})
+    media_env.media_play = MagicMock()
+
+    # WHEN: media_unblank is called for a live item
+    with patch.object(Registry(), 'execute') as mocked_execute:
+        media_env.media_unblank([None, True])
+
+    # THEN: The display should be shown and the media played
+    mocked_execute.assert_called_once_with('live_display_show')
+    media_env.media_play.assert_called_once_with(mocked_live_controller)

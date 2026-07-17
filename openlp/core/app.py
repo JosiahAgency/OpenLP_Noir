@@ -293,7 +293,11 @@ def parse_options():
     parser = argparse.ArgumentParser(prog='openlp')
     parser.add_argument('-e', '--no-error-form', dest='no_error_form', action='store_true',
                         help='Disable the error notification form.')
-    parser.add_argument('-l', '--log-level', dest='loglevel', default='warning', metavar='LEVEL',
+    # The packaged (frozen) app defaults to full debug logging so that openlp.log always
+    # carries the detailed pipeline/transition instrumentation; development runs keep the
+    # quiet default. Both can still be overridden with -l on the command line.
+    parser.add_argument('-l', '--log-level', dest='loglevel',
+                        default='debug' if getattr(sys, 'frozen', False) else 'warning', metavar='LEVEL',
                         help='Set logging to LEVEL level. Valid values are "debug", "info", "warning".')
     parser.add_argument('-v', '--verbose', dest='verbose', action='store_true',
                         help='Print logging output to the console.')

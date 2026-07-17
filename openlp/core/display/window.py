@@ -26,6 +26,7 @@ import logging
 import os
 import copy
 import re
+import time
 
 from PySide6 import QtCore, QtWebChannel, QtWidgets
 
@@ -140,6 +141,10 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
         Create the display window
         """
         super(DisplayWindow, self).__init__(parent)
+        # Scripts must not be injected into the page before it has loaded (requestAction()
+        # would not exist yet), so they are queued and run from after_loaded() instead.
+        self._is_page_loaded = False
+        self._pending_javascript = []
         self.after_loaded_callback = after_loaded_callback
         # Gather all flags for the display window
         flags = QtCore.Qt.WindowType.FramelessWindowHint | QtCore.Qt.WindowType.Tool |\
@@ -194,6 +199,7 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
         self.hide_mode = None
         self.__script_done = True
         self.__script_result = None
+        self._last_theme_json = None
         if screen and screen.is_display:
             # use log_debug to set up function wrapping before registering functions
             self.log_debug('registering live display show/hide functions')
@@ -313,18 +319,23 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
         """
         if not isinstance(url, QtCore.QUrl):
             url = QtCore.QUrl(url)
+        self._is_page_loaded = False
         self.webview.setUrl(url)
 
     def set_html(self, html):
         """
         Set the html
         """
+        self._is_page_loaded = False
         self.webview.setHtml(html)
 
     def after_loaded(self):
         """
         Add stuff after page initialisation
         """
+        self._is_page_loaded = True
+        # The page has (re)loaded, so any theme sent previously is gone from the JS side
+        self._last_theme_json = None
         item_transitions = self.settings.value('themes/item transitions')
         hide_mouse = (self.settings.value('advanced/hide mouse') and self.is_display)
         slide_numbers_in_footer = self.settings.value('advanced/slide numbers in footer')
@@ -340,6 +351,14 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
             self.set_scale(self.scale)
         if self._can_show_startup_screen:
             self.set_startup_screen()
+        # Run any scripts that were requested before the page had loaded, in their original
+        # order, now that requestAction() exists and the display has been initialised.
+        if self._pending_javascript:
+            pending_javascript = self._pending_javascript
+            self._pending_javascript = []
+            log.debug('display page loaded, running %d queued script(s)', len(pending_javascript))
+            for script in pending_javascript:
+                self._run_javascript(script)
         if self.after_loaded_callback:
             self.after_loaded_callback()
 
@@ -377,9 +396,22 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
         :param is_sync: Run the script synchronously. Defaults to False
         """
         log.debug((script[:80] + '..') if len(script) > 80 else script)
+        if not self._is_page_loaded:
+            # The page has not finished loading, so requestAction() does not exist yet and
+            # injecting the script now would throw "ReferenceError: requestAction is not
+            # defined" inside the page and the action would be silently lost.
+            if not is_sync:
+                log.debug('display page not loaded yet, queueing script: %s',
+                          (script[:60] + '..') if len(script) > 60 else script)
+                self._pending_javascript.append(script)
+                return
+            if not wait_for(lambda: self._is_page_loaded,
+                            error_message='Timed out waiting for the display page to load'):
+                return None
         # Wait for previous scripts to finish
         wait_for(lambda: self.__script_done)
         if is_sync:
+            start_time = time.perf_counter()
             self.__script_done = False
             self.__script_result = None
             self.webview.page().runJavaScript(
@@ -387,6 +419,9 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
             # Wait for script to finish
             if not wait_for(lambda: self.__script_done):
                 self.__script_done = True
+            log.debug('sync javascript timing: %.1f ms for %s',
+                      (time.perf_counter() - start_time) * 1000,
+                      (script[:60] + '..') if len(script) > 60 else script)
             return self.__script_result
         else:
             self.webview.page().runJavaScript(script)
@@ -474,6 +509,13 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
         theme_copy.font_main_name = self._fix_font_name(theme.font_main_name)
         theme_copy.font_footer_name = self._fix_font_name(theme.font_footer_name)
         exported_theme = theme_copy.export_theme(is_js=True)
+        if exported_theme == self._last_theme_json:
+            # The display already has this exact theme. Resending it would make the JS side
+            # re-apply it on the next slide load (and cost a round trip), so skip it. This
+            # matters for pagination, where the theme is sent once per formatted slide.
+            log.debug('set_theme: theme unchanged, not resending to the display')
+            return
+        self._last_theme_json = exported_theme
         self.run_in_display('setTheme', raw_parameters=exported_theme, is_sync=is_sync)
 
     def reload_theme(self):
@@ -494,9 +536,13 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
         """
         Show the display
         """
+        log.debug('show_display (%s): previous hide_mode=%s, window hidden=%s, page loaded=%s',
+                  self.window_title, self.hide_mode, self.isHidden(), self._is_page_loaded)
         if self.is_display:
             # Only make visible on single monitor setup if setting enabled.
             if len(ScreenList()) == 1 and not self.settings.value('core/display on monitor'):
+                log.debug('show_display (%s): ignored, single screen setup without "display on monitor"',
+                          self.window_title)
                 return
         # Aborting setVisible(False) call in case the display modes are changed quickly
         self.display_watcher.unregister_event_listener(TRANSITION_END_EVENT_NAME)
@@ -511,10 +557,13 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
 
         :param mode: How the screen is to be hidden
         """
-        log.debug('hide_display mode = {mode:d}'.format(mode=mode))
+        log.debug('hide_display (%s): requested mode=%s, previous hide_mode=%s, window hidden=%s, page loaded=%s',
+                  self.window_title, mode, self.hide_mode, self.isHidden(), self._is_page_loaded)
         if self.is_display:
             # Only make visible on single monitor setup if setting enabled.
             if len(ScreenList()) == 1 and not self.settings.value('core/display on monitor'):
+                log.debug('hide_display (%s): ignored, single screen setup without "display on monitor"',
+                          self.window_title)
                 return
         # Aborting setVisible(False) call in case the display modes are changed quickly
         self.display_watcher.unregister_event_listener(TRANSITION_END_EVENT_NAME)
@@ -525,8 +574,10 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
         if mode == HideMode.Screen:
             if self.settings.value('advanced/disable transparent display'):
                 # Hide window only after all webview CSS ransitions are done
+                log.debug('hide_display (%s): hiding the window once the transparent transition ends',
+                          self.window_title)
                 self.display_watcher.register_event_listener(TRANSITION_END_EVENT_NAME,
-                                                             lambda _: self.setVisible(False))
+                                                             self._hide_window_after_transparent_transition)
                 self.run_in_display('toTransparent', return_event_name=TRANSITION_END_EVENT_NAME)
             else:
                 self.run_in_display('toTransparent')
@@ -535,6 +586,14 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
         elif mode == HideMode.Theme:
             self.run_in_display('toTheme')
         self.hide_mode = mode
+
+    def _hide_window_after_transparent_transition(self, _event_data=None):
+        """
+        Called via the display watcher once the JS toTransparent transition has finished,
+        so that the (now fully transparent) window can be taken off the screen.
+        """
+        log.debug('hide_display (%s): transparent transition finished, hiding the window', self.window_title)
+        self.setVisible(False)
 
     def disable_display(self):
         """

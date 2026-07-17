@@ -2265,6 +2265,15 @@
 				scale = Math.max( scale, config.minScale );
 				scale = Math.min( scale, config.maxScale );
 
+				// OpenLP: A zero-sized wrapper (e.g. a display window which has never been
+				// shown) yields 0/0 = NaN above, and since NaN !== NaN the 'resize' event
+				// below would be dispatched on EVERY layout. That event bubbles up to the
+				// window, re-enters layout() via onWindowResize and recurses until the
+				// stack overflows. Keep the previous scale until we have a real size.
+				if( isNaN( scale ) ) {
+					scale = oldScale;
+				}
+
 				// Don't apply any scaling styles if scale is 1
 				if( scale === 1 ) {
 					dom.slides.style.zoom = '';
@@ -5677,6 +5686,13 @@
 	 * @param {object} [event]
 	 */
 	function onWindowResize( event ) {
+
+		// OpenLP: layout() dispatches a synthetic, bubbling 'resize' event on dom.wrapper
+		// which also arrives here via the window. Only re-layout for real window resizes,
+		// otherwise layout() feeds back into itself.
+		if( event && event.target !== window ) {
+			return;
+		}
 
 		layout();
 

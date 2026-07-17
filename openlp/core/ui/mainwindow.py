@@ -53,6 +53,7 @@ from openlp.core.ui.aboutform import AboutForm
 from openlp.core.ui.firsttimeform import FirstTimeForm
 from openlp.core.ui.formattingtagform import FormattingTagForm
 from openlp.core.ui.icons import UiIcons
+from openlp.core.ui.logviewer import LogViewerPanel
 from openlp.core.ui.pluginform import PluginForm
 from openlp.core.ui.printserviceform import PrintServiceForm
 from openlp.core.ui.servicemanager import ServiceManager
@@ -172,6 +173,15 @@ class Ui_MainWindow(object):
         self.projector_manager_dock.setWidget(self.projector_manager_contents)
         self.projector_manager_dock.setVisible(False)
         main_window.addDockWidget(QtCore.Qt.DockWidgetArea.RightDockWidgetArea, self.projector_manager_dock)
+        # Create the log viewer
+        self.log_viewer_dock = OpenLPDockWidget(parent=main_window,
+                                                name='log_viewer_dock',
+                                                icon=UiIcons().text)
+        self.log_viewer_contents = LogViewerPanel(self.log_viewer_dock)
+        self.log_viewer_contents.setObjectName('log_viewer_contents')
+        self.log_viewer_dock.setWidget(self.log_viewer_contents)
+        self.log_viewer_dock.setVisible(False)
+        main_window.addDockWidget(QtCore.Qt.DockWidgetArea.BottomDockWidgetArea, self.log_viewer_dock)
         # Create the menu items
         action_list = ActionList.get_instance()
         action_list.add_category(UiStrings().File, CategoryOrder.standard_menu)
@@ -227,6 +237,10 @@ class Ui_MainWindow(object):
                                                        icon=UiIcons().live,
                                                        checked=self.service_manager_dock.isVisible(),
                                                        category=UiStrings().View, triggers=self.toggle_service_manager)
+        self.view_log_viewer_item = create_action(main_window, 'viewLogViewerItem', can_shortcuts=True,
+                                                  icon=UiIcons().text,
+                                                  checked=self.log_viewer_dock.isVisible(),
+                                                  category=UiStrings().View, triggers=self.toggle_log_viewer)
         self.view_preview_panel = create_action(main_window, 'viewPreviewPanel', can_shortcuts=True,
                                                 checked=preview_visible, category=UiStrings().View,
                                                 triggers=self.set_preview_panel_visibility)
@@ -327,7 +341,8 @@ class Ui_MainWindow(object):
         add_actions(self.view_mode_menu, (self.mode_default_item, self.mode_setup_item, self.mode_live_item))
         add_actions(self.view_menu, (self.view_mode_menu.menuAction(), None, self.view_media_manager_item,
                     self.view_projector_manager_item, self.view_service_manager_item, self.view_theme_manager_item,
-                    None, self.view_preview_panel, self.view_live_panel, None, self.lock_panel))
+                    self.view_log_viewer_item, None, self.view_preview_panel, self.view_live_panel, None,
+                    self.lock_panel))
         # i18n add Language Actions
         add_actions(self.settings_language_menu, (self.auto_language_item, None))
         add_actions(self.settings_language_menu, self.language_group.actions())
@@ -378,6 +393,7 @@ class Ui_MainWindow(object):
         self.service_manager_dock.setWindowTitle(translate('OpenLP.MainWindow', 'Service'))
         self.theme_manager_dock.setWindowTitle(translate('OpenLP.MainWindow', 'Themes'))
         self.projector_manager_dock.setWindowTitle(translate('OpenLP.MainWindow', 'Projector Controller'))
+        self.log_viewer_dock.setWindowTitle(translate('OpenLP.MainWindow', 'Logs'))
         self.file_new_item.setText(translate('OpenLP.MainWindow', '&New Service'))
         self.file_new_item.setToolTip(UiStrings().NewService)
         self.file_new_item.setStatusTip(UiStrings().CreateService)
@@ -425,6 +441,10 @@ class Ui_MainWindow(object):
         self.view_service_manager_item.setToolTip(translate('OpenLP.MainWindow', 'Hide or show Service.'))
         self.view_service_manager_item.setStatusTip(translate('OpenLP.MainWindow',
                                                     'Toggle visibility of the Service.'))
+        self.view_log_viewer_item.setText(translate('OpenLP.MainWindow', '&Logs'))
+        self.view_log_viewer_item.setToolTip(translate('OpenLP.MainWindow', 'Hide or show the Logs panel.'))
+        self.view_log_viewer_item.setStatusTip(translate('OpenLP.MainWindow',
+                                               'Toggle visibility of the Logs panel.'))
         self.view_preview_panel.setText(translate('OpenLP.MainWindow', '&Preview'))
         self.view_preview_panel.setToolTip(translate('OpenLP.MainWindow', 'Hide or show Preview.'))
         self.view_preview_panel.setStatusTip(
@@ -1233,6 +1253,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow, LogMixin, RegistryPropert
         self.settings.setValue('user interface/is preset layout', False)
         self.settings.setValue('user interface/show themes', self.theme_manager_dock.isVisible())
 
+    def toggle_log_viewer(self):
+        """
+        Toggle the visibility of the log viewer
+        """
+        if self.sender() is self.view_log_viewer_item:
+            self.log_viewer_dock.setVisible(not self.log_viewer_dock.isVisible())
+        self.view_log_viewer_item.setChecked(self.log_viewer_dock.isVisible())
+
     def set_preview_panel_visibility(self, is_visible: bool):
         """
         Sets the visibility of the preview panel including saving the setting and updating the menu.
@@ -1256,11 +1284,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow, LogMixin, RegistryPropert
             self.service_manager_dock.setFeatures(QtWidgets.QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
             self.media_manager_dock.setFeatures(QtWidgets.QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
             self.projector_manager_dock.setFeatures(QtWidgets.QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
+            self.log_viewer_dock.setFeatures(QtWidgets.QDockWidget.DockWidgetFeature.NoDockWidgetFeatures)
             self.view_mode_menu.setEnabled(False)
             self.view_media_manager_item.setEnabled(False)
             self.view_service_manager_item.setEnabled(False)
             self.view_theme_manager_item.setEnabled(False)
             self.view_projector_manager_item.setEnabled(False)
+            self.view_log_viewer_item.setEnabled(False)
             self.view_preview_panel.setEnabled(False)
             self.view_live_panel.setEnabled(False)
         else:
@@ -1271,11 +1301,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow, LogMixin, RegistryPropert
             self.service_manager_dock.setFeatures(all_dock_features)
             self.media_manager_dock.setFeatures(all_dock_features)
             self.projector_manager_dock.setFeatures(all_dock_features)
+            self.log_viewer_dock.setFeatures(all_dock_features)
             self.view_mode_menu.setEnabled(True)
             self.view_media_manager_item.setEnabled(True)
             self.view_service_manager_item.setEnabled(True)
             self.view_theme_manager_item.setEnabled(True)
             self.view_projector_manager_item.setEnabled(True)
+            self.view_log_viewer_item.setEnabled(True)
             self.view_preview_panel.setEnabled(True)
             self.view_live_panel.setEnabled(True)
         self.settings.setValue('user interface/lock panel', is_locked)
@@ -1304,6 +1336,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow, LogMixin, RegistryPropert
         self.move(self.settings.value('user interface/main window position'))
         self.restoreGeometry(self.settings.value('user interface/main window geometry'))
         self.restoreState(self.settings.value('user interface/main window state'))
+        # The log viewer dock's visibility comes from the restored window state
+        self.view_log_viewer_item.setChecked(self.log_viewer_dock.isVisible())
         if not self._window_position_is_valid(self.pos(), self.geometry()):
             self.move(0, 0)
         self.live_controller.splitter.restoreState(self.settings.value('user interface/live splitter geometry'))
@@ -1498,57 +1532,188 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow, LogMixin, RegistryPropert
 
     def open_cmd_line_files(self, args: list):
         """
-        Open files passed in through command line arguments
+        Open files passed in through command line arguments.
 
         :param list[str] args: List of remaining positional arguments
         """
-        self.log_info(args)
-        # Drop this argument, it's obvs not a filename
+        self.log_info("=" * 80)
+        self.log_info("Starting command line file processing")
+        self.log_info(f"Raw arguments: {args}")
+
+        if not args:
+            self.log_info("No command line arguments supplied. Skipping file loading.")
+            return
+
+        # ------------------------------------------------------------------
+        # Remove special flags
+        # ------------------------------------------------------------------
         if '--disable-web-security' in args:
+            self.log_info("Removing '--disable-web-security' argument.")
             args.remove('--disable-web-security')
-        # strip platform args, not a filename either
+
         try:
             platform_idx = args.index('-platform')
-            if platform_idx >= 0:
-                # remove the platform arg
+            self.log_info(
+                f"Detected Qt platform argument: "
+                f"-platform {args[platform_idx + 1] if platform_idx + 1 < len(args) else '<missing>'}"
+            )
+
+            args.pop(platform_idx)
+
+            if platform_idx < len(args):
                 args.pop(platform_idx)
-                # remove the platform input
-                args.pop(platform_idx)
+
         except (ValueError, IndexError):
-            pass
-        # It has been known for Microsoft to double quote the path passed in and then encode one of the quotes.
-        # Remove these to get the correct path.
-        args = list(map(lambda x: x.replace('&quot;', ''), args))
-        # Loop through the parameters, and see if we can pull a file out
+            self.log_debug("No Qt platform argument detected.")
+
+        self.log_info(f"Arguments after cleanup: {args}")
+
+        # ------------------------------------------------------------------
+        # Decode HTML encoded quotes
+        # ------------------------------------------------------------------
+        args = [arg.replace('&quot;', '') for arg in args]
+        self.log_info(f"Arguments after HTML entity cleanup: {args}")
+
+        # ------------------------------------------------------------------
+        # Attempt 1: Treat each argument as an individual file
+        # ------------------------------------------------------------------
+        self.log_info("Attempt 1: Checking each argument individually.")
+
         file_path = None
-        for arg in args:
+
+        for index, arg in enumerate(args):
+            self.log_info(f"[Attempt 1] Checking argument {index}: '{arg}'")
+
             try:
-                # Resolve the file, and use strict mode to throw an exception if the file does not exist
-                file_path = resolve(Path(arg), is_strict=True)
-                # Check if this is actually a file
-                if file_path.is_file():
+                resolved = resolve(Path(arg), is_strict=True)
+                self.log_info(f"Resolved path: {resolved}")
+
+                if resolved.is_file():
+                    self.log_info("Resolved path is a valid file.")
+                    file_path = resolved
                     break
                 else:
-                    file_path = None
+                    self.log_warning(f"Resolved path exists but is not a file: {resolved}")
+
             except FileNotFoundError:
-                file_path = None
-        # If none of the individual components are files, let's try pulling them together
+                self.log_warning(f"File not found: {arg}")
+
+            except Exception as e:
+                self.log_exception(f"Unexpected error resolving '{arg}': {e}")
+
+        # ------------------------------------------------------------------
+        # Attempt 2: Build paths containing spaces
+        # ------------------------------------------------------------------
         if not file_path:
+            self.log_info("Attempt 1 failed.")
+            self.log_info("Attempt 2: Combining arguments into progressively longer paths.")
+
             path_so_far = []
+
             for arg in args:
                 path_so_far.append(arg)
+
+                candidate = " ".join(path_so_far)
+
+                self.log_info(f"Trying combined path: '{candidate}'")
+
                 try:
-                    file_path = resolve(Path(' '.join(path_so_far)), is_strict=True)
-                    if file_path.is_file():
+                    resolved = resolve(Path(candidate), is_strict=True)
+                    self.log_info(f"Resolved candidate: {resolved}")
+
+                    if resolved.is_file():
+                        self.log_info("Combined path is a valid file.")
+                        file_path = resolved
                         break
                     else:
-                        file_path = None
+                        self.log_warning(
+                            f"Combined path exists but is not a file: {resolved}"
+                        )
+
                 except FileNotFoundError:
-                    file_path = None
+                    self.log_warning(f"Combined path not found: {candidate}")
+
+                except Exception as e:
+                    self.log_exception(
+                        f"Unexpected error resolving combined path '{candidate}': {e}"
+                    )
+
+        # ------------------------------------------------------------------
+        # Final result
+        # ------------------------------------------------------------------
+        if file_path:
+            self.log_info(f"Candidate file located: {file_path}")
+            self.log_info(f"File suffix: {file_path.suffix}")
+
+            if file_path.suffix in ['.osz', '.oszl']:
+                self.log_info("Recognized OpenLP service file. Loading service.")
+                self.service_manager_contents.load_file(file_path)
+                self.log_info("Service loaded successfully.")
             else:
-                file_path = None
-        if file_path and file_path.suffix in ['.osz', '.oszl']:
-            self.log_info("File name found")
-            self.service_manager_contents.load_file(file_path)
+                self.log_warning(
+                    f"Unsupported file type '{file_path.suffix}'. "
+                    "Expected '.osz' or '.oszl'."
+                )
         else:
-            self.log_error(f"File {file_path} not found for arg {args}")
+            self.log_warning("No valid file could be resolved from the supplied arguments.")
+            self.log_warning(f"Processed arguments: {args}")
+
+        self.log_info("Finished command line file processing.")
+        self.log_info("=" * 80)
+
+    # def open_cmd_line_files(self, args: list):
+    #     """
+    #     Open files passed in through command line arguments
+    #
+    #     :param list[str] args: List of remaining positional arguments
+    #     """
+    #     self.log_info(args)
+    #     # Drop this argument, it's obvs not a filename
+    #     if '--disable-web-security' in args:
+    #         args.remove('--disable-web-security')
+    #     # strip platform args, not a filename either
+    #     try:
+    #         platform_idx = args.index('-platform')
+    #         if platform_idx >= 0:
+    #             # remove the platform arg
+    #             args.pop(platform_idx)
+    #             # remove the platform input
+    #             args.pop(platform_idx)
+    #     except (ValueError, IndexError):
+    #         pass
+    #     # It has been known for Microsoft to double quote the path passed in and then encode one of the quotes.
+    #     # Remove these to get the correct path.
+    #     args = list(map(lambda x: x.replace('&quot;', ''), args))
+    #     # Loop through the parameters, and see if we can pull a file out
+    #     file_path = None
+    #     for arg in args:
+    #         try:
+    #             # Resolve the file, and use strict mode to throw an exception if the file does not exist
+    #             file_path = resolve(Path(arg), is_strict=True)
+    #             # Check if this is actually a file
+    #             if file_path.is_file():
+    #                 break
+    #             else:
+    #                 file_path = None
+    #         except FileNotFoundError:
+    #             file_path = None
+    #     # If none of the individual components are files, let's try pulling them together
+    #     if not file_path:
+    #         path_so_far = []
+    #         for arg in args:
+    #             path_so_far.append(arg)
+    #             try:
+    #                 file_path = resolve(Path(' '.join(path_so_far)), is_strict=True)
+    #                 if file_path.is_file():
+    #                     break
+    #                 else:
+    #                     file_path = None
+    #             except FileNotFoundError:
+    #                 file_path = None
+    #         else:
+    #             file_path = None
+    #     if file_path and file_path.suffix in ['.osz', '.oszl']:
+    #         self.log_info("File name found")
+    #         self.service_manager_contents.load_file(file_path)
+    #     else:
+    #         self.log_error(f"File {file_path} not found for arg {args}")

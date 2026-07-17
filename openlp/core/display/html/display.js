@@ -765,6 +765,17 @@ var Display = {
     }
   },
   /**
+   * Set the test slide text and report whether it fits within the main area, in a
+   * single call. Pagination measures many candidate texts in a row, so combining
+   * both operations halves the number of synchronous round trips from Python.
+   * @param String text - Text to measure
+   * @returns {boolean} true when the text fits on the slide
+   */
+  setTextSlideAndCheckFit: function (text) {
+    Display.setTextSlide(text);
+    return Display.doesContentFit();
+  },
+  /**
    * Set image slides
    * @param {Object[]} slides - A list of images to add as JS objects [{"path": "url/to/file"}]
    */
@@ -929,6 +940,7 @@ var Display = {
    * Blank the screen
   */
   toBlack: function () {
+    Display._logTransition("toBlack");
     return new Promise((resolve, reject) => {
       /* Avoid race conditions where display goes to transparent and quickly goes to black */
       Display._abortLastTransitionOperation();
@@ -953,6 +965,7 @@ var Display = {
    * Hide all but theme background
   */
   toTheme: function () {
+    Display._logTransition("toTheme");
     return new Promise((resolve, reject) => {
       Display._abortLastTransitionOperation();
       /*
@@ -976,9 +989,20 @@ var Display = {
    * Hide everything (CAUTION: Causes a invisible mouse barrier)
   */
   toTransparent: function () {
+    Display._logTransition("toTransparent");
     return new Promise((resolve, reject) => {
       Display._abortLastTransitionOperation();
       var documentBody = $("body")[0];
+      /*
+        The body opacity transition below is what eventually resolves this promise. A CSS
+        transition only runs when the value actually changes, so capture whether the body
+        is already fully transparent BEFORE setting the style: in that case no
+        'transitionend' will ever fire and waiting for one would leave this promise (and
+        Python, which hides the window when it resolves) hanging forever. This happens
+        when Show Desktop is requested twice, or when a previous show()'s animation frame
+        was cancelled before it could restore the opacity.
+      */
+      var alreadyTransparent = window.getComputedStyle(documentBody).opacity === "0";
       documentBody.style.opacity = 0;
       if (!Reveal.isPaused()) {
         /*
@@ -988,17 +1012,7 @@ var Display = {
         document.body.classList.add('is-desktop');
         Reveal.togglePause();
       }
-      /*
-        Waiting for body transition to happen, now it would be safe to
-        hide the Webview (as other transitions were suppressed)
-      */
-      Display._abortLastTransitionOperation();
-      Display._addTransitionEndEventToBody(transitionEndEvent);
-      function transitionEndEvent(e) {
-        // Targeting only body
-        if (e.target != documentBody) {
-          return;
-        }
+      function finishTransparent() {
         /*
           Disabling all transitions (except body) to allow the Webview to attain the
           transparent state before it gets hidden by Qt.
@@ -1016,8 +1030,27 @@ var Display = {
         Display._requestAnimationFrameExclusive(function() {
           /* We're transparent now, aborting any transition event between */
           Display._abortLastTransitionOperation();
+          console.debug("[transition] toTransparent complete");
           resolve();
         });
+      }
+      if (alreadyTransparent) {
+        console.debug("[transition] toTransparent: body already transparent, completing immediately");
+        finishTransparent();
+        return;
+      }
+      /*
+        Waiting for body transition to happen, now it would be safe to
+        hide the Webview (as other transitions were suppressed)
+      */
+      Display._abortLastTransitionOperation();
+      Display._addTransitionEndEventToBody(transitionEndEvent);
+      function transitionEndEvent(e) {
+        // Targeting only body
+        if (e.target != documentBody) {
+          return;
+        }
+        finishTransparent();
       }
     });
   },
@@ -1025,6 +1058,7 @@ var Display = {
    * Show the screen
   */
   show: function () {
+    Display._logTransition("show");
     return new Promise((resolve, reject) => {
       var documentBody = $("body")[0];
       /*
@@ -1045,6 +1079,19 @@ var Display = {
         resolve();
       });
     });
+  },
+
+  /**
+   * Log a display state transition with the state it starts from, so that stuck or
+   * out-of-order mode switches can be diagnosed from the OpenLP log (JS console
+   * messages are forwarded to the Python logger).
+   * @param {string} name - The transition being started
+   */
+  _logTransition: function(name) {
+    var documentBody = $("body")[0];
+    console.debug("[transition] " + name + " requested: paused=" + Reveal.isPaused() +
+                  ", bodyOpacity=" + window.getComputedStyle(documentBody).opacity +
+                  ", bodyClasses=\"" + documentBody.className + "\"");
   },
 
   _reenableGlobalTransitions: function(afterCallback) {

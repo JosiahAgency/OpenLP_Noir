@@ -105,6 +105,7 @@ def main_window_reduced(settings, state):
             patch('openlp.core.ui.mainwindow.ServiceManager'), \
             patch('openlp.core.ui.mainwindow.ThemeManager'), \
             patch('openlp.core.ui.mainwindow.ProjectorManager'), \
+            patch('openlp.core.ui.mainwindow.LogViewerPanel'), \
             patch('openlp.core.ui.mainwindow.HttpServer'), \
             patch('openlp.core.ui.mainwindow.WebSocketServer'), \
             patch('openlp.core.ui.mainwindow.PluginForm'), \

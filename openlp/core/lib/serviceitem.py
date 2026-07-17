@@ -25,6 +25,7 @@ import datetime
 import logging
 import ntpath
 import os
+import time
 import uuid
 from copy import deepcopy
 from pathlib import Path
@@ -207,6 +208,8 @@ class ServiceItem(RegistryProperties):
         self._rendered_slides = []
         self._display_slides = []
 
+        start_time = time.perf_counter()
+        format_time = 0.0
         # Save rendered pages to this dict. In the case that a slide is used twice we can use the pages saved to
         # the dict instead of rendering them again.
         previous_pages = {}
@@ -218,7 +221,9 @@ class ServiceItem(RegistryProperties):
             if verse_tag in previous_pages and previous_pages[verse_tag][0] == raw_slide:
                 pages = previous_pages[verse_tag][1]
             else:
+                format_start_time = time.perf_counter()
                 pages = self.renderer.format_slide(raw_slide['text'], self)
+                format_time += time.perf_counter() - format_start_time
                 previous_pages[verse_tag] = (raw_slide, pages)
             for page in pages:
                 footer_html = None
@@ -242,6 +247,11 @@ class ServiceItem(RegistryProperties):
                 }
                 self._display_slides.append(display_slide)
                 index += 1
+        log.debug('_create_slides timing for "%s" (%s): total %.1f ms, %.1f ms in format_slide, '
+                  '%d raw slide(s) -> %d rendered slide(s)',
+                  self.title, getattr(self, 'name', 'unknown'), (time.perf_counter() - start_time) * 1000,
+                  format_time * 1000,
+                  len(self.slides), len(self._rendered_slides))
         self._creating_slides = False
 
     def _clear_slides_cache(self):

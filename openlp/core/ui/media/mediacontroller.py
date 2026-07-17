@@ -712,6 +712,18 @@ class MediaController(QtWidgets.QWidget, RegistryBase, LogMixin, RegistryPropert
             display = self._define_display(controller)
             display.raise_()
 
+    def _is_live_media_loaded(self) -> bool:
+        """
+        Whether the live controller currently has any media loaded. The per-plugin
+        blank/unblank hooks (e.g. songs_blank) fire on every display mode switch while a
+        song is live, but they must only act when the item actually involves media —
+        otherwise media_play() runs on an empty play item and, because is_background
+        defaults to False, hides the main display right after it was shown.
+        """
+        play_item = self.live_controller.media_play_item
+        return (play_item.media_type is not MediaType.Unused or bool(play_item.audio_file) or
+                bool(play_item.media_file) or bool(play_item.external_stream))
+
     def media_blank(self, msg: list):
         """
         Blank the related video Widget
@@ -728,6 +740,9 @@ class MediaController(QtWidgets.QWidget, RegistryBase, LogMixin, RegistryPropert
             # If pressing blank when the video is being removed, remove it instantly
             self._media_set_visibility(self.live_controller, False)
             self.media_reset(self.live_controller)
+            return
+        if not self._is_live_media_loaded():
+            self.log_debug('media_blank ignored: no media loaded for the live item')
             return
         if not self.live_controller.media_play_item.is_background:
             Registry().execute("live_display_hide", hide_mode)
@@ -750,8 +765,11 @@ class MediaController(QtWidgets.QWidget, RegistryBase, LogMixin, RegistryPropert
             Second element is the boolean for Live indication
         """
         is_live = msg[1]
-        self.log_debug(f"media_blank is_live:{is_live}")
+        self.log_debug(f"media_unblank is_live:{is_live}")
         if not is_live or self.live_kill_timer.isActive():
+            return
+        if not self._is_live_media_loaded():
+            self.log_debug('media_unblank ignored: no media loaded for the live item')
             return
         Registry().execute("live_display_show")
         if self.live_controller.media_play_item.is_playing != MediaState.Playing:

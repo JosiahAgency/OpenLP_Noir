@@ -810,6 +810,7 @@ class Settings(QtCore.QSettings):
             'shortcuts/toolsAddToolItem': [],
             'shortcuts/updateThemeImages': [],
             'shortcuts/up': [QtGui.QKeySequence(QtCore.Qt.Key.Key_Up)],
+            'shortcuts/viewLogViewerItem': [],
             'shortcuts/viewProjectorManagerItem': [QtGui.QKeySequence(QtCore.Qt.Key.Key_F6)],
             'shortcuts/viewThemeManagerItem': [QtGui.QKeySequence(QtCore.Qt.Key.Key_F10)],
             'shortcuts/viewMediaManagerItem': [QtGui.QKeySequence(QtCore.Qt.Key.Key_F8)],

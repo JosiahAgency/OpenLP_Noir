@@ -1138,7 +1138,9 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         """
         Blank/Hide the display screen (within a plugin if required).
         """
-        self.log_debug('set_hide_mode {text}'.format(text=hide_mode))
+        self.log_debug('set_hide_mode: {old} -> {new} (live={live}, item={item})'.format(
+            old=self._current_hide_mode, new=hide_mode, live=self.is_live,
+            item=getattr(self.service_item, 'name', None) if self.service_item else None))
         self._current_hide_mode = hide_mode
         # Reflect the on-air state in the live indicator (red while the output is showing)
         if self.is_live:
@@ -1158,18 +1160,23 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         self.blank_screen.setChecked(hide_mode == HideMode.Blank)
         self.theme_screen.setChecked(hide_mode == HideMode.Theme)
         self.desktop_screen.setChecked(hide_mode == HideMode.Screen)
-        # Update plugin display
+        # Update plugin display. The per-plugin blank/unblank hooks are optional: only
+        # plugins whose items drive their own display (e.g. presentations) register them,
+        # so they are only fired when registered rather than logging a "not registered"
+        # error for every other plugin.
         if self.service_item is not None:
             if hide_mode:
                 if not self.service_item.is_command():
                     Registry().execute('live_display_hide', hide_mode)
-                Registry().execute('{text}_blank'.format(text=self.service_item.name.lower()),
-                                   [self.service_item, self.is_live, hide_mode])
+                blank_event = '{text}_blank'.format(text=self.service_item.name.lower())
+                if Registry().has_function(blank_event):
+                    Registry().execute(blank_event, [self.service_item, self.is_live, hide_mode])
             else:
                 if not self.service_item.is_command():
                     Registry().execute('live_display_show')
-                Registry().execute('{text}_unblank'.format(text=self.service_item.name.lower()),
-                                   [self.service_item, self.is_live])
+                unblank_event = '{text}_unblank'.format(text=self.service_item.name.lower())
+                if Registry().has_function(unblank_event):
+                    Registry().execute(unblank_event, [self.service_item, self.is_live])
         else:
             if hide_mode:
                 Registry().execute('live_display_hide', hide_mode)

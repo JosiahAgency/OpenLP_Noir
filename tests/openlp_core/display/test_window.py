@@ -427,8 +427,9 @@ def test_run_in_display_no_sync_no_wait(mocked_wait_for, display_window_env, moc
     """
     test a script is run on the webview
     """
-    # GIVEN: A (fake) webengine page
+    # GIVEN: A (fake) webengine page on a loaded display page
     display_window = DisplayWindow()
+    display_window._is_page_loaded = True
     webengine_page = MagicMock()
     display_window.webview.page = MagicMock(return_value=webengine_page)
 
@@ -440,6 +441,49 @@ def test_run_in_display_no_sync_no_wait(mocked_wait_for, display_window_env, moc
     assert mocked_wait_for.call_count == 1, 'wait_for should have only been called once'
 
 
+def test_run_javascript_queued_before_page_loaded(display_window_env, mock_settings):
+    """
+    Test that javascript requested before the page has loaded is queued instead of being
+    injected into the page (which would throw "ReferenceError: requestAction is not defined")
+    """
+    # GIVEN: A display window whose page has not finished loading
+    display_window = DisplayWindow()
+    webengine_page = MagicMock()
+    display_window.webview.page = MagicMock(return_value=webengine_page)
+    assert display_window._is_page_loaded is False
+
+    # WHEN: javascript is requested to run asynchronously
+    display_window._run_javascript('requestAction(\'show\')')
+
+    # THEN: The script should be queued, not run
+    webengine_page.runJavaScript.assert_not_called()
+    assert display_window._pending_javascript == ['requestAction(\'show\')']
+
+
+def test_after_loaded_runs_queued_javascript(display_window_env, mock_settings, registry):
+    """
+    Test that scripts queued before the page loaded are run by after_loaded
+    """
+    # GIVEN: A display window with a queued script
+    display_window = DisplayWindow()
+    display_window.is_display = True
+    mock_settings.value.return_value = True
+    display_window._is_initialised = True
+    display_window.run_in_display = MagicMock()
+    display_window.set_scale = MagicMock()
+    display_window.set_startup_screen = MagicMock()
+    display_window._run_javascript = MagicMock()
+    display_window._pending_javascript = ['requestAction(\'show\')']
+
+    # WHEN: after_loaded is run
+    display_window.after_loaded()
+
+    # THEN: The page should be marked as loaded and the queued script should have been run
+    assert display_window._is_page_loaded is True
+    display_window._run_javascript.assert_called_once_with('requestAction(\'show\')')
+    assert display_window._pending_javascript == []
+
+
 @patch('openlp.core.display.window.wait_for')
 def test_run_in_display_sync_no_wait(mocked_wait_for, display_window_env, mock_settings):
     """
@@ -448,6 +492,7 @@ def test_run_in_display_sync_no_wait(mocked_wait_for, display_window_env, mock_s
     # GIVEN: A (fake) webengine page with a js callback fn
     mocked_wait_for.return_value = True
     display_window = DisplayWindow()
+    display_window._is_page_loaded = True
     display_window.webview = MagicMock()
     webengine_page = MagicMock()
 

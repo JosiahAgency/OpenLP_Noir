@@ -27,6 +27,7 @@ import mako
 import math
 import os
 import re
+import time
 
 from PySide6 import QtWidgets, QtGui
 
@@ -552,6 +553,17 @@ class ThemePreviewRenderer(DisplayWindow, LogMixin):
         """
         super().__init__(*args, **kwargs)
         self.force_page = False
+        self._reset_fit_instrumentation()
+
+    def _reset_fit_instrumentation(self):
+        """
+        Reset the per-run fit-check cache and the timing counters which feed the
+        summary logged at the end of :meth:`format_slide`.
+        """
+        self._fit_cache = {}
+        self._fit_check_count = 0
+        self._fit_check_time = 0.0
+        self._fit_cache_hits = 0
 
     def calculate_line_count(self):
         """
@@ -626,9 +638,15 @@ class ThemePreviewRenderer(DisplayWindow, LogMixin):
         """
         wait_for(lambda: self._is_initialised)
         self.log_debug('format slide')
+        start_time = time.perf_counter()
+        text_length = len(text)
+        self._reset_fit_instrumentation()
+        theme_time = 0.0
         if item:
             # Set theme for preview
+            theme_start_time = time.perf_counter()
             self.set_theme(item.get_theme_data(self.theme_level))
+            theme_time = time.perf_counter() - theme_start_time
         # Add line endings after each line of text used for bibles.
         line_end = '<br>'
         if item and item.is_capable(ItemCapabilities.NoLineBreaks):
@@ -636,14 +654,18 @@ class ThemePreviewRenderer(DisplayWindow, LogMixin):
         # Bibles
         if item and item.name == 'bibles':
             if item.is_capable(ItemCapabilities.CanWordSplit):
+                strategy = 'bible word split'
                 pages = self._paginate_slide_words(text.split('\n'), line_end)
             else:
                 if item.is_capable(ItemCapabilities.NoLineBreaks):
+                    strategy = 'bible no line breaks'
                     pages = self._paginate_slide(text.split('\n'), "")
                 else:
+                    strategy = 'bible lines'
                     pages = self._paginate_slide(text.split('\n'), line_end)
         # Songs and Custom
         elif item is None or (item and item.is_capable(ItemCapabilities.CanSoftBreak)):
+            strategy = 'soft break'
             pages = []
             if '[---]' in text:
                 # Remove Overflow split if at start of the text
@@ -710,14 +732,20 @@ class ThemePreviewRenderer(DisplayWindow, LogMixin):
         # Other text items whose words may be split across slides (e.g. EGW Library
         # paragraphs, which are single long lines that _paginate_slide cannot break)
         elif item.is_capable(ItemCapabilities.CanWordSplit):
+            strategy = 'word split'
             pages = self._paginate_slide_words(text.split('\n'), line_end)
         else:
+            strategy = 'lines'
             pages = self._paginate_slide(text.split('\n'), line_end)
         new_pages = []
         for page in pages:
             while page.endswith('<br>'):
                 page = page[:-4]
             new_pages.append(page)
+        log.debug('format_slide timing: total %.1f ms (set_theme %.1f ms), strategy "%s", %d chars in, '
+                  '%d page(s) out, %d fit check(s) taking %.1f ms, %d fit cache hit(s)',
+                  (time.perf_counter() - start_time) * 1000, theme_time * 1000, strategy, text_length,
+                  len(new_pages), self._fit_check_count, self._fit_check_time * 1000, self._fit_cache_hits)
         return new_pages
 
     def _paginate_slide(self, lines, line_end):
@@ -868,13 +896,29 @@ class ThemePreviewRenderer(DisplayWindow, LogMixin):
         """
         if text == '':
             return True
-        self.clear_slides()
+        # The result only depends on the text and the theme, and the theme is fixed for the
+        # duration of a format_slide() run (which resets this cache), so repeated measurements
+        # of the same text can be answered without a round trip into the web engine.
+        does_text_fit = self._fit_cache.get(text)
+        if does_text_fit is not None:
+            self._fit_cache_hits += 1
+            return does_text_fit
+        check_start_time = time.perf_counter()
         self.log_debug('_text_fits_on_slide: 1\n{text}'.format(text=text))
         # run_in_display JSON-encodes the parameters, so the text must not be escaped here,
         # otherwise stray backslashes end up in the measured text and skew the result.
-        self.run_in_display('setTextSlide', text, is_sync=True)
-        self.log_debug('_text_fits_on_slide: 2')
-        does_text_fit = self.run_in_display('doesContentFit', is_sync=True)
+        # Note: the slides are deliberately NOT cleared first. Clearing wipes the slide registry
+        # on the JS side, which forces setTextSlide to rebuild the DOM and reinitialise Reveal
+        # for every measurement instead of just swapping the text of the existing test slide.
+        does_text_fit = self.run_in_display('setTextSlideAndCheckFit', text, is_sync=True)
+        if does_text_fit is None:
+            # A custom display (display_custom_url) may not implement setTextSlideAndCheckFit,
+            # so fall back to the older two-call protocol.
+            self.run_in_display('setTextSlide', text, is_sync=True)
+            does_text_fit = self.run_in_display('doesContentFit', is_sync=True)
+        self._fit_check_count += 1
+        self._fit_check_time += time.perf_counter() - check_start_time
+        self._fit_cache[text] = does_text_fit
         return does_text_fit
 
     def save_screenshot(self, fname=None):
