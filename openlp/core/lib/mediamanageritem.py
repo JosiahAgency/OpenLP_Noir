@@ -250,6 +250,7 @@ class MediaManagerItem(QtWidgets.QWidget, RegistryProperties, LogMixin):
                                  text=self.plugin.get_string(StringContent.Live)['title'],
                                  icon=UiIcons().live,
                                  can_shortcuts=True,
+                                 category=self.title,
                                  triggers=self.on_live_click)
         if self.can_add_to_service:
             create_widget_action(self.list_view,
