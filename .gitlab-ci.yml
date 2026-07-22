@@ -54,10 +54,9 @@ test-debian:
     - pipx install hatch
     - pipx ensurepath
     - source ~/.bashrc
+    - apt-get remove -y python3-pymupdf || true
+    - pip install --break-system-packages --upgrade pymupdf
     - sh scripts/generate_resources.sh
-    # The PyMuPDF tests run in their own process: mupdf segfaults when it shares a
-    # process with LibreOffice's pyuno (loaded by the presentations tests). The
-    # second run appends its coverage and emits the combined reports.
     - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings --cov openlp --cov-report= --ignore tests/openlp_plugins/egwlibrary/test_pdfimport.py
     - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings --cov openlp --cov-append --cov-report term --cov-report xml:coverage.xml tests/openlp_plugins/egwlibrary/test_pdfimport.py
     - mv .coverage linux.coverage
@@ -79,11 +78,11 @@ test-ubuntu:
     - pipx install hatch
     - pipx ensurepath
     - source ~/.bashrc
+    - pip install --break-system-packages --upgrade pymupdf
     - sh scripts/generate_resources.sh
-    # The PyMuPDF tests run in their own process: mupdf segfaults when it shares a
-    # process with LibreOffice's pyuno (loaded by the presentations tests).
-    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings --ignore tests/openlp_plugins/egwlibrary/test_pdfimport.py
-    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings tests/openlp_plugins/egwlibrary/test_pdfimport.py
+    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings
+#    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings --ignore tests/openlp_plugins/egwlibrary/test_pdfimport.py
+#    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings tests/openlp_plugins/egwlibrary/test_pdfimport.py
   rules:
     - if: $CI_COMMIT_TAG == null
 

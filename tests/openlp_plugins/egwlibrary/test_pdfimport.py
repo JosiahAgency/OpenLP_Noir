@@ -93,7 +93,7 @@ def test_convert_pdf_book(tmp_path):
     assert book_data['language'] == 'en'
     # THEN: The chapters, paragraph pages and hyphenation repair are correct
     assert [(chapter['number'], chapter['title']) for chapter in book_data['chapters']] == \
-        [(1, 'God With Us'), (2, 'The Chosen People')]
+           [(1, 'God With Us'), (2, 'The Chosen People')]
     chapter_one = book_data['chapters'][0]
     assert chapter_one['paragraphs'] == [
         # The swallowed page break: body of chapter 1 is page 19, not 18
@@ -166,4 +166,3 @@ def test_guess_defaults():
     assert guess_defaults('GC.pdf', '') == ('', 'GC', 'en')
     # A stem that is not an abbreviation-shaped name yields no abbreviation
     assert guess_defaults('my scanned book.pdf', 'My Book') == ('My Book', '', 'en')
-

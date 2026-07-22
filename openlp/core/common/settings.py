@@ -25,10 +25,10 @@ import datetime
 import itertools
 import json
 import logging
-import plistlib
 import os
-from enum import IntEnum
+import plistlib
 from contextlib import suppress
+from enum import IntEnum
 from pathlib import Path
 from tempfile import gettempdir
 
@@ -45,7 +45,6 @@ from openlp.core.ui.style import UiThemes
 if is_win():
     import winreg
 
-
 log = logging.getLogger(__name__)
 
 __version__ = 4
@@ -61,7 +60,7 @@ TODAY = QtCore.QDate.currentDate()
 
 # Fix for bug #1014422.
 X11_BYPASS_DEFAULT = True
-if is_linux():                                                                              # pragma: no cover
+if is_linux():  # pragma: no cover
     # Default to False on Gnome.
     X11_BYPASS_DEFAULT = bool(not os.environ.get('GNOME_DESKTOP_SESSION_ID'))
     # Default to False on Xfce.
@@ -140,6 +139,7 @@ if is_win():
         with suppress(WindowsError), winreg.OpenKey(winreg.HKEY_CURRENT_USER, path, 0, winreg.KEY_READ) as k:
             for i in itertools.count():
                 yield winreg.EnumKey(k, i)
+
 
     def _wingreg_subvalues(path):
         """
@@ -483,14 +483,14 @@ class Settings(QtCore.QSettings):
         'songs/disable chords import': False,
         'songs/auto play audio': False,
         'songs/uppercase songs': False,
-        'songs/preview_enabled': False,       # Master switch for preview group box
-        'songs/preview_intro': True,         # Show intro strophes in preview by default
-        'songs/preview_verse': True,         # Show verses in preview
-        'songs/preview_chorus': True,        # Show chorus in preview
-        'songs/preview_bridge': True,        # Show bridge in preview
-        'songs/preview_pre_chorus': True,    # Show pre-chorus in preview
-        'songs/preview_ending': True,        # Show ending in preview
-        'songs/preview_other': True,         # Show "other" strophes in preview
+        'songs/preview_enabled': False,  # Master switch for preview group box
+        'songs/preview_intro': True,  # Show intro strophes in preview by default
+        'songs/preview_verse': True,  # Show verses in preview
+        'songs/preview_chorus': True,  # Show chorus in preview
+        'songs/preview_bridge': True,  # Show bridge in preview
+        'songs/preview_pre_chorus': True,  # Show pre-chorus in preview
+        'songs/preview_ending': True,  # Show ending in preview
+        'songs/preview_other': True,  # Show "other" strophes in preview
         'songusage/status': PluginStatus.Inactive,
         'songusage/db type': 'sqlite',
         'songusage/db username': '',
@@ -693,14 +693,16 @@ class Settings(QtCore.QSettings):
             'shortcuts/listViewBiblesPreviewItem': [QtGui.QKeySequence(QtCore.Qt.Key.Key_Return),
                                                     QtGui.QKeySequence(QtCore.Qt.Key.Key_Enter)],
             'shortcuts/listViewBiblesLiveItem': [QtGui.QKeySequence(QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Enter),
-                                                 QtGui.QKeySequence(QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Return)],
+                                                 QtGui.QKeySequence(
+                                                     QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Return)],
             'shortcuts/listViewBiblesServiceItem': [QtGui.QKeySequence(QtCore.Qt.Key.Key_Plus),
                                                     QtGui.QKeySequence(QtCore.Qt.Key.Key_Equal)],
             'shortcuts/listViewCustomDeleteItem': [QtGui.QKeySequence(QtGui.QKeySequence.StandardKey.Delete)],
             'shortcuts/listViewCustomPreviewItem': [QtGui.QKeySequence(QtCore.Qt.Key.Key_Return),
                                                     QtGui.QKeySequence(QtCore.Qt.Key.Key_Enter)],
             'shortcuts/listViewCustomLiveItem': [QtGui.QKeySequence(QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Enter),
-                                                 QtGui.QKeySequence(QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Return)],
+                                                 QtGui.QKeySequence(
+                                                     QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Return)],
             'shortcuts/listViewCustomServiceItem': [QtGui.QKeySequence(QtCore.Qt.Key.Key_Plus),
                                                     QtGui.QKeySequence(QtCore.Qt.Key.Key_Equal)],
             'shortcuts/listViewEgwlibraryDeleteItem': [QtGui.QKeySequence(QtGui.QKeySequence.StandardKey.Delete)],
@@ -716,7 +718,8 @@ class Settings(QtCore.QSettings):
             'shortcuts/listViewImagesPreviewItem': [QtGui.QKeySequence(QtCore.Qt.Key.Key_Return),
                                                     QtGui.QKeySequence(QtCore.Qt.Key.Key_Enter)],
             'shortcuts/listViewImagesLiveItem': [QtGui.QKeySequence(QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Enter),
-                                                 QtGui.QKeySequence(QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Return)],
+                                                 QtGui.QKeySequence(
+                                                     QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Return)],
             'shortcuts/listViewImagesServiceItem': [QtGui.QKeySequence(QtCore.Qt.Key.Key_Plus),
                                                     QtGui.QKeySequence(QtCore.Qt.Key.Key_Equal)],
             'shortcuts/listViewMediaDeleteItem': [QtGui.QKeySequence(QtGui.QKeySequence.StandardKey.Delete)],
