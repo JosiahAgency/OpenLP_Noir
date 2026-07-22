@@ -90,6 +90,7 @@ class InfoLabel(QtWidgets.QLabel):
         metrics = QtGui.QFontMetrics(self.font())
         elided = metrics.elidedText(self.text(), QtCore.Qt.TextElideMode.ElideRight, self.width())
         painter.drawText(self.rect(), QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter, elided)
+        painter.end()
 
     def setText(self, text):
         """

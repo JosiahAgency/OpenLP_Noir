@@ -22,7 +22,9 @@
 """
 A compatibility entrypoint for OpenLP
 """
+import os
 from openlp import __main__
 
+os.environ.setdefault("QTWEBENGINE_DISABLE_SANDBOX", "1")
 if __name__ == '__main__':
     __main__.start()

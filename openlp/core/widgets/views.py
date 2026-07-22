@@ -797,6 +797,7 @@ class ListWidgetWithDnD(QtWidgets.QListWidget):
             painter = QtGui.QPainter(viewport)
             if self._is_noir_theme():
                 self._paint_noir_empty_state(painter, viewport)
+                painter.end()
                 return
             font = QtGui.QFont()
             font.setItalic(True)
@@ -804,6 +805,7 @@ class ListWidgetWithDnD(QtWidgets.QListWidget):
             painter.drawText(QtCore.QRect(0, 0, viewport.width(), viewport.height()),
                              (QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.TextFlag.TextWordWrap),
                              self.no_results_text)
+            painter.end()
 
 
 class TreeWidgetWithDnD(QtWidgets.QTreeWidget):

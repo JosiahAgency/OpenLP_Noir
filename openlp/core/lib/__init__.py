@@ -390,6 +390,7 @@ def resize_image(image_path, width, height, background='#000000', ignore_aspect_
     painter = QtGui.QPainter(new_image)
     painter.fillRect(new_image.rect(), QtGui.QColor(background))
     painter.drawImage((width - real_width) // 2, (height - real_height) // 2, preview)
+    painter.end()
     return new_image
 
 
