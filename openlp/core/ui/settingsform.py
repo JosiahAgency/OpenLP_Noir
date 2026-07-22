@@ -136,7 +136,11 @@ class SettingsForm(QtWidgets.QDialog, Ui_SettingsDialog, RegistryProperties):
                     tab_widget.save()
         # Now lets process all the post save handlers
         while self.processes:
-            Registry().execute(self.processes.pop(0))
+            process = self.processes.pop(0)
+            if isinstance(process, tuple):
+                Registry().execute(process[0], *process[1:])
+            else:
+                Registry().execute(process)
         return QtWidgets.QDialog.accept(self)
 
     def reject(self):
@@ -204,14 +208,20 @@ class SettingsForm(QtWidgets.QDialog, Ui_SettingsDialog, RegistryProperties):
                 self.stacked_layout.setCurrentIndex(tab_index)
                 self.stacked_layout.currentWidget().tab_visible()
 
-    def register_post_process(self, function):
+    def register_post_process(self, function, *args):
         """
         Register for updates to be done on save removing duplicate functions
 
-        :param function:  The function to be called
+        :param function: The event name or function to be called
+        :param args: Optional arguments to pass to the event handler
         """
-        if function not in self.processes:
-            self.processes.append(function)
+        if args:
+            process_tuple = (function,) + args
+            if process_tuple not in self.processes:
+                self.processes.append(process_tuple)
+        else:
+            if function not in self.processes:
+                self.processes.append(function)
 
     def provide_help(self):
         """

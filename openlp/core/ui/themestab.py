@@ -167,7 +167,7 @@ class ThemesTab(SettingsTab):
         if global_theme != self.global_theme:
             self.settings_form.register_post_process('reload_global_theme')
         if self.tab_visited:
-            self.settings_form.register_post_process('theme_update_list')
+            self.settings_form.register_post_process('theme_update_list', self.theme_manager.get_theme_names())
         self.tab_visited = False
 
     def on_song_level_button_clicked(self):
