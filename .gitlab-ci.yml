@@ -40,10 +40,7 @@ test-pypi:
   script:
     - pip install -e '.[darkstyle,mysql,odbc,postgresql,spellcheck,sword-bibles,test]'
     - sh scripts/generate_resources.sh
-    # The PyMuPDF tests run in their own process: mupdf segfaults when it shares a
-    # process with LibreOffice's pyuno (loaded by the presentations tests).
-    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings --ignore tests/openlp_plugins/egwlibrary/test_pdfimport.py
-    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings tests/openlp_plugins/egwlibrary/test_pdfimport.py
+    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings
   rules:
     - if: $CI_COMMIT_TAG == null
 
@@ -54,11 +51,8 @@ test-debian:
     - pipx install hatch
     - pipx ensurepath
     - source ~/.bashrc
-    - apt-get remove -y python3-pymupdf || true
-    - pip install --break-system-packages --upgrade pymupdf
     - sh scripts/generate_resources.sh
-    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings --cov openlp --cov-report= --ignore tests/openlp_plugins/egwlibrary/test_pdfimport.py
-    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings --cov openlp --cov-append --cov-report term --cov-report xml:coverage.xml tests/openlp_plugins/egwlibrary/test_pdfimport.py
+    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings --cov openlp --cov-report term --cov-report xml:coverage.xml
     - mv .coverage linux.coverage
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   artifacts:
@@ -78,11 +72,10 @@ test-ubuntu:
     - pipx install hatch
     - pipx ensurepath
     - source ~/.bashrc
-    - pip install --break-system-packages --upgrade pymupdf
+    - apt-get remove -y python3-pymupdf
+    - pip install --break-system-packages pymupdf==1.28.0
     - sh scripts/generate_resources.sh
     - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings
-#    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings --ignore tests/openlp_plugins/egwlibrary/test_pdfimport.py
-#    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings tests/openlp_plugins/egwlibrary/test_pdfimport.py
   rules:
     - if: $CI_COMMIT_TAG == null
 
@@ -91,10 +84,7 @@ test-fedora:
   image: $IMAGE_BASE/fedora
   script:
     - sh scripts/generate_resources.sh
-    # The PyMuPDF tests run in their own process: mupdf segfaults when it shares a
-    # process with LibreOffice's pyuno (loaded by the presentations tests).
-    - xvfb-run -s '-screen 0 1024x768x24' pytest-3 --color=no --disable-warnings --ignore tests/openlp_plugins/egwlibrary/test_pdfimport.py
-    - xvfb-run -s '-screen 0 1024x768x24' pytest-3 --color=no --disable-warnings tests/openlp_plugins/egwlibrary/test_pdfimport.py
+    - xvfb-run -s '-screen 0 1024x768x24' pytest-3 --color=no --disable-warnings
     # - xwfb-run -c weston -s \\-geometry -s 1024x768x24 -- pytest
   rules:
     - if: $CI_COMMIT_TAG == null
@@ -104,10 +94,7 @@ test-arch:
   image: $IMAGE_BASE/arch
   script:
     - sh scripts/generate_resources.sh
-    # The PyMuPDF tests run in their own process: mupdf segfaults when it shares a
-    # process with LibreOffice's pyuno (loaded by the presentations tests).
-    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings --ignore tests/openlp_plugins/egwlibrary/test_pdfimport.py
-    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings tests/openlp_plugins/egwlibrary/test_pdfimport.py
+    - xvfb-run -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings
   rules:
     - if: $CI_COMMIT_TAG == null
 
@@ -152,18 +139,14 @@ test-macos:
     - export HOMEBREW_NO_ENV_HINTS=TRUE
     - "# Installing PyICU"
     - brew install pkg-config icu4c
-    -
-      export PATH="$PATH:/opt/homebrew/opt/icu4c/bin:/opt/homebrew/opt/icu4c/sbin"
+    - export PATH="$PATH:/opt/homebrew/opt/icu4c/bin:/opt/homebrew/opt/icu4c/sbin"
     - export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/opt/homebrew/opt/icu4c/lib/pkgconfig"
     - "# Installing UV"
     - curl --show-error --silent --fail --location https://astral.sh/uv/install.sh | sh
     - source $HOME/.local/bin/env
     - uv python pin $PYTHON_VERSION_WINDOWS_AND_MACOS
-    - !reference [.install_dependencies, script]
-    - !reference [.run_tests, script]
-  rules:
-    # Run only on the main upstream repository and avoid tag releases
-    - if: $CI_PROJECT_NAMESPACE == "openlp" && $CI_COMMIT_TAG == null
+    - !reference [ .install_dependencies, script ]
+    - !reference [ .run_tests, script ]
 
 test-windows:
   stage: test
@@ -189,13 +172,13 @@ test-windows:
     - Unblock-File -Path "$env:Temp\$zipFileName"
     - "# Extracting the ZIP file"
     - Expand-Archive -Path "$env:Temp\$zipFileName" -DestinationPath "$env:WinDir\System32"
-    - !reference [.install_dependencies, script]
+    - !reference [ .install_dependencies, script ]
     - $pyIcuVersion = '2.16.2'
     - $pythonVersion = $env:PYTHON_VERSION_WINDOWS_AND_MACOS.Replace('.', '').Substring(0, 3)
     - $pyIcuPackageFileName = "PyICU-$pyIcuVersion-cp$pythonVersion-cp$pythonVersion-win_amd64.whl"
     - "# Installing PyICU for Windows from GitHub"
     - uv add "https://github.com/cgohlke/pyicu-build/releases/download/v$pyIcuVersion/$pyIcuPackageFileName"
-    - !reference [.run_tests, script]
+    - !reference [ .run_tests, script ]
   rules:
     - if: $CI_COMMIT_TAG == null
 
@@ -214,17 +197,17 @@ build-source:
   variables:
     GIT_STRATEGY: clone
   script: |
-      mkdir -p dist
-      if [ "$CI_COMMIT_TAG" != "" ]; then
-          echo -n "$CI_COMMIT_TAG" >! openlp/.version
-          git archive -o "dist/OpenLP-${CI_COMMIT_TAG}.tar.gz" --add-file=openlp/.version "$CI_COMMIT_TAG" .
-      else
-          pip install hatch
-          git fetch --unshallow --tags
-          VERSION=`hatch version`
-          echo -n "$VERSION" > openlp/.version
-          git archive -o "dist/OpenLP-${VERSION}.tar.gz" --add-file=openlp/.version HEAD .
-      fi
+    mkdir -p dist
+    if [ "$CI_COMMIT_TAG" != "" ]; then
+        echo -n "$CI_COMMIT_TAG" >! openlp/.version
+        git archive -o "dist/OpenLP-${CI_COMMIT_TAG}.tar.gz" --add-file=openlp/.version "$CI_COMMIT_TAG" .
+    else
+        pip install hatch
+        git fetch --unshallow --tags
+        VERSION=`hatch version`
+        echo -n "$VERSION" > openlp/.version
+        git archive -o "dist/OpenLP-${VERSION}.tar.gz" --add-file=openlp/.version HEAD .
+    fi
   artifacts:
     name: $CI_COMMIT_REF_SLUG
     paths:
@@ -239,22 +222,22 @@ build-flatpak:
   variables:
     GIT_STRATEGY: clone
   script: |
-      mkdir -p dist
-      if [ "$CI_COMMIT_TAG" != "" ]; then
-          VERSION="${CI_COMMIT_TAG}"
-      else
-          pipx install hatch
-          pipx ensurepath
-          source /root/.bashrc
-          git fetch --unshallow --tags
-          VERSION=`hatch version`
-      fi
-      echo -n "$VERSION" > openlp/.version
-      # Download packaging repo
-      curl -SL "https://gitlab.com/${CI_PROJECT_NAMESPACE}/${PACKAGING_REPOSITORY_NAME}/-/archive/${PACKAGING_BRANCH_NAME}/${PACKAGING_ZIP_FILE_NAME}" -o "/tmp/${PACKAGING_ZIP_FILE_NAME}"
-      unzip "/tmp/${PACKAGING_ZIP_FILE_NAME}"
-      cd ${PACKAGING_DIRECTORY_NAME}
-      python3 builders/flatpak-builder.py --project ${CI_PROJECT_ID} --token ${CI_JOB_TOKEN} --token-type ci "$VERSION"
+    mkdir -p dist
+    if [ "$CI_COMMIT_TAG" != "" ]; then
+        VERSION="${CI_COMMIT_TAG}"
+    else
+        pipx install hatch
+        pipx ensurepath
+        source /root/.bashrc
+        git fetch --unshallow --tags
+        VERSION=`hatch version`
+    fi
+    echo -n "$VERSION" > openlp/.version
+    # Download packaging repo
+    curl -SL "https://gitlab.com/${CI_PROJECT_NAMESPACE}/${PACKAGING_REPOSITORY_NAME}/-/archive/${PACKAGING_BRANCH_NAME}/${PACKAGING_ZIP_FILE_NAME}" -o "/tmp/${PACKAGING_ZIP_FILE_NAME}"
+    unzip "/tmp/${PACKAGING_ZIP_FILE_NAME}"
+    cd ${PACKAGING_DIRECTORY_NAME}
+    python3 builders/flatpak-builder.py --project ${CI_PROJECT_ID} --token ${CI_JOB_TOKEN} --token-type ci "$VERSION"
   artifacts:
     name: $CI_COMMIT_REF_SLUG
     paths:
@@ -269,7 +252,7 @@ build-windows:
   variables:
     GIT_STRATEGY: clone
   script:
-    - !reference [test-windows, script]
+    - !reference [ test-windows, script ]
     - "# Installing WiX Toolset"
     - choco install wixtoolset --ignore-dependencies
     - "# Refreshing the environment"
@@ -281,7 +264,7 @@ build-windows:
     - Set-Location '..'
     - "# Extracting the ZIP file"
     - Expand-Archive -Path "$env:Temp\$zipFileName" -DestinationPath .
-    - !reference [.recompile_boot_loader_pyinstaller, script]
+    - !reference [ .recompile_boot_loader_pyinstaller, script ]
     - "# Downloading the necessary files for packaging from GitLab"
     - Invoke-WebRequest -OutFile "$env:Temp\$env:PACKAGING_ZIP_FILE_NAME" -Uri "https://gitlab.com/$env:CI_PROJECT_NAMESPACE/$env:PACKAGING_REPOSITORY_NAME/-/archive/$env:PACKAGING_BRANCH_NAME/$env:PACKAGING_ZIP_FILE_NAME"
     - "# Extracting the ZIP file"
@@ -302,14 +285,14 @@ build-macos:
   stage: build
   tags:
     - saas-macos-medium-m1
-  image: macos-15-xcode-16
+  image: macos-14-xcode-15
   variables:
     # Set environment variable QT_QPA_PLATFORM to offscreen to avoid UI troubles
     QT_QPA_PLATFORM: "offscreen"
     GIT_STRATEGY: clone
   extends: test-macos
   script:
-    - !reference [test-macos, script]
+    - !reference [ test-macos, script ]
     - "# Installing dmgbuild tool"
     - pip install --no-warn-script-location dmgbuild
     - "# Installing macholib"
