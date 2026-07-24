@@ -30,7 +30,7 @@ from PySide6 import QtCore, QtWidgets
 from openlp.core.common import sha256_file_hash
 from openlp.core.common.i18n import UiStrings, get_natural_key, translate
 from openlp.core.lib import check_item_selected
-from openlp.core.lib.mediamanageritem import MediaManagerItem
+from openlp.core.lib.mediamanageritem import MediaManagerItem, library_shortcut_actions
 from openlp.core.lib.plugin import StringContent
 from openlp.core.lib.ui import create_widget_action, critical_error_message_box
 from openlp.core.ui.folders import AddFolderForm, ChooseFolderForm
@@ -169,24 +169,13 @@ class FolderLibraryItem(MediaManagerItem):
                 icon=UiIcons().edit,
                 triggers=self.on_edit_click)
             create_widget_action(self.list_view, separator=True)
+        # The preview and live actions are shared across all plugins, so that a
+        # single pair of shortcuts sends any library item to preview or live.
+        shared_actions = library_shortcut_actions()
         if self.can_preview:
-            create_widget_action(
-                self.list_view,
-                'listView{name}{preview}Item'.format(name=self.plugin.name.title(),
-                                                     preview=StringContent.Preview.title()),
-                text=self.plugin.get_string(StringContent.Preview)['title'],
-                icon=UiIcons().preview,
-                can_shortcuts=True,
-                triggers=self.on_preview_click)
+            self.list_view.addAction(shared_actions['preview'])
         if self.can_make_live:
-            create_widget_action(
-                self.list_view,
-                'listView{name}{live}Item'.format(name=self.plugin.name.title(), live=StringContent.Live.title()),
-                text=self.plugin.get_string(StringContent.Live)['title'],
-                icon=UiIcons().live,
-                can_shortcuts=True,
-                category=self.title,
-                triggers=self.on_live_click)
+            self.list_view.addAction(shared_actions['live'])
         if self.can_add_to_service:
             create_widget_action(
                 self.list_view,

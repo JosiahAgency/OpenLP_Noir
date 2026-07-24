@@ -163,7 +163,6 @@ if is_win():
             for i in itertools.count():
                 yield winreg.EnumKey(k, i)
 
-
     def _wingreg_subvalues(path):
         """
         Helper function to loop through windows registry subvalues
@@ -865,20 +864,16 @@ class Settings(QtCore.QSettings):
                 ],
                 "shortcuts/importThemeItem": [],
                 "shortcuts/importBibleItem": [],
-                "shortcuts/listViewBiblesDeleteItem": [
-                    QtGui.QKeySequence(QtGui.QKeySequence.StandardKey.Delete)
-                ],
-                "shortcuts/listViewBiblesPreviewItem": [
+                "shortcuts/libraryPreviewItem": [
                     QtGui.QKeySequence(QtCore.Qt.Key.Key_Return),
                     QtGui.QKeySequence(QtCore.Qt.Key.Key_Enter),
                 ],
-                "shortcuts/listViewBiblesLiveItem": [
-                    QtGui.QKeySequence(
-                        QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Enter
-                    ),
-                    QtGui.QKeySequence(
-                        QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Return
-                    ),
+                "shortcuts/libraryLiveItem": [
+                    QtGui.QKeySequence(QtCore.Qt.KeyboardModifier.ShiftModifier | QtCore.Qt.Key.Key_Return),
+                    QtGui.QKeySequence(QtCore.Qt.KeyboardModifier.ShiftModifier | QtCore.Qt.Key.Key_Enter),
+                ],
+                "shortcuts/listViewBiblesDeleteItem": [
+                    QtGui.QKeySequence(QtGui.QKeySequence.StandardKey.Delete)
                 ],
                 "shortcuts/listViewBiblesServiceItem": [
                     QtGui.QKeySequence(QtCore.Qt.Key.Key_Plus),
@@ -887,36 +882,12 @@ class Settings(QtCore.QSettings):
                 "shortcuts/listViewCustomDeleteItem": [
                     QtGui.QKeySequence(QtGui.QKeySequence.StandardKey.Delete)
                 ],
-                "shortcuts/listViewCustomPreviewItem": [
-                    QtGui.QKeySequence(QtCore.Qt.Key.Key_Return),
-                    QtGui.QKeySequence(QtCore.Qt.Key.Key_Enter),
-                ],
-                "shortcuts/listViewCustomLiveItem": [
-                    QtGui.QKeySequence(
-                        QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Enter
-                    ),
-                    QtGui.QKeySequence(
-                        QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Return
-                    ),
-                ],
                 "shortcuts/listViewCustomServiceItem": [
                     QtGui.QKeySequence(QtCore.Qt.Key.Key_Plus),
                     QtGui.QKeySequence(QtCore.Qt.Key.Key_Equal),
                 ],
                 "shortcuts/listViewEgwlibraryDeleteItem": [
                     QtGui.QKeySequence(QtGui.QKeySequence.StandardKey.Delete)
-                ],
-                "shortcuts/listViewEgwlibraryPreviewItem": [
-                    QtGui.QKeySequence(QtCore.Qt.Key.Key_Return),
-                    QtGui.QKeySequence(QtCore.Qt.Key.Key_Enter),
-                ],
-                "shortcuts/listViewEgwlibraryLiveItem": [
-                    QtGui.QKeySequence(
-                        QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Enter
-                    ),
-                    QtGui.QKeySequence(
-                        QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Return
-                    ),
                 ],
                 "shortcuts/listViewEgwlibraryServiceItem": [
                     QtGui.QKeySequence(QtCore.Qt.Key.Key_Plus),
@@ -925,36 +896,12 @@ class Settings(QtCore.QSettings):
                 "shortcuts/listViewImagesDeleteItem": [
                     QtGui.QKeySequence(QtGui.QKeySequence.StandardKey.Delete)
                 ],
-                "shortcuts/listViewImagesPreviewItem": [
-                    QtGui.QKeySequence(QtCore.Qt.Key.Key_Return),
-                    QtGui.QKeySequence(QtCore.Qt.Key.Key_Enter),
-                ],
-                "shortcuts/listViewImagesLiveItem": [
-                    QtGui.QKeySequence(
-                        QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Enter
-                    ),
-                    QtGui.QKeySequence(
-                        QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Return
-                    ),
-                ],
                 "shortcuts/listViewImagesServiceItem": [
                     QtGui.QKeySequence(QtCore.Qt.Key.Key_Plus),
                     QtGui.QKeySequence(QtCore.Qt.Key.Key_Equal),
                 ],
                 "shortcuts/listViewMediaDeleteItem": [
                     QtGui.QKeySequence(QtGui.QKeySequence.StandardKey.Delete)
-                ],
-                "shortcuts/listViewMediaPreviewItem": [
-                    QtGui.QKeySequence(QtCore.Qt.Key.Key_Return),
-                    QtGui.QKeySequence(QtCore.Qt.Key.Key_Enter),
-                ],
-                "shortcuts/listViewMediaLiveItem": [
-                    QtGui.QKeySequence(
-                        QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Enter
-                    ),
-                    QtGui.QKeySequence(
-                        QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Return
-                    ),
                 ],
                 "shortcuts/listViewMediaServiceItem": [
                     QtGui.QKeySequence(QtCore.Qt.Key.Key_Plus),
@@ -963,36 +910,12 @@ class Settings(QtCore.QSettings):
                 "shortcuts/listViewPresentationsDeleteItem": [
                     QtGui.QKeySequence(QtGui.QKeySequence.StandardKey.Delete)
                 ],
-                "shortcuts/listViewPresentationsPreviewItem": [
-                    QtGui.QKeySequence(QtCore.Qt.Key.Key_Return),
-                    QtGui.QKeySequence(QtCore.Qt.Key.Key_Enter),
-                ],
-                "shortcuts/listViewPresentationsLiveItem": [
-                    QtGui.QKeySequence(
-                        QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Enter
-                    ),
-                    QtGui.QKeySequence(
-                        QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Return
-                    ),
-                ],
                 "shortcuts/listViewPresentationsServiceItem": [
                     QtGui.QKeySequence(QtCore.Qt.Key.Key_Plus),
                     QtGui.QKeySequence(QtCore.Qt.Key.Key_Equal),
                 ],
                 "shortcuts/listViewSongsDeleteItem": [
                     QtGui.QKeySequence(QtGui.QKeySequence.StandardKey.Delete)
-                ],
-                "shortcuts/listViewSongsPreviewItem": [
-                    QtGui.QKeySequence(QtCore.Qt.Key.Key_Return),
-                    QtGui.QKeySequence(QtCore.Qt.Key.Key_Enter),
-                ],
-                "shortcuts/listViewSongsLiveItem": [
-                    QtGui.QKeySequence(
-                        QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Enter
-                    ),
-                    QtGui.QKeySequence(
-                        QtCore.Qt.Key.Key_Shift + QtCore.Qt.Key.Key_Return
-                    ),
                 ],
                 "shortcuts/listViewSongsServiceItem": [
                     QtGui.QKeySequence(QtCore.Qt.Key.Key_Plus),

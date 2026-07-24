@@ -135,12 +135,12 @@ class AlertForm(QtWidgets.QDialog, AlertDialog):
             'preempt': translate('AlertsPlugin.AlertForm',
                                  'It interrupts whatever alert is on screen immediately.'),
         }
-        self.priority_info_label.setText(translate(
+        self.priority_help_button.setToolTip('<qt>' + translate(
             'AlertsPlugin.AlertForm',
             'Displays as a {appearance} for {seconds} seconds. {queue} It appears when you click Display, or '
             'automatically if you schedule it below. Change the look and timing per priority in '
             'Settings → Alerts.').format(appearance=appearance, seconds=preset['timeout'],
-                                         queue=queue_sentences[PRIORITY_BEHAVIOUR[priority]]))
+                                         queue=queue_sentences[PRIORITY_BEHAVIOUR[priority]]) + '</qt>')
 
     def load_list(self):
         """

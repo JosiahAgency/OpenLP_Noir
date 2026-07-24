@@ -208,12 +208,16 @@ def test_old_service_item_load_image_from_service(state_media, settings):
 
     # WHEN: adding an image from a saved Service and mocked exists
     line = convert_file_service_item(TEST_PATH, 'serviceitem_image_1.osj')
-    with patch('openlp.core.ui.servicemanager.os.path.exists') as mocked_exists, \
+    with patch('openlp.core.lib.serviceitem.os.path.exists') as mocked_exists, \
             patch('openlp.core.lib.serviceitem.AppLocation.get_section_data_path') as mocked_get_section_data_path, \
             patch('openlp.core.lib.serviceitem.sha256_file_hash') as mocked_sha256_file_hash, \
             patch('openlp.core.lib.serviceitem.move'):
         mocked_sha256_file_hash.return_value = fake_hash
-        mocked_exists.return_value = True
+        # The image itself "exists" so the item validates, but the thumbnail probe
+        # must miss. The probe uses Path.exists(), which on Python 3.12+ delegates
+        # to the (globally patched) os.path.exists, so a plain return_value=True
+        # would wrongly give the loaded item a thumbnail.
+        mocked_exists.side_effect = lambda file_path: 'thumbnails' not in str(file_path)
         mocked_get_section_data_path.return_value = Path('/path/')
         service_item.set_from_service(line, TEST_PATH)
 

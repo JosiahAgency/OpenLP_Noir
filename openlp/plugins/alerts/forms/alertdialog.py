@@ -19,7 +19,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>. #
 ##########################################################################
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from openlp.core.common.i18n import translate
 from openlp.core.lib.ui import create_button, create_button_box
@@ -30,6 +30,40 @@ class AlertDialog(object):
     """
     Alert UI Class
     """
+    @staticmethod
+    def _create_help_button(parent, name):
+        """
+        A small info button which shows its explanation in a tooltip on hover
+        or click, so the form is not cluttered with permanent help text.
+
+        :param parent: The parent widget
+        :param name: The object name
+        """
+        button = QtWidgets.QToolButton(parent)
+        button.setObjectName(name)
+        button.setIcon(UiIcons().info)
+        button.setAutoRaise(True)
+        button.setFixedSize(22, 22)
+        button.setCursor(QtCore.Qt.CursorShape.WhatsThisCursor)
+        button.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        button.clicked.connect(
+            lambda: QtWidgets.QToolTip.showText(QtGui.QCursor.pos(), button.toolTip(), button))
+        return button
+
+    @staticmethod
+    def _create_row_with_help(widget, button):
+        """
+        A layout holding a form row widget with its help button to the right.
+
+        :param widget: The form widget
+        :param button: The help button
+        """
+        layout = QtWidgets.QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(widget)
+        layout.addWidget(button)
+        return layout
+
     def setup_ui(self, alert_dialog):
         """
         Setup the Alert UI dialog
@@ -54,23 +88,17 @@ class AlertDialog(object):
         self.parameter_edit = QtWidgets.QLineEdit(alert_dialog)
         self.parameter_edit.setObjectName('parameter_edit')
         self.alert_parameter.setBuddy(self.parameter_edit)
-        self.alert_text_layout.addRow(self.alert_parameter, self.parameter_edit)
-        self.parameter_hint_label = QtWidgets.QLabel(alert_dialog)
-        self.parameter_hint_label.setObjectName('parameter_hint_label')
-        self.parameter_hint_label.setWordWrap(True)
-        self.parameter_hint_label.setEnabled(False)
-        self.alert_text_layout.addRow('', self.parameter_hint_label)
+        self.parameter_help_button = self._create_help_button(alert_dialog, 'parameter_help_button')
+        self.alert_text_layout.addRow(self.alert_parameter,
+                                      self._create_row_with_help(self.parameter_edit, self.parameter_help_button))
         self.priority_label = QtWidgets.QLabel(alert_dialog)
         self.priority_label.setObjectName('priority_label')
         self.priority_combo_box = QtWidgets.QComboBox(alert_dialog)
         self.priority_combo_box.setObjectName('priority_combo_box')
         self.priority_label.setBuddy(self.priority_combo_box)
-        self.alert_text_layout.addRow(self.priority_label, self.priority_combo_box)
-        self.priority_info_label = QtWidgets.QLabel(alert_dialog)
-        self.priority_info_label.setObjectName('priority_info_label')
-        self.priority_info_label.setWordWrap(True)
-        self.priority_info_label.setEnabled(False)
-        self.alert_text_layout.addRow('', self.priority_info_label)
+        self.priority_help_button = self._create_help_button(alert_dialog, 'priority_help_button')
+        self.alert_text_layout.addRow(self.priority_label,
+                                      self._create_row_with_help(self.priority_combo_box, self.priority_help_button))
         self.alert_dialog_layout.addLayout(self.alert_text_layout, 0, 0, 1, 2)
         # Scheduling
         self.schedule_group_box = QtWidgets.QGroupBox(alert_dialog)
@@ -95,12 +123,10 @@ class AlertDialog(object):
         self.repeat_interval_spin_box = QtWidgets.QSpinBox(self.schedule_group_box)
         self.repeat_interval_spin_box.setObjectName('repeat_interval_spin_box')
         self.repeat_interval_spin_box.setRange(0, 1440)
-        self.schedule_layout.addRow(self.repeat_interval_label, self.repeat_interval_spin_box)
-        self.schedule_info_label = QtWidgets.QLabel(self.schedule_group_box)
-        self.schedule_info_label.setObjectName('schedule_info_label')
-        self.schedule_info_label.setWordWrap(True)
-        self.schedule_info_label.setEnabled(False)
-        self.schedule_layout.addRow(self.schedule_info_label)
+        self.schedule_help_button = self._create_help_button(self.schedule_group_box, 'schedule_help_button')
+        self.schedule_layout.addRow(self.repeat_interval_label,
+                                    self._create_row_with_help(self.repeat_interval_spin_box,
+                                                               self.schedule_help_button))
         self.alert_dialog_layout.addWidget(self.schedule_group_box, 1, 0, 1, 2)
         self.alert_list_widget = QtWidgets.QListWidget(alert_dialog)
         self.alert_list_widget.setAlternatingRowColors(True)
@@ -143,11 +169,11 @@ class AlertDialog(object):
         self.alert_parameter.setText(translate('AlertsPlugin.AlertForm', '&Parameter:'))
         self.parameter_edit.setPlaceholderText(
             translate('AlertsPlugin.AlertForm', 'Optional — replaces <> in the alert text'))
-        self.parameter_hint_label.setText(translate(
+        self.parameter_help_button.setToolTip('<qt>' + translate(
             'AlertsPlugin.AlertForm',
             'The parameter is optional. Put <> in the alert text as a placeholder, and it is swapped for the '
             'parameter when the alert is displayed. This lets you reuse one saved alert with different details, '
-            'e.g. text "Car <> is blocking the exit" with parameter "KDA 123B".'))
+            'e.g. text "Car <> is blocking the exit" with parameter "KDA 123B".') + '</qt>')
         self.priority_label.setText(translate('AlertsPlugin.AlertForm', 'P&riority:'))
         self.schedule_group_box.setTitle(translate('AlertsPlugin.AlertForm', 'Schedule this alert'))
         self.start_time_label.setText(translate('AlertsPlugin.AlertForm', 'Start:'))
@@ -158,10 +184,10 @@ class AlertDialog(object):
         self.schedule_group_box.setToolTip(translate(
             'AlertsPlugin.AlertForm',
             'Leave unticked to show the alert only when you click Display.'))
-        self.schedule_info_label.setText(translate(
+        self.schedule_help_button.setToolTip('<qt>' + translate(
             'AlertsPlugin.AlertForm',
             'Store the schedule with New or Save. The alert then displays by itself between the start and end '
-            'times, repeating at the interval above — you do not need to click Display.'))
+            'times, repeating at the interval set here — you do not need to click Display.') + '</qt>')
         self.new_button.setText(translate('AlertsPlugin.AlertForm', '&New'))
         self.save_button.setText(translate('AlertsPlugin.AlertForm', '&Save'))
         self.display_button.setText(translate('AlertsPlugin.AlertForm', 'Displ&ay'))

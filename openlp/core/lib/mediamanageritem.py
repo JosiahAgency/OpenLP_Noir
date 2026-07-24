@@ -32,12 +32,73 @@ from openlp.core.common.registry import Registry
 from openlp.core.lib import ServiceItemContext
 from openlp.core.lib.plugin import StringContent
 from openlp.core.lib.serviceitem import ServiceItem
-from openlp.core.lib.ui import create_widget_action, critical_error_message_box
+from openlp.core.lib.ui import create_action, create_widget_action, critical_error_message_box
 from openlp.core.ui.icons import UiIcons
 from openlp.core.widgets.dialogs import FileDialog
 from openlp.core.widgets.edits import SearchEdit
 from openlp.core.widgets.toolbar import OpenLPToolbar
 from openlp.core.widgets.views import ListWidgetWithDnD
+
+
+_library_actions = {}
+
+
+def _focused_media_item():
+    """
+    The media manager item containing the widget which currently has focus, or None.
+    """
+    widget = QtWidgets.QApplication.focusWidget()
+    while widget is not None and not isinstance(widget, MediaManagerItem):
+        widget = widget.parentWidget()
+    return widget
+
+
+def _send_focused_item_to_preview():
+    """
+    Send the selected item of the focused library list to Preview.
+    """
+    media_item = _focused_media_item()
+    if media_item is not None and media_item.can_preview:
+        media_item.on_preview_click()
+
+
+def _send_focused_item_to_live():
+    """
+    Send the selected item of the focused library list to Live.
+    """
+    media_item = _focused_media_item()
+    if media_item is not None and media_item.can_make_live:
+        media_item.on_live_click()
+
+
+def library_shortcut_actions():
+    """
+    The send-to-preview and send-to-live actions shared by all media manager items.
+
+    The same two actions are attached to every library list view, so the whole
+    library is driven by a single pair of shortcuts (Enter and Shift+Enter by
+    default) instead of a separate pair per plugin.
+    """
+    if not _library_actions:
+        parent = QtCore.QCoreApplication.instance()
+        category = translate('OpenLP.MediaManagerItem', 'Library')
+        _library_actions['preview'] = create_action(
+            parent, 'libraryPreviewItem',
+            text=translate('OpenLP.MediaManagerItem', 'Send to Preview'),
+            icon=UiIcons().preview,
+            can_shortcuts=True,
+            category=category,
+            context=QtCore.Qt.ShortcutContext.WidgetShortcut,
+            triggers=_send_focused_item_to_preview)
+        _library_actions['live'] = create_action(
+            parent, 'libraryLiveItem',
+            text=translate('OpenLP.MediaManagerItem', 'Send to Live'),
+            icon=UiIcons().live,
+            can_shortcuts=True,
+            category=category,
+            context=QtCore.Qt.ShortcutContext.WidgetShortcut,
+            triggers=_send_focused_item_to_live)
+    return _library_actions
 
 
 class MediaManagerItem(QtWidgets.QWidget, RegistryProperties, LogMixin):
@@ -235,23 +296,13 @@ class MediaManagerItem(QtWidgets.QWidget, RegistryProperties, LogMixin):
                                  icon=UiIcons().edit,
                                  triggers=self.on_edit_click)
             create_widget_action(self.list_view, separator=True)
+        # The preview and live actions are shared across all plugins, so that a
+        # single pair of shortcuts sends any library item to preview or live.
+        shared_actions = library_shortcut_actions()
         if self.can_preview:
-            create_widget_action(self.list_view,
-                                 'listView{plugin}{preview}Item'.format(plugin=self.plugin.name.title(),
-                                                                        preview=StringContent.Preview.title()),
-                                 text=self.plugin.get_string(StringContent.Preview)['title'],
-                                 icon=UiIcons().preview,
-                                 can_shortcuts=True,
-                                 triggers=self.on_preview_click)
+            self.list_view.addAction(shared_actions['preview'])
         if self.can_make_live:
-            create_widget_action(self.list_view,
-                                 'listView{plugin}{live}Item'.format(plugin=self.plugin.name.title(),
-                                                                     live=StringContent.Live.title()),
-                                 text=self.plugin.get_string(StringContent.Live)['title'],
-                                 icon=UiIcons().live,
-                                 can_shortcuts=True,
-                                 category=self.title,
-                                 triggers=self.on_live_click)
+            self.list_view.addAction(shared_actions['live'])
         if self.can_add_to_service:
             create_widget_action(self.list_view,
                                  'listView{plugin}{service}Item'.format(plugin=self.plugin.name.title(),
