@@ -87,9 +87,13 @@ class InfoLabel(QtWidgets.QLabel):
         Reimplemented to allow the drawing of elided text if the text is longer than the width of the label
         """
         painter = QtGui.QPainter(self)
-        metrics = QtGui.QFontMetrics(self.font())
-        elided = metrics.elidedText(self.text(), QtCore.Qt.TextElideMode.ElideRight, self.width())
-        painter.drawText(self.rect(), QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter, elided)
+        try:
+            metrics = QtGui.QFontMetrics(self.font())
+            elided = metrics.elidedText(self.text(), QtCore.Qt.TextElideMode.ElideRight, self.width())
+            painter.drawText(self.rect(),
+                             QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter, elided)
+        finally:
+            painter.end()
 
     def setText(self, text):
         """

@@ -117,6 +117,8 @@ class LibrarySidebar(QtWidgets.QWidget):
         super().__init__(parent)
         self._buttons = []
         self._titles = []
+        self._fade_animation = None
+        self._fade_widget = None
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
@@ -182,6 +184,8 @@ class LibrarySidebar(QtWidgets.QWidget):
         if not 0 <= index < self.stack.count():
             return
         widget = self.stack.widget(index)
+        if widget is self._fade_widget:
+            self._clear_fade()
         self.stack.removeWidget(widget)
         button = self._buttons.pop(index)
         self._titles.pop(index)
@@ -216,15 +220,39 @@ class LibrarySidebar(QtWidgets.QWidget):
         widget = self.stack.currentWidget()
         if widget is None or not widget.isVisible():
             return
+        # Only one fade may be in flight. Applying a second effect while the
+        # previous animation still runs deletes the old effect under the live
+        # animation, which crashes inside the effect on the next repaint.
+        self._clear_fade()
         effect = QtWidgets.QGraphicsOpacityEffect(widget)
         widget.setGraphicsEffect(effect)
-        animation = QtCore.QPropertyAnimation(effect, b'opacity', widget)
-        animation.setDuration(120)
-        animation.setStartValue(0.0)
-        animation.setEndValue(1.0)
-        animation.setEasingCurve(QtCore.QEasingCurve.Type.OutCubic)
-        animation.finished.connect(lambda fading_widget=widget: fading_widget.setGraphicsEffect(None))
-        animation.start(QtCore.QAbstractAnimation.DeletionPolicy.DeleteWhenStopped)
+        self._fade_widget = widget
+        self._fade_animation = QtCore.QPropertyAnimation(effect, b'opacity', widget)
+        self._fade_animation.setDuration(120)
+        self._fade_animation.setStartValue(0.0)
+        self._fade_animation.setEndValue(1.0)
+        self._fade_animation.setEasingCurve(QtCore.QEasingCurve.Type.OutCubic)
+        self._fade_animation.finished.connect(self._clear_fade)
+        self._fade_animation.start()
+
+    def _clear_fade(self):
+        """
+        Stop any running fade and detach its opacity effect. Reentrancy-safe:
+        the references are dropped before the objects are torn down.
+        """
+        animation = self._fade_animation
+        self._fade_animation = None
+        if animation is not None:
+            animation.stop()
+            animation.deleteLater()
+        widget = self._fade_widget
+        self._fade_widget = None
+        if widget is not None:
+            try:
+                widget.setGraphicsEffect(None)
+            except RuntimeError:
+                # The page was deleted while fading (e.g. plugin unloaded)
+                pass
 
     def count(self):
         return self.stack.count()

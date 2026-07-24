@@ -29,6 +29,36 @@ from openlp.plugins.egwlibrary.lib.pdfimport import EGWPdfError, convert_pdf_boo
 
 fitz = pytest.importorskip('fitz')
 
+
+def _new_page(doc):
+    """
+    Add an A4 page to a fitz document. Some strict SWIG builds of pymupdf
+    (e.g. Debian's) reject new_page()'s integer width/height defaults against
+    the float-typed _newPage overloads, so retry with explicit floats.
+    """
+    try:
+        return doc.new_page()
+    except TypeError:
+        return doc.new_page(-1, 595.0, 842.0)
+
+
+def _pdf_creation_supported():
+    """Whether the installed pymupdf build can create PDF pages at all."""
+    try:
+        doc = fitz.open()
+        try:
+            _new_page(doc)
+        finally:
+            doc.close()
+        return True
+    except Exception:
+        return False
+
+
+pytestmark = pytest.mark.skipif(
+    not _pdf_creation_supported(),
+    reason='this pymupdf build cannot create PDF pages (only needed to build test fixtures)')
+
 # Positions matching the signals the parser looks for (see pdfimport module constants):
 # markers in the left margin, paragraph starts indented into (85, 105), continuation
 # lines flush left, headings > 16pt, running headers above y=70.
@@ -58,7 +88,7 @@ def _make_estate_pdf(path):
     heading, so chapter 1's body must be attributed to page 19 (the en_DA.pdf quirk).
     """
     doc = fitz.open()
-    page = doc.new_page()
+    page = _new_page(doc)
     page.insert_text((MARGIN_X, 50), 'The Desire of Ages', fontsize=BODY_SIZE)  # running header
     page.insert_text((MARGIN_X, 100), '[18]', fontsize=BODY_SIZE)
     page.insert_text((INDENT_X, 100), 'Chapter 1-God With Us', fontsize=HEADING_SIZE)
@@ -66,7 +96,7 @@ def _make_estate_pdf(path):
     page.insert_text((FLUSH_X, 150), 'graph of the book.', fontsize=BODY_SIZE)
     page.insert_text((MARGIN_X, 180), '[20]', fontsize=BODY_SIZE)
     page.insert_text((INDENT_X, 180), 'Second paragraph on page twenty.', fontsize=BODY_SIZE)
-    page = doc.new_page()
+    page = _new_page(doc)
     page.insert_text((INDENT_X, 100), 'Chapter 2-The Chosen People', fontsize=HEADING_SIZE)
     page.insert_text((MARGIN_X, 130), '[21]', fontsize=BODY_SIZE)
     page.insert_text((INDENT_X, 130), 'The only paragraph of chapter two.', fontsize=BODY_SIZE)
@@ -133,7 +163,7 @@ def test_convert_pdf_book_no_chapters(tmp_path):
     # GIVEN: A PDF with body text but no chapter headings
     pdf_path = tmp_path / 'notes.pdf'
     doc = fitz.open()
-    page = doc.new_page()
+    page = _new_page(doc)
     page.insert_text((INDENT_X, 100), 'Just some notes, not a book.', fontsize=BODY_SIZE)
     doc.save(str(pdf_path))
     doc.close()

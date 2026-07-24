@@ -795,15 +795,22 @@ class ListWidgetWithDnD(QtWidgets.QListWidget):
         if not self.count():
             viewport = self.viewport()
             painter = QtGui.QPainter(viewport)
-            if self._is_noir_theme():
-                self._paint_noir_empty_state(painter, viewport)
-                return
-            font = QtGui.QFont()
-            font.setItalic(True)
-            painter.setFont(font)
-            painter.drawText(QtCore.QRect(0, 0, viewport.width(), viewport.height()),
-                             (QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.TextFlag.TextWordWrap),
-                             self.no_results_text)
+            # The painter must always be ended before this method returns: a
+            # painter left active on the viewport corrupts the paint state and
+            # crashes the next repaint (seen on macOS under the library fade
+            # effect).
+            try:
+                if self._is_noir_theme():
+                    self._paint_noir_empty_state(painter, viewport)
+                else:
+                    font = QtGui.QFont()
+                    font.setItalic(True)
+                    painter.setFont(font)
+                    painter.drawText(QtCore.QRect(0, 0, viewport.width(), viewport.height()),
+                                     (QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.TextFlag.TextWordWrap),
+                                     self.no_results_text)
+            finally:
+                painter.end()
 
 
 class TreeWidgetWithDnD(QtWidgets.QTreeWidget):
