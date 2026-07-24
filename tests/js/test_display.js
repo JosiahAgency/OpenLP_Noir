@@ -326,22 +326,57 @@ describe("Transitions", function () {
 });
 
 describe("Display.alert", function () {
-  var alertContainer, alertBackground, alertText, settings, text;
+  var alertContainer, settings, text;
 
   beforeEach(function () {
     document.body.innerHTML = "";
-    alertContainer = _createDiv({"class": "alert-container"});
-    alertBackground = _createDiv({"id": "alert-background", "class": "hide"});
-    alertText = _createDiv({"id": "alert-text", "class": "hide"});
+    alertContainer = _createDiv({"id": "alert-container", "class": "alert-container"});
     settings = {
-      "location": 1,
+      "priority": "info",
+      "alertType": "toast",
+      "zoneH": "right",
+      "zoneV": "bottom",
+      "offsetX": 0,
+      "offsetY": 0,
       "fontFace": "sans-serif",
-      "fontSize": 40,
+      "fontSize": 24,
       "fontColor": "#ffffff",
+      "fontWeight": 500,
+      "letterSpacing": 0,
+      "lineSpacing": 1.2,
+      "textOpacity": 100,
+      "textShadowEnabled": false,
+      "textShadowColor": "#000000",
+      "textShadowX": 0,
+      "textShadowY": 2,
+      "textShadowBlur": 8,
+      "outlineEnabled": false,
+      "outlineColor": "#000000",
+      "outlineWidth": 2,
+      "glowEnabled": false,
+      "glowColor": "#ffffff",
+      "glowRadius": 16,
+      "backgroundStyle": "solid",
       "backgroundColor": "#660000",
+      "backgroundColor2": "#000000",
+      "gradientAngle": 135,
+      "backgroundOpacity": 100,
+      "backgroundBlur": 14,
+      "shape": "card",
+      "cornerRadius": 16,
+      "paddingX": 28,
+      "paddingY": 16,
+      "marginX": 32,
+      "marginY": 32,
+      "iconEnabled": false,
+      "icon": "auto",
+      "animationIn": "none",
+      "animationOut": "none",
+      "animationSpeed": 400,
+      "emphasis": "none",
+      "scroll": false,
       "timeout": 5,
-      "repeat": 1,
-      "scroll": true
+      "repeat": 1
     };
     text = "Display.alert";
   });
@@ -350,133 +385,233 @@ describe("Display.alert", function () {
     expect(Display.alert("", settings)).toBeNull();
   });
 
-  it("should set the correct alert text", function () {
+  it("should call showAlert with the text and settings", function () {
     spyOn(Display, "showAlert");
 
     Display.alert(text, settings);
 
-    expect(Display.showAlert).toHaveBeenCalled();
-  });
-
-  it("should call the addAlertToQueue method if an alert is displaying", function () {
-    spyOn(Display, "addAlertToQueue");
-    Display._alerts = [];
-    Display._alertState = AlertState.Displaying;
-
-    Display.alert(text, settings);
-
-    expect(Display.addAlertToQueue).toHaveBeenCalledWith(text, settings);
+    expect(Display.showAlert).toHaveBeenCalledWith(text, settings);
   });
 });
 
 describe("Display.showAlert", function () {
-  var alertContainer, alertBackground, alertText, settings;
+  var alertContainer, settings;
 
   beforeEach(function () {
     document.body.innerHTML = "";
-    alertContainer = _createDiv({"class": "alert-container"});
-    alertBackground = _createDiv({"id": "alert-background", "class": "hide"});
-    alertText = _createDiv({"id": "alert-text", "class": "hide"});
+    alertContainer = _createDiv({"id": "alert-container", "class": "alert-container"});
     settings = {
-      "location": 1,
+      "priority": "info",
+      "alertType": "toast",
+      "zoneH": "right",
+      "zoneV": "bottom",
+      "offsetX": 0,
+      "offsetY": 0,
       "fontFace": "sans-serif",
-      "fontSize": 40,
+      "fontSize": 24,
       "fontColor": "#ffffff",
+      "fontWeight": 500,
+      "letterSpacing": 0,
+      "lineSpacing": 1.2,
+      "textOpacity": 100,
+      "textShadowEnabled": false,
+      "textShadowColor": "#000000",
+      "textShadowX": 0,
+      "textShadowY": 2,
+      "textShadowBlur": 8,
+      "outlineEnabled": false,
+      "outlineColor": "#000000",
+      "outlineWidth": 2,
+      "glowEnabled": false,
+      "glowColor": "#ffffff",
+      "glowRadius": 16,
+      "backgroundStyle": "solid",
       "backgroundColor": "#660000",
+      "backgroundColor2": "#000000",
+      "gradientAngle": 135,
+      "backgroundOpacity": 50,
+      "backgroundBlur": 14,
+      "shape": "card",
+      "cornerRadius": 16,
+      "paddingX": 28,
+      "paddingY": 16,
+      "marginX": 32,
+      "marginY": 32,
+      "iconEnabled": false,
+      "icon": "auto",
+      "animationIn": "none",
+      "animationOut": "none",
+      "animationSpeed": 400,
+      "emphasis": "none",
+      "scroll": false,
       "timeout": 5,
-      "repeat": 1,
-      "scroll": true
+      "repeat": 1
     };
   });
 
-  it("should create a stylesheet for the settings", function () {
-    spyOn(window, "_createStyle");
-    Display.showAlert("Test Display.showAlert - stylesheet", settings);
+  it("should build an alert box containing the text", function () {
+    Display.showAlert("Test showAlert - box", settings);
 
-    expect(_createStyle).toHaveBeenCalledWith("#alert-background.settings", {
-      backgroundColor: settings["backgroundColor"],
-      fontFamily: "'" + settings["fontFace"] + "'",
-      fontSize: settings["fontSize"] + 'pt',
-      color: settings["fontColor"]
-    });
-  });
-
-  it("should change fontFace to 'sans-serif' if no font face is provided", function () {
-    spyOn(window, "_createStyle");
-    Display.showAlert("Test Display.showAlert - fontFace fix", {
-      "location": 1,
-      "fontFace": "",
-      "fontSize": 40,
-      "fontColor": "#ffffff",
-      "backgroundColor": "#660000",
-      "timeout": 5,
-      "repeat": 1,
-      "scroll": true
-    });
-
-    expect(_createStyle).toHaveBeenCalledWith("#alert-background.settings", {
-      backgroundColor: settings["backgroundColor"],
-      fontFamily: "sans-serif",
-      fontSize: settings["fontSize"] + 'pt',
-      color: settings["fontColor"]
-    });
-  });
-
-  it("should change fontFace to 'sans-serif' if 'Sans Serif' is provided", function () {
-    spyOn(window, "_createStyle");
-    Display.showAlert("Test Display.showAlert - fontFace fix", {
-      "location": 1,
-      "fontFace": "Sans Serif",
-      "fontSize": 40,
-      "fontColor": "#ffffff",
-      "backgroundColor": "#660000",
-      "timeout": 5,
-      "repeat": 1,
-      "scroll": true
-    });
-
-    expect(_createStyle).toHaveBeenCalledWith("#alert-background.settings", {
-      backgroundColor: settings["backgroundColor"],
-      fontFamily: "sans-serif",
-      fontSize: settings["fontSize"] + 'pt',
-      color: settings["fontColor"]
-    });
+    var box = alertContainer.querySelector(".alert-box");
+    expect(box).not.toBeNull();
+    expect(box.querySelector(".alert-text").innerHTML).toEqual("Test showAlert - box");
   });
 
   it("should set the alert state to AlertState.Displaying", function () {
-    Display.showAlert("Test Display.showAlert - state", settings);
+    Display.showAlert("Test showAlert - state", settings);
 
     expect(Display._alertState).toEqual(AlertState.Displaying);
   });
 
-  it("should remove the 'hide' classes and add the 'show' classes", function () {
-    Display.showAlert("Test Display.showAlert - classes", settings);
+  it("should replace an alert that is already showing", function () {
+    Display.showAlert("first alert", settings);
+    Display.showAlert("second alert", settings);
 
-    expect($("#alert-background")[0].classList.contains("hide")).toEqual(false);
-    expect($("#alert-background")[0].classList.contains("show")).toEqual(true);
-    expect($("#alert-text")[0].classList.contains("hide")).toEqual(false);
-    expect($("#alert-text")[0].classList.contains("show")).toEqual(true);
+    var boxes = alertContainer.querySelectorAll(".alert-box");
+    expect(boxes.length).toEqual(1);
+    expect(boxes[0].querySelector(".alert-text").innerHTML).toEqual("second alert");
+  });
+
+  it("should position the container according to the zone", function () {
+    Display.showAlert("Test showAlert - zone", settings);
+
+    expect(alertContainer.style.justifyContent).toEqual("flex-end");
+    expect(alertContainer.style.alignItems).toEqual("flex-end");
+  });
+
+  it("should apply the offsets to the wrapper element", function () {
+    settings["offsetX"] = 5;
+    settings["offsetY"] = -10;
+    Display.showAlert("Test showAlert - offsets", settings);
+
+    var wrapper = alertContainer.querySelector(".alert-offset");
+    expect(wrapper.style.transform).toEqual("translate(5vw, -10vh)");
+  });
+
+  it("should apply a solid background with the configured opacity", function () {
+    Display.showAlert("Test showAlert - background", settings);
+
+    var box = alertContainer.querySelector(".alert-box");
+    expect(box.style.backgroundColor).toEqual("rgba(102, 0, 0, 0.5)");
+  });
+
+  it("should apply a gradient background when the style is gradient", function () {
+    settings["backgroundStyle"] = "gradient";
+    Display.showAlert("Test showAlert - gradient", settings);
+
+    var box = alertContainer.querySelector(".alert-box");
+    expect(box.style.background).toContain("linear-gradient(135deg");
+  });
+
+  it("should add the glass class when the style is glassmorphism", function () {
+    settings["backgroundStyle"] = "glass";
+    Display.showAlert("Test showAlert - glass", settings);
+
+    var box = alertContainer.querySelector(".alert-box");
+    expect(box.classList.contains("alert-glass")).toEqual(true);
+  });
+
+  it("should add an icon when icons are enabled", function () {
+    settings["iconEnabled"] = true;
+    Display.showAlert("Test showAlert - icon", settings);
+
+    var icon = alertContainer.querySelector(".alert-icon");
+    expect(icon).not.toBeNull();
+    expect(icon.querySelector("svg")).not.toBeNull();
+  });
+
+  it("should not add an icon when icons are disabled", function () {
+    settings["iconEnabled"] = false;
+    Display.showAlert("Test showAlert - no icon", settings);
+
+    expect(alertContainer.querySelector(".alert-icon")).toBeNull();
+  });
+
+  it("should add the entrance animation class", function () {
+    settings["animationIn"] = "slideDown";
+    Display.showAlert("Test showAlert - animation", settings);
+
+    var box = alertContainer.querySelector(".alert-box");
+    expect(box.classList.contains("alert-anim-in-slideDown")).toEqual(true);
+    expect(box.style.animationDuration).toEqual("400ms");
+  });
+
+  it("should start the marquee when scroll is enabled", function () {
+    settings["scroll"] = true;
+    Display.showAlert("Test showAlert - scroll", settings);
+
+    var box = alertContainer.querySelector(".alert-box");
+    expect(box.classList.contains("alert-scrolling")).toEqual(true);
+    expect(box.querySelector(".alert-text").style.animation).toContain("alert-scrolling-text");
+  });
+
+  it("should make the box cover the screen for fullscreen alerts", function () {
+    settings["alertType"] = "fullscreen";
+    Display.showAlert("Test showAlert - fullscreen", settings);
+
+    var box = alertContainer.querySelector(".alert-box");
+    expect(box.style.width).toEqual("100vw");
+    expect(box.style.height).toEqual("100vh");
   });
 });
 
 describe("Display.hideAlert", function () {
-  var alertContainer, alertBackground, alertText, settings;
+  var alertContainer, settings;
 
   beforeEach(function () {
     document.body.innerHTML = "";
-    alertContainer = _createDiv({"class": "alert-container"});
-    alertBackground = _createDiv({"id": "alert-background", "class": "hide"});
-    alertText = _createDiv({"id": "alert-text", "class": "hide"});
+    alertContainer = _createDiv({"id": "alert-container", "class": "alert-container"});
     settings = {
-      "location": 1,
+      "priority": "info",
+      "alertType": "toast",
+      "zoneH": "center",
+      "zoneV": "top",
+      "offsetX": 0,
+      "offsetY": 0,
       "fontFace": "sans-serif",
-      "fontSize": 40,
+      "fontSize": 24,
       "fontColor": "#ffffff",
+      "fontWeight": 500,
+      "letterSpacing": 0,
+      "lineSpacing": 1.2,
+      "textOpacity": 100,
+      "textShadowEnabled": false,
+      "textShadowColor": "#000000",
+      "textShadowX": 0,
+      "textShadowY": 2,
+      "textShadowBlur": 8,
+      "outlineEnabled": false,
+      "outlineColor": "#000000",
+      "outlineWidth": 2,
+      "glowEnabled": false,
+      "glowColor": "#ffffff",
+      "glowRadius": 16,
+      "backgroundStyle": "solid",
       "backgroundColor": "#660000",
+      "backgroundColor2": "#000000",
+      "gradientAngle": 135,
+      "backgroundOpacity": 100,
+      "backgroundBlur": 14,
+      "shape": "rounded",
+      "cornerRadius": 16,
+      "paddingX": 28,
+      "paddingY": 16,
+      "marginX": 32,
+      "marginY": 32,
+      "iconEnabled": false,
+      "icon": "auto",
+      "animationIn": "none",
+      "animationOut": "none",
+      "animationSpeed": 400,
+      "emphasis": "none",
+      "scroll": false,
       "timeout": 5,
-      "repeat": 1,
-      "scroll": true
+      "repeat": 1
     };
+  });
+
+  it("should return null when no alert is showing", function () {
+    expect(Display.hideAlert()).toBeNull();
   });
 
   it("should set the alert state to AlertState.NotDisplaying", function () {
@@ -487,168 +622,47 @@ describe("Display.hideAlert", function () {
     expect(Display._alertState).toEqual(AlertState.NotDisplaying);
   });
 
-  it("should hide the alert divs when called", function() {
+  it("should remove the alert immediately when the exit animation is none", function () {
     Display.showAlert("test", settings);
 
     Display.hideAlert();
 
-    expect(Display._transitionState).toEqual(TransitionState.ExitTransition);
-    expect(alertBackground.classList.contains("hide")).toEqual(true);
-    expect(alertBackground.classList.contains("show")).toEqual(false);
-    expect(alertText.classList.contains("hide")).toEqual(true);
-    expect(alertText.classList.contains("show")).toEqual(false);
+    expect(alertContainer.querySelector(".alert-box")).toBeNull();
+  });
+
+  it("should play the exit animation before removing the alert", function () {
+    settings["animationOut"] = "fade";
+    Display.showAlert("test", settings);
+
+    Display.hideAlert();
+
+    var box = alertContainer.querySelector(".alert-box");
+    expect(box).not.toBeNull();
+    expect(box.classList.contains("alert-anim-out-fade")).toEqual(true);
   });
 });
 
-describe("Display.setAlertLocation", function() {
-  var alertContainer, alertBackground, alertText, settings;
-
-  beforeEach(function () {
-    document.body.innerHTML = "";
-    alertContainer = _createDiv({"class": "alert-container"});
-    alertBackground = _createDiv({"id": "alert-background", "class": "hide"});
-    alertText = _createDiv({"id": "alert-text", "class": "hide"});
-    settings = {
-      "location": 1,
-      "fontFace": "sans-serif",
-      "fontSize": 40,
-      "fontColor": "#ffffff",
-      "backgroundColor": "#660000",
-      "timeout": 5,
-      "repeat": 1,
-      "scroll": true
-    };
+describe("_alertRgba", function () {
+  it("should convert a hex color and opacity percentage to rgba", function () {
+    expect(_alertRgba("#660000", 50)).toEqual("rgba(102, 0, 0, 0.5)");
   });
 
-  it("should set the correct class when location is top of the page", function () {
-    Display.setAlertLocation(0);
-
-    expect(alertContainer.className).toEqual("alert-container top");
+  it("should convert an rgb color and opacity percentage to rgba", function () {
+    expect(_alertRgba("rgb(10, 20, 30)", 80)).toEqual("rgba(10, 20, 30, 0.8)");
   });
 
-  it("should set the correct class when location is middle of the page", function () {
-    Display.setAlertLocation(1);
-
-    expect(alertContainer.className).toEqual("alert-container middle");
-  });
-
-  it("should set the correct class when location is bottom of the page", function () {
-    Display.setAlertLocation(2);
-
-    expect(alertContainer.className).toEqual("alert-container bottom");
+  it("should return the color unchanged when it cannot be parsed", function () {
+    expect(_alertRgba("papayawhip", 50)).toEqual("papayawhip");
   });
 });
 
-describe("Display.addAlertToQueue", function () {
-  var alertContainer, alertBackground, alertText, settings;
-
-  beforeEach(function () {
-    document.body.innerHTML = "";
-    alertContainer = _createDiv({"class": "alert-container"});
-    alertBackground = _createDiv({"id": "alert-background", "class": "hide"});
-    alertText = _createDiv({"id": "alert-text", "class": "hide"});
-    settings = {
-      "location": 1,
-      "fontFace": "sans-serif",
-      "fontSize": 40,
-      "fontColor": "#ffffff",
-      "backgroundColor": "#660000",
-      "timeout": 5,
-      "repeat": 1,
-      "scroll": true
-    };
+describe("_alertIconSvg", function () {
+  it("should resolve the automatic icon from the priority", function () {
+    expect(_alertIconSvg("auto", "critical")).toContain("svg");
   });
 
-  it("should add an alert to the queue if one is displaying already", function() {
-    Display._alerts = [];
-    Display._alertState = AlertState.Displaying;
-    var alertObject = {text: "Testing alert queue", settings: settings};
-
-    Display.addAlertToQueue("Testing alert queue", settings);
-
-    expect(Display._alerts.length).toEqual(1);
-    expect(Display._alerts[0]).toEqual(alertObject);
-  });
-});
-
-describe("Display.showNextAlert", function () {
-  var alertContainer, alertBackground, alertText, settings;
-
-  beforeEach(function () {
-    document.body.innerHTML = "";
-    alertContainer = _createDiv({"class": "alert-container"});
-    alertBackground = _createDiv({"id": "alert-background", "class": "hide"});
-    alertText = _createDiv({"id": "alert-text", "class": "hide"});
-    settings = {
-      "location": 1,
-      "fontFace": "sans-serif",
-      "fontSize": 40,
-      "fontColor": "#ffffff",
-      "backgroundColor": "#660000",
-      "timeout": 5,
-      "repeat": 1,
-      "scroll": true
-    };
-  });
-
-  it("should return null if there are no alerts in the queue", function () {
-    Display._alerts = [];
-    Display.showNextAlert();
-
-    expect(Display.showNextAlert()).toBeNull();
-  });
-
-  it("should call the alert function correctly if there is an alert in the queue", function () {
-    Display._alerts.push({text: "Queued Alert", settings: settings});
-    spyOn(Display, "showAlert");
-    Display.showNextAlert();
-
-    expect(Display.showAlert).toHaveBeenCalled();
-    expect(Display.showAlert).toHaveBeenCalledWith("Queued Alert", settings);
-  });
-});
-
-describe("Display.alertTransitionEndEvent", function() {
-  var e = { stopPropagation: function () { } };
-
-  it("should call event.stopPropagation()", function () {
-    spyOn(e, "stopPropagation");
-
-    Display.alertTransitionEndEvent(e);
-
-    expect(e.stopPropagation).toHaveBeenCalled();
-  });
-
-  it("should set the correct state after EntranceTransition", function() {
-    Display._transitionState = TransitionState.EntranceTransition;
-
-    Display.alertTransitionEndEvent(e);
-
-    expect(Display._transitionState).toEqual(TransitionState.NoTransition);
-  });
-
-  it("should set the correct state after ExitTransition, call hideAlert() and showNextAlert()", function() {
-    spyOn(Display, "hideAlert");
-    spyOn(Display, "showNextAlert");
-    Display._transitionState = TransitionState.ExitTransition;
-
-    Display.alertTransitionEndEvent(e);
-
-    expect(Display._transitionState).toEqual(TransitionState.NoTransition);
-    expect(Display.hideAlert).toHaveBeenCalled();
-    expect(Display.showNextAlert).toHaveBeenCalled();
-  });
-});
-
-describe("Display.alertAnimationEndEvent", function () {
-  var e = { stopPropagation: function () { } };
-
-  it("should call the hideAlert method", function() {
-    spyOn(Display, "hideAlert");
-
-    Display.alertAnimationEndEvent(e);
-
-    expect(Display.hideAlert).toHaveBeenCalled();
+  it("should return null for an unknown icon", function () {
+    expect(_alertIconSvg("does-not-exist", "info")).toBeNull();
   });
 });
 

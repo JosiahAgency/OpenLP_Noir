@@ -231,6 +231,92 @@ function _getStyle(element, style) {
 }
 
 /**
+ * Convert a color (hex "#rrggbb" or "rgb(...)") plus an opacity percentage
+ * into an rgba() string
+ * @private
+ * @param {string} color - The color to convert
+ * @param {number} opacity - Opacity percentage, 0-100
+ * @returns {string} An rgba() color string
+ */
+function _alertRgba(color, opacity) {
+  var alpha = Math.max(0, Math.min(100, opacity)) / 100;
+  var match = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color);
+  if (match) {
+    return "rgba(" + parseInt(match[1], 16) + ", " + parseInt(match[2], 16) + ", " +
+           parseInt(match[3], 16) + ", " + alpha + ")";
+  }
+  match = /^rgba?\(([^)]+)\)$/.exec(color);
+  if (match) {
+    var parts = match[1].split(",").slice(0, 3).map(function (part) { return part.trim(); });
+    return "rgba(" + parts.join(", ") + ", " + alpha + ")";
+  }
+  return color;
+}
+
+/**
+ * Stroke-based icon set for alerts. Each entry is the inner markup of a
+ * 24x24 SVG drawn with currentColor so it inherits the alert's font color.
+ * @private
+ */
+var _alertIcons = {
+  info: '<circle cx="12" cy="12" r="9.25" fill="none" stroke="currentColor" stroke-width="1.8"/>' +
+        '<path d="M12 11v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+        '<circle cx="12" cy="7.6" r="1.4" fill="currentColor" stroke="none"/>',
+  bell: '<path d="M6 17.5v-6a6 6 0 0 1 12 0v6l1.6 2H4.4z" fill="none" stroke="currentColor"' +
+        ' stroke-width="1.8" stroke-linejoin="round"/>' +
+        '<path d="M10 21.5a2.2 2.2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.8"' +
+        ' stroke-linecap="round"/>' +
+        '<path d="M12 3.5v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+  warning: '<path d="M12 3.6 22 20.4H2z" fill="none" stroke="currentColor" stroke-width="1.8"' +
+           ' stroke-linejoin="round"/>' +
+           '<path d="M12 10v4.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+           '<circle cx="12" cy="17.6" r="1.2" fill="currentColor" stroke="none"/>',
+  critical: '<path d="M8 2.75h8L21.25 8v8L16 21.25H8L2.75 16V8z" fill="none" stroke="currentColor"' +
+            ' stroke-width="1.8" stroke-linejoin="round"/>' +
+            '<path d="M12 7.5v5.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+            '<circle cx="12" cy="16.6" r="1.2" fill="currentColor" stroke="none"/>',
+  megaphone: '<path d="M3 10v4h3l8 4.5v-13L6 10z" fill="none" stroke="currentColor" stroke-width="1.8"' +
+             ' stroke-linejoin="round"/>' +
+             '<path d="M17.5 9.5a3.5 3.5 0 0 1 0 5" fill="none" stroke="currentColor" stroke-width="1.8"' +
+             ' stroke-linecap="round"/>' +
+             '<path d="M19.5 7.5a6.3 6.3 0 0 1 0 9" fill="none" stroke="currentColor" stroke-width="1.8"' +
+             ' stroke-linecap="round"/>',
+  clock: '<circle cx="12" cy="12" r="9.25" fill="none" stroke="currentColor" stroke-width="1.8"/>' +
+         '<path d="M12 6.5V12l3.5 2.5" fill="none" stroke="currentColor" stroke-width="1.8"' +
+         ' stroke-linecap="round" stroke-linejoin="round"/>',
+  heart: '<path d="M12 20.5S3.5 15.6 3.5 9.6A4.6 4.6 0 0 1 12 7a4.6 4.6 0 0 1 8.5 2.6c0 6-8.5 10.9-8.5 10.9z"' +
+         ' fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>'
+};
+
+/**
+ * Default icon per alert priority, used when the preset icon is "auto"
+ * @private
+ */
+var _alertPriorityIcons = {
+  info: "info",
+  notice: "bell",
+  important: "warning",
+  critical: "critical"
+};
+
+/**
+ * Build the SVG element for an alert icon
+ * @private
+ * @param {string} name - Icon name, or "auto" to pick from the priority
+ * @param {string} priority - The alert priority key
+ * @returns {(string|null)} SVG markup, or null for no icon
+ */
+function _alertIconSvg(name, priority) {
+  if (name === "auto") {
+    name = _alertPriorityIcons[priority] || "info";
+  }
+  if (!_alertIcons[name]) {
+    return null;
+  }
+  return '<svg viewBox="0 0 24 24" aria-hidden="true">' + _alertIcons[name] + '</svg>';
+}
+
+/**
  * Convert newlines to <br> tags
  * @private
  * @param {string} text - The text to parse
@@ -536,143 +622,209 @@ var Display = {
     Display.reinit();
   },
   /**
-   * Display an alert. If there's an alert already showing, add this one to the queue
+   * Display an alert. OpenLP owns the alert queue, priorities and timing;
+   * this renders a single alert using the style preset resolved for its
+   * priority. Any alert already showing is replaced (preemption).
    * @param {string} text - The alert text
-   * @param {Object} JSON object - The settings for the alert object
+   * @param {Object} settings - The resolved style preset for the alert
   */
   alert: function (text, settings) {
     if (text == "") {
       return null;
     }
-    if (Display._alertState === AlertState.Displaying) {
-      Display.addAlertToQueue(text, settings);
-    }
-    else {
-      Display.showAlert(text, settings);
-    }
+    Display.showAlert(text, settings);
   },
   /**
    * Show the alert on the screen
    * @param {string} text - The alert text
-   * @param {Object} JSON object - The settings for the alert
+   * @param {Object} settings - The resolved style preset for the alert
   */
   showAlert: function (text, settings) {
-    var alertBackground = $('#alert-background')[0];
-    var alertText = $('#alert-text')[0];
-    // create styles for the alerts from the settings
-    _createStyle("#alert-background.settings", {
-      backgroundColor: settings.backgroundColor,
-      fontFamily: _fixFontName(settings.fontFace),
-      fontSize: settings.fontSize.toString() + "pt",
-      color: settings.fontColor
-    });
-    alertBackground.classList.add("settings");
-    alertBackground.classList.replace("hide", "show");
-    alertText.innerHTML = text;
-    Display.setAlertLocation(settings.location);
-    Display._transitionState = TransitionState.EntranceTransition;
-    /* Check if the alert is a queued alert */
-    if (Display._alertState !== AlertState.Displaying) {
-      Display._alertState = AlertState.Displaying;
+    var container = $("#alert-container")[0];
+    // Replace any alert already showing
+    container.innerHTML = "";
+    Display._alertOut = {name: settings.animationOut, speed: settings.animationSpeed};
+    // Zone: which of the nine screen regions the alert lives in
+    container.style.justifyContent = ({left: "flex-start", center: "center", right: "flex-end"})[settings.zoneH] ||
+      "center";
+    container.style.alignItems = ({top: "flex-start", middle: "center", bottom: "flex-end"})[settings.zoneV] ||
+      "flex-start";
+    // Fine positioning: percentage offsets live on a wrapper so they don't
+    // fight the entrance/exit transforms on the box itself
+    var offset = document.createElement("div");
+    offset.className = "alert-offset";
+    offset.style.transform = "translate(" + (settings.offsetX || 0) + "vw, " + (settings.offsetY || 0) + "vh)";
+    var box = document.createElement("div");
+    box.className = "alert-box alert-type-" + settings.alertType + " alert-shape-" + settings.shape;
+    // Typography
+    box.style.fontFamily = _fixFontName(settings.fontFace);
+    box.style.fontSize = settings.fontSize + "pt";
+    box.style.fontWeight = settings.fontWeight;
+    box.style.color = settings.fontColor;
+    box.style.letterSpacing = settings.letterSpacing + "px";
+    box.style.lineHeight = settings.lineSpacing;
+    box.style.padding = settings.paddingY + "px " + settings.paddingX + "px";
+    var textEl = document.createElement("span");
+    textEl.className = "alert-text";
+    textEl.innerHTML = text;
+    textEl.style.opacity = (settings.textOpacity === undefined ? 100 : settings.textOpacity) / 100;
+    var textShadows = [];
+    if (settings.textShadowEnabled) {
+      textShadows.push(settings.textShadowX + "px " + settings.textShadowY + "px " +
+                       settings.textShadowBlur + "px " + settings.textShadowColor);
     }
-    alertBackground.addEventListener('transitionend', Display.alertTransitionEndEvent, false);
-    alertText.addEventListener('animationend', Display.alertAnimationEndEvent, false);
-    /* Either scroll the alert, or make it disappear at the end of its time */
+    if (settings.glowEnabled) {
+      // Two layers so the glow reads from the back of the room
+      textShadows.push("0 0 " + settings.glowRadius + "px " + settings.glowColor);
+      textShadows.push("0 0 " + (settings.glowRadius * 2) + "px " + settings.glowColor);
+    }
+    if (textShadows.length > 0) {
+      textEl.style.textShadow = textShadows.join(", ");
+    }
+    if (settings.outlineEnabled) {
+      textEl.style.webkitTextStroke = settings.outlineWidth + "px " + settings.outlineColor;
+    }
+    // Background style
+    switch (settings.backgroundStyle) {
+      case "gradient":
+        box.style.background = "linear-gradient(" + settings.gradientAngle + "deg, " +
+          _alertRgba(settings.backgroundColor, settings.backgroundOpacity) + ", " +
+          _alertRgba(settings.backgroundColor2, settings.backgroundOpacity) + ")";
+        break;
+      case "glass":
+        box.style.backgroundColor = _alertRgba(settings.backgroundColor, settings.backgroundOpacity);
+        box.style.backdropFilter = "blur(" + settings.backgroundBlur + "px) saturate(1.4)";
+        box.classList.add("alert-glass");
+        break;
+      case "none":
+        box.style.backgroundColor = "transparent";
+        break;
+      case "solid":
+      case "semiTransparent":
+      default:
+        box.style.backgroundColor = _alertRgba(settings.backgroundColor, settings.backgroundOpacity);
+        break;
+    }
+    // Shape and alert type layout
+    var isFullscreen = settings.alertType === "fullscreen";
+    var fullWidth = settings.shape === "fullWidth" || isFullscreen;
+    if (isFullscreen) {
+      offset.style.transform = "";
+      offset.style.width = "100vw";
+      box.style.width = "100vw";
+      box.style.height = "100vh";
+      box.style.borderRadius = "0";
+      box.style.display = "flex";
+      box.style.flexDirection = "column";
+      box.style.alignItems = "center";
+      box.style.justifyContent = "center";
+      box.style.textAlign = "center";
+    } else if (fullWidth) {
+      offset.style.width = "100vw";
+      box.style.width = "100%";
+      box.style.boxSizing = "border-box";
+      box.style.borderRadius = "0";
+      box.style.textAlign = "center";
+      box.style.justifyContent = "center";
+    } else {
+      box.style.margin = settings.marginY + "px " + settings.marginX + "px";
+      box.style.borderRadius = (settings.shape === "pill") ? "999px" : settings.cornerRadius + "px";
+      if (settings.shape === "card") {
+        box.classList.add("alert-card");
+      }
+    }
+    switch (settings.alertType) {
+      case "toast":
+        box.style.maxWidth = "42vw";
+        break;
+      case "lowerThird":
+        if (!fullWidth) {
+          box.style.width = "calc(100vw - " + (2 * settings.marginX) + "px)";
+          box.style.boxSizing = "border-box";
+        }
+        break;
+      case "centerOverlay":
+        box.style.maxWidth = "72vw";
+        box.style.textAlign = "center";
+        break;
+    }
+    // Icon
+    if (settings.iconEnabled && settings.icon !== "none") {
+      var iconSvg = _alertIconSvg(settings.icon || "auto", settings.priority);
+      if (iconSvg) {
+        var iconEl = document.createElement("span");
+        iconEl.className = "alert-icon";
+        iconEl.innerHTML = iconSvg;
+        box.appendChild(iconEl);
+      }
+    }
+    box.appendChild(textEl);
+    offset.appendChild(box);
+    container.appendChild(offset);
+    Display._alertState = AlertState.Displaying;
+    // Scrolling (marquee) text
     if (settings.scroll) {
-      Display._animationState = AnimationState.ScrollingText;
-      alertText.classList.add('scrolling');
-      alertText.classList.replace("hide", "show");
-      var animationSettings = "alert-scrolling-text " + settings.timeout +
-                              "s linear 0.6s " + settings.repeat + " normal";
-      alertText.style.animation = animationSettings;
+      box.classList.add("alert-scrolling");
+      textEl.style.animation = "alert-scrolling-text " + settings.timeout +
+                               "s linear 0.6s " + settings.repeat + " normal";
     }
-    else {
-      Display._animationState = AnimationState.NonScrollingText;
-      alertText.classList.replace("hide", "show");
-      setTimeout (function () {
-        Display._animationState = AnimationState.NoAnimation;
-        Display.hideAlert();
-      }, settings.timeout * AlertDelay.OneSecond);
+    // Entrance animation, then any looping emphasis effect
+    if (settings.animationIn && settings.animationIn !== "none") {
+      box.style.animationDuration = settings.animationSpeed + "ms";
+      box.classList.add("alert-anim-in-" + settings.animationIn);
+      box.addEventListener("animationend", function onEntranceEnd(e) {
+        if (e.target !== box) {
+          return;
+        }
+        box.removeEventListener("animationend", onEntranceEnd);
+        box.classList.remove("alert-anim-in-" + settings.animationIn);
+        box.style.animationDuration = "";
+        Display._applyAlertEmphasis(box, settings.emphasis);
+      });
+    } else {
+      Display._applyAlertEmphasis(box, settings.emphasis);
     }
   },
   /**
-   * Hide the alert at the end
+   * Start a looping emphasis effect (pulse/flash/shake) on the alert box
+   * @param {HTMLElement} box - The alert box element
+   * @param {string} emphasis - The name of the effect, or "none"
+   */
+  _applyAlertEmphasis: function (box, emphasis) {
+    if (emphasis && emphasis !== "none") {
+      box.classList.add("alert-emphasis-" + emphasis);
+    }
+  },
+  /**
+   * Hide the current alert, playing its exit animation
    */
   hideAlert: function () {
-    var alertBackground = $('#alert-background')[0];
-    var alertText = $('#alert-text')[0];
-    Display._transitionState = TransitionState.ExitTransition;
-    alertText.classList.replace("show", "hide");
-    alertBackground.classList.replace("show", "hide");
-    alertText.style.animation = "";
-    Display._alertState = AlertState.NotDisplaying;
-  },
-  /**
-   * Add an alert to the alert queue
-   * @param {string} text - The alert text to be displayed
-   * @param {Object} setttings - JSON object containing the settings for the alert
-   */
-  addAlertToQueue: function (text, settings) {
-    Display._alerts.push({text: text, settings: settings});
-  },
-  /**
-   * The alertTransitionEndEvent called after a transition has ended
-   */
-  alertTransitionEndEvent: function (e) {
-    e.stopPropagation();
-    if (Display._transitionState === TransitionState.EntranceTransition) {
-      Display._transitionState = TransitionState.NoTransition;
-    }
-    else if (Display._transitionState === TransitionState.ExitTransition) {
-      Display._transitionState = TransitionState.NoTransition;
-      Display.hideAlert();
-      Display.showNextAlert();
-    }
-  },
-  /**
-   * The alertAnimationEndEvent called after an animation has ended
-   */
-  alertAnimationEndEvent: function (e) {
-    e.stopPropagation();
-    Display.hideAlert();
-  },
-  /**
-   * Set the location of the alert
-   * @param {int} location - Integer number with the location of the alert on screen
-   */
-  setAlertLocation: function (location) {
-    var alertContainer = $(".alert-container")[0];
-    // Remove an existing location classes
-    alertContainer.classList.remove("top");
-    alertContainer.classList.remove("middle");
-    alertContainer.classList.remove("bottom");
-    // Apply the location class we want
-    switch (location) {
-      case AlertLocation.Top:
-        alertContainer.classList.add("top");
-        break;
-      case AlertLocation.Middle:
-        alertContainer.classList.add("middle");
-        break;
-      case AlertLocation.Bottom:
-      default:
-        alertContainer.classList.add("bottom");
-        break;
-    }
-  },
-  /**
-  * Display the next alert in the queue
-  */
-  showNextAlert: function () {
-    if (Display._alerts.length > 0) {
-      var alertObject = Display._alerts.shift();
-      Display._alertState = AlertState.DisplayingFromQueue;
-      Display.showAlert(alertObject.text, alertObject.settings);
-    }
-    else {
-      // For the tests
+    var container = $("#alert-container")[0];
+    var box = container.querySelector(".alert-box");
+    if (!box) {
       return null;
     }
+    Display._alertState = AlertState.NotDisplaying;
+    var out = Display._alertOut || {name: "fade", speed: 400};
+    // Stop looping/entrance effects so the exit animation can take over
+    box.className = box.className.replace(/alert-emphasis-\S+|alert-anim-in-\S+/g, "").trim();
+    if (!out.name || out.name === "none") {
+      container.innerHTML = "";
+      return;
+    }
+    box.style.animationDuration = out.speed + "ms";
+    box.classList.add("alert-anim-out-" + out.name);
+    box.addEventListener("animationend", function (e) {
+      if (e.target === box && box.parentNode) {
+        container.innerHTML = "";
+      }
+    });
+    // Safety net in case the animation event never fires
+    setTimeout(function () {
+      if (box.parentNode) {
+        container.innerHTML = "";
+      }
+    }, out.speed + 400);
   },
   /**
    * Create a text slide.

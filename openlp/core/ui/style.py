@@ -109,9 +109,11 @@ NOIR_WARNING = '#D9A23C'
 # grip hover, and the text color painted on top of the on-air red.
 NOIR_LINE_HOVER = '#3A4250'
 NOIR_TEXT_ON_ACCENT = '#FFFFFF'
-# Preferred UI font families, best first. Qt walks the list until it finds one
-# that is installed, so older systems fall back gracefully.
-NOIR_FONT_FAMILIES = ['Segoe UI Variable Text', 'Segoe UI', 'Inter', 'Roboto', 'Noto Sans', 'Cantarell']
+# Preferred UI font families, best first. Lato ships with OpenLP (see
+# BUNDLED_FONT_DIR) so it is always available; the rest of the list is a
+# fallback for the unlikely case the bundled files fail to register.
+NOIR_FONT_FAMILIES = ['Lato', 'Segoe UI Variable Text', 'Segoe UI', 'Inter', 'Roboto', 'Noto Sans',
+                      'Cantarell']
 # Type scale. Body is the application font set in set_noir_palette(); the
 # named steps below are interpolated into NOIR_STYLESHEET so every panel
 # label, section header and title stays on the same four-step scale.
@@ -971,10 +973,34 @@ def is_macosx_darkmode():
         return False
 
 
+# Fonts shipped with OpenLP. They live under the display html directory so the
+# same files are served to the display web view (via the openlp:// scheme) for
+# @font-face use, and registered with Qt here for the widget UI.
+BUNDLED_FONT_DIR = Path(__file__).parent.parent / 'display' / 'html' / 'fonts'
+_bundled_fonts_registered = False
+
+
+def register_bundled_fonts():
+    """
+    Register the font files shipped with OpenLP (currently Lato) with the
+    Qt font database so they are available to the UI and font pickers even when
+    not installed on the system.
+    """
+    global _bundled_fonts_registered
+    if _bundled_fonts_registered:
+        return
+    _bundled_fonts_registered = True
+    for font_file in sorted(BUNDLED_FONT_DIR.glob('*.ttf')):
+        font_id = QtGui.QFontDatabase.addApplicationFont(str(font_file))
+        if font_id == -1:
+            log.warning('Failed to register bundled font %s', font_file)
+
+
 def set_default_theme(app):
     """
     Setup theme
     """
+    register_bundled_fonts()
     if is_ui_theme(UiThemes.Noir):
         set_noir_palette(app)
     elif is_ui_theme(UiThemes.DefaultDark) or (is_ui_theme(UiThemes.Automatic) and is_ui_theme_dark()):

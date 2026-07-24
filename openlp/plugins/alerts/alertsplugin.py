@@ -24,89 +24,19 @@ import logging
 from openlp.core.state import State
 from openlp.core.common.actions import ActionList
 from openlp.core.common.i18n import UiStrings, translate
+from openlp.core.common.registry import Registry
 from openlp.core.db.manager import DBManager
 from openlp.core.lib.plugin import Plugin, StringContent
-from openlp.core.lib.theme import VerticalType
 from openlp.core.lib.ui import create_action
 from openlp.core.ui.icons import UiIcons
 from openlp.plugins.alerts.forms.alertform import AlertForm
+from openlp.plugins.alerts.lib import upgrade
 from openlp.plugins.alerts.lib.alertsmanager import AlertsManager
 from openlp.plugins.alerts.lib.alertstab import AlertsTab
 from openlp.plugins.alerts.lib.db import init_schema
 
 
 log = logging.getLogger(__name__)
-
-JAVASCRIPT = """
-    function show_alert(alerttext, position){
-        var text = document.getElementById('alert');
-        text.innerHTML = alerttext;
-        if(alerttext == '') {
-            text.style.visibility = 'hidden';
-            return 0;
-        }
-        if(position == ''){
-            position = getComputedStyle(text, '').verticalAlign;
-        }
-        switch(position)
-        {
-            case 'top':
-                text.style.top = '0px';
-                break;
-            case 'middle':
-                text.style.top = ((window.innerHeight - text.clientHeight) / 2)
-                    + 'px';
-                break;
-            case 'bottom':
-                text.style.top = (window.innerHeight - text.clientHeight)
-                    + 'px';
-                break;
-        }
-        text.style.visibility = 'visible';
-        return text.clientHeight;
-    }
-
-    function update_css(align, font, size, color, bgcolor){
-        var text = document.getElementById('alert');
-        text.style.fontSize = size + "pt";
-        text.style.fontFamily = font;
-        text.style.color = color;
-        text.style.backgroundColor = bgcolor;
-        switch(align)
-        {
-            case 'top':
-                text.style.top = '0px';
-                break;
-            case 'middle':
-                text.style.top = ((window.innerHeight - text.clientHeight) / 2)
-                    + 'px';
-                break;
-            case 'bottom':
-                text.style.top = (window.innerHeight - text.clientHeight)
-                    + 'px';
-                break;
-        }
-    }
-"""
-CSS = """
-    #alert {{
-        position: absolute;
-        left: 0px;
-        top: 0px;
-        z-index: 10;
-        width: 100%;
-        vertical-align: {vertical_align};
-        font-family: {font_family};
-        font-size: {font_size:d}pt;
-        color: {color};
-        background-color: {background_color};
-        word-wrap: break-word;
-    }}
-"""
-
-HTML = """
-    <div id="alert" style="visibility:hidden"></div>
-"""
 
 
 class AlertsPlugin(Plugin):
@@ -124,7 +54,7 @@ class AlertsPlugin(Plugin):
         self.icon_path = UiIcons().alert
         self.icon = self.icon_path
         AlertsManager(self)
-        self.manager = DBManager('alerts', init_schema)
+        self.manager = DBManager('alerts', init_schema, upgrade_mod=upgrade)
         self.alert_form = AlertForm(self)
         State().add_service(self.name, self.weight, is_plugin=True)
         State().update_pre_conditions(self.name, self.check_pre_conditions())
@@ -138,12 +68,14 @@ class AlertsPlugin(Plugin):
         self.tools_alert_item.setVisible(True)
         action_list = ActionList.get_instance()
         action_list.add_action(self.tools_alert_item, UiStrings().Tools)
+        Registry().get('alerts_manager').start_scheduler()
 
     def finalise(self):
         """
         Tidy up on exit
         """
         log.info('Alerts Finalising')
+        Registry().get('alerts_manager').stop_scheduler()
         self.manager.finalise()
         super(AlertsPlugin, self).finalise()
         self.tools_alert_item.setVisible(False)
@@ -206,42 +138,3 @@ class AlertsPlugin(Plugin):
         self.text_strings[StringContent.VisibleName] = {
             'title': translate('AlertsPlugin', 'Alerts', 'container title')
         }
-
-    @staticmethod
-    def get_display_javascript():
-        """
-        Add Javascript to the main display.
-        """
-        return JAVASCRIPT
-
-    def get_display_css(self):
-        """
-        Add CSS to the main display.
-        """
-        align = VerticalType.Names[self.settings_tab.location]
-        return CSS.format(vertical_align=align,
-                          font_family=self.settings_tab.font_face,
-                          font_size=self.settings_tab.font_size,
-                          color=self.settings_tab.font_color,
-                          background_color=self.settings_tab.background_color)
-
-    @staticmethod
-    def get_display_html():
-        """
-        Add HTML to the main display.
-        """
-        return HTML
-
-    def refresh_css(self, frame):
-        """
-        Trigger an update of the CSS in the main display.
-
-        :param frame: The Web frame holding the page.
-        """
-        align = VerticalType.Names[self.settings_tab.location]
-        frame.runJavaScript('update_css("{align}", "{face}", "{size}", "{color}", '
-                            '"{background}")'.format(align=align,
-                                                     face=self.settings_tab.font_face,
-                                                     size=self.settings_tab.font_size,
-                                                     color=self.settings_tab.font_color,
-                                                     background=self.settings_tab.background_color))

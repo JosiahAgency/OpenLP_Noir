@@ -24,6 +24,8 @@ from PySide6 import QtCore, QtWidgets, QtGui
 from openlp.core.common.i18n import translate
 from openlp.core.common.registry import Registry
 from openlp.plugins.alerts.lib.db import AlertItem
+from openlp.plugins.alerts.lib.presets import (PRIORITY_BEHAVIOUR, PRIORITY_KEYS, AlertPriority,
+                                               get_alert_presets)
 
 from openlp.plugins.alerts.forms.alertdialog import AlertDialog
 
@@ -44,6 +46,10 @@ class AlertForm(QtWidgets.QDialog, AlertDialog):
         self.plugin = plugin
         self.item_id = None
         self.setup_ui(self)
+        self._refresh_priority_captions()
+        self.priority_combo_box.setCurrentIndex(AlertPriority.Info.value)
+        self._update_priority_info()
+        self.priority_combo_box.currentIndexChanged.connect(self._update_priority_info)
         self.display_button.clicked.connect(self.on_display_clicked)
         self.display_close_button.clicked.connect(self.on_display_close_clicked)
         self.alert_text_edit.textChanged.connect(self.on_text_changed)
@@ -52,6 +58,7 @@ class AlertForm(QtWidgets.QDialog, AlertDialog):
         self.alert_list_widget.doubleClicked.connect(self.on_double_click)
         self.alert_list_widget.clicked.connect(self.on_single_click)
         self.alert_list_widget.currentRowChanged.connect(self.on_current_row_changed)
+        self.schedule_group_box.toggled.connect(self.on_schedule_toggled)
 
     def exec(self):
         """
@@ -60,7 +67,80 @@ class AlertForm(QtWidgets.QDialog, AlertDialog):
         self.display_button.setEnabled(False)
         self.display_close_button.setEnabled(False)
         self.alert_text_edit.setText('')
+        self.schedule_group_box.setChecked(False)
+        # The presets may have been edited in Settings since the dialog was
+        # last shown, so rebuild the priority captions and explanations
+        self._refresh_priority_captions()
+        self._update_priority_info()
         return QtWidgets.QDialog.exec(self)
+
+    def _current_presets(self):
+        """The live style presets, as configured in Settings."""
+        return get_alert_presets(Registry().get('settings'))
+
+    def _refresh_priority_captions(self):
+        """
+        Fill the priority selector with each priority's name plus how, and for
+        how long, it will display, so nothing about the behaviour is hidden.
+        """
+        presets = self._current_presets()
+        names = AlertPriority.display_names()
+        type_names = self._alert_type_names()
+        current = max(0, self.priority_combo_box.currentIndex())
+        self.priority_combo_box.blockSignals(True)
+        self.priority_combo_box.clear()
+        for priority in AlertPriority:
+            preset = presets[PRIORITY_KEYS[priority.value]]
+            caption = translate('AlertsPlugin.AlertForm', '{name} — {type}, {seconds} s').format(
+                name=names[priority.value], type=type_names.get(preset['alertType'], preset['alertType']),
+                seconds=preset['timeout'])
+            self.priority_combo_box.addItem(caption)
+        self.priority_combo_box.setCurrentIndex(min(current, self.priority_combo_box.count() - 1))
+        self.priority_combo_box.blockSignals(False)
+
+    @staticmethod
+    def _alert_type_names():
+        """Short translated names for the alert types."""
+        return {
+            'banner': translate('AlertsPlugin.AlertForm', 'full-width banner'),
+            'toast': translate('AlertsPlugin.AlertForm', 'small floating card'),
+            'lowerThird': translate('AlertsPlugin.AlertForm', 'lower third'),
+            'centerOverlay': translate('AlertsPlugin.AlertForm', 'center overlay'),
+            'fullscreen': translate('AlertsPlugin.AlertForm', 'full-screen takeover'),
+        }
+
+    def _update_priority_info(self, *args):
+        """
+        Explain, in plain words, what the selected priority will do: how it
+        looks, where it appears, how long it stays, and how it queues.
+        """
+        priority = AlertPriority(max(0, self.priority_combo_box.currentIndex()))
+        preset = self._current_presets()[priority.key]
+        type_names = self._alert_type_names()
+        appearance = type_names.get(preset['alertType'], preset['alertType'])
+        if preset['alertType'] != 'fullscreen':
+            zone_v = {'top': translate('AlertsPlugin.AlertForm', 'top'),
+                      'middle': translate('AlertsPlugin.AlertForm', 'middle'),
+                      'bottom': translate('AlertsPlugin.AlertForm', 'bottom')}.get(preset['zoneV'], preset['zoneV'])
+            zone_h = {'left': translate('AlertsPlugin.AlertForm', 'left'),
+                      'center': translate('AlertsPlugin.AlertForm', 'center'),
+                      'right': translate('AlertsPlugin.AlertForm', 'right')}.get(preset['zoneH'], preset['zoneH'])
+            appearance += translate('AlertsPlugin.AlertForm', ' ({vertical} {horizontal})').format(
+                vertical=zone_v, horizontal=zone_h)
+        queue_sentences = {
+            'queue': translate('AlertsPlugin.AlertForm',
+                               'If another alert is on screen, it waits its turn in the queue.'),
+            'front': translate('AlertsPlugin.AlertForm',
+                               'It goes ahead of any alerts waiting in the queue.'),
+            'preempt': translate('AlertsPlugin.AlertForm',
+                                 'It interrupts whatever alert is on screen immediately.'),
+        }
+        self.priority_info_label.setText(translate(
+            'AlertsPlugin.AlertForm',
+            'Displays as a {appearance} for {seconds} seconds. {queue} It appears when you click Display, or '
+            'automatically if you schedule it below. Change the look and timing per priority in '
+            'Settings → Alerts.').format(appearance=appearance, seconds=preset['timeout'],
+                                         queue=queue_sentences[PRIORITY_BEHAVIOUR[priority]]))
 
     def load_list(self):
         """
@@ -69,12 +149,37 @@ class AlertForm(QtWidgets.QDialog, AlertDialog):
         self.alert_list_widget.clear()
         alerts = self.manager.get_all_objects(AlertItem, order_by_ref=AlertItem.text)
         for alert in alerts:
-            item_name = QtWidgets.QListWidgetItem(alert.text)
+            item_name = QtWidgets.QListWidgetItem(self._item_caption(alert))
             item_name.setData(QtCore.Qt.ItemDataRole.UserRole, alert.id)
             self.alert_list_widget.addItem(item_name)
             if alert.text == self.alert_text_edit.text():
                 self.item_id = alert.id
                 self.alert_list_widget.setCurrentRow(self.alert_list_widget.row(item_name))
+
+    def _item_caption(self, alert):
+        """
+        Caption for an alert in the list: text plus priority and schedule.
+
+        :param alert: The AlertItem
+        """
+        priority_name = AlertPriority.display_names()[alert.priority or 0]
+        caption = f'[{priority_name}] {alert.text}'
+        if alert.scheduled:
+            if alert.repeat_minutes:
+                caption += ' ' + translate('AlertsPlugin.AlertForm',
+                                           '(scheduled, every {minutes} min)').format(minutes=alert.repeat_minutes)
+            else:
+                caption += ' ' + translate('AlertsPlugin.AlertForm', '(scheduled)')
+            if not alert.enabled:
+                caption += ' ' + translate('AlertsPlugin.AlertForm', '(finished)')
+        return caption
+
+    def on_schedule_toggled(self, checked):
+        """
+        Keep the button labels honest: a scheduled alert is armed by New/Save,
+        not by the Display buttons.
+        """
+        self.on_text_changed()
 
     def on_display_clicked(self):
         """
@@ -102,6 +207,45 @@ class AlertForm(QtWidgets.QDialog, AlertDialog):
         self.item_id = None
         self.alert_text_edit.setText('')
 
+    def _apply_form_to_alert(self, alert):
+        """
+        Copy the form fields (text, priority, schedule) onto an AlertItem.
+
+        :param alert: The AlertItem to update
+        """
+        alert.text = self.alert_text_edit.text()
+        alert.priority = self.priority_combo_box.currentIndex()
+        alert.scheduled = self.schedule_group_box.isChecked()
+        if alert.scheduled:
+            alert.start_time = self.start_time_edit.dateTime().toPython()
+            alert.end_time = self.end_time_edit.dateTime().toPython()
+            alert.repeat_minutes = self.repeat_interval_spin_box.value()
+            # (Re-)arm the schedule
+            alert.enabled = True
+            alert.last_fired = None
+        else:
+            alert.start_time = None
+            alert.end_time = None
+            alert.repeat_minutes = 0
+            alert.enabled = True
+            alert.last_fired = None
+
+    def _load_alert_into_form(self, alert):
+        """
+        Populate the form fields from an AlertItem.
+
+        :param alert: The AlertItem to show
+        """
+        self.alert_text_edit.setText(alert.text)
+        self.priority_combo_box.setCurrentIndex(alert.priority or 0)
+        self.schedule_group_box.setChecked(bool(alert.scheduled))
+        if alert.scheduled:
+            if alert.start_time:
+                self.start_time_edit.setDateTime(QtCore.QDateTime(alert.start_time))
+            if alert.end_time:
+                self.end_time_edit.setDateTime(QtCore.QDateTime(alert.end_time))
+            self.repeat_interval_spin_box.setValue(alert.repeat_minutes or 0)
+
     def on_new_click(self):
         """
         Create a new alert.
@@ -113,7 +257,8 @@ class AlertForm(QtWidgets.QDialog, AlertDialog):
                                                         'You haven\'t specified any text for your alert. \n'
                                                         'Please type in some text before clicking New.'))
         else:
-            alert = AlertItem(text=self.alert_text_edit.text())
+            alert = AlertItem()
+            self._apply_form_to_alert(alert)
             self.manager.save_object(alert)
         self.load_list()
 
@@ -123,7 +268,7 @@ class AlertForm(QtWidgets.QDialog, AlertDialog):
         """
         if self.item_id:
             alert = self.manager.get_object(AlertItem, self.item_id)
-            alert.text = self.alert_text_edit.text()
+            self._apply_form_to_alert(alert)
             self.manager.save_object(alert)
             self.item_id = None
             self.load_list()
@@ -149,9 +294,12 @@ class AlertForm(QtWidgets.QDialog, AlertDialog):
         """
         item = self.alert_list_widget.selectedIndexes()[0]
         list_item = self.alert_list_widget.item(item.row())
-        self.trigger_alert(list_item.text())
-        self.alert_text_edit.setText(list_item.text())
-        self.item_id = list_item.data(QtCore.Qt.ItemDataRole.UserRole)
+        alert = self.manager.get_object(AlertItem, list_item.data(QtCore.Qt.ItemDataRole.UserRole))
+        if not alert:
+            return
+        self._load_alert_into_form(alert)
+        self.trigger_alert(alert.text)
+        self.item_id = alert.id
         self.save_button.setEnabled(False)
 
     def on_single_click(self):
@@ -160,8 +308,11 @@ class AlertForm(QtWidgets.QDialog, AlertDialog):
         """
         item = self.alert_list_widget.selectedIndexes()[0]
         list_item = self.alert_list_widget.item(item.row())
-        self.alert_text_edit.setText(list_item.text())
-        self.item_id = list_item.data(QtCore.Qt.ItemDataRole.UserRole)
+        alert = self.manager.get_object(AlertItem, list_item.data(QtCore.Qt.ItemDataRole.UserRole))
+        if not alert:
+            return
+        self._load_alert_into_form(alert)
+        self.item_id = alert.id
         # If the alert does not contain '<>' we clear the ParameterEdit field.
         if self.alert_text_edit.text().find('<>') == -1:
             self.parameter_edit.setText('')
@@ -197,7 +348,7 @@ class AlertForm(QtWidgets.QDialog, AlertDialog):
             self.parameter_edit.setFocus()
             return False
         text = text.replace('<>', self.parameter_edit.text())
-        self.plugin.alerts_manager.display_alert(text)
+        self.plugin.alerts_manager.display_alert(text, AlertPriority(self.priority_combo_box.currentIndex()))
         return True
 
     def on_current_row_changed(self, row):

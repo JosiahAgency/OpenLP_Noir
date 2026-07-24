@@ -1,3 +1,51 @@
+/* Lato ships with OpenLP and is the default alert font. Its static weights
+   are 300/400/700/900, so the ranges below snap in-between requests (500,
+   600, 800) to the nearest cut. */
+@font-face {
+  font-family: 'Lato';
+  src: url('fonts/Lato-Light.ttf') format('truetype');
+  font-weight: 100 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Lato';
+  src: url('fonts/Lato-Regular.ttf') format('truetype');
+  font-weight: 400 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Lato';
+  src: url('fonts/Lato-Bold.ttf') format('truetype');
+  font-weight: 600 800;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Lato';
+  src: url('fonts/Lato-Black.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Lato';
+  src: url('fonts/Lato-Italic.ttf') format('truetype');
+  font-weight: 100 500;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: 'Lato';
+  src: url('fonts/Lato-BoldItalic.ttf') format('truetype');
+  font-weight: 600 900;
+  font-style: italic;
+}
+
+/*********************************************
+ * ALERT ANIMATION LIBRARY
+ *********************************************/
 @keyframes alert-scrolling-text {
   0% {
     opacity: 1;
@@ -10,6 +58,94 @@
     opacity: 0;
     transform: translateX(-101%);
   }
+}
+
+@keyframes alert-in-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes alert-in-slideDown {
+  from { transform: translateY(-130%); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes alert-in-slideUp {
+  from { transform: translateY(130%); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes alert-in-slideLeft {
+  from { transform: translateX(60vw); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes alert-in-slideRight {
+  from { transform: translateX(-60vw); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes alert-in-zoom {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes alert-in-bounce {
+  0% { transform: translateY(-130%); opacity: 0; }
+  60% { transform: translateY(6%); opacity: 1; }
+  80% { transform: translateY(-3%); }
+  100% { transform: none; }
+}
+
+@keyframes alert-in-flip {
+  from { transform: perspective(900px) rotateX(-75deg); opacity: 0; }
+  to { transform: perspective(900px) rotateX(0); opacity: 1; }
+}
+
+@keyframes alert-out-fade {
+  to { opacity: 0; }
+}
+
+@keyframes alert-out-slideUp {
+  to { transform: translateY(-130%); opacity: 0; }
+}
+
+@keyframes alert-out-slideDown {
+  to { transform: translateY(130%); opacity: 0; }
+}
+
+@keyframes alert-out-slideLeft {
+  to { transform: translateX(-60vw); opacity: 0; }
+}
+
+@keyframes alert-out-slideRight {
+  to { transform: translateX(60vw); opacity: 0; }
+}
+
+@keyframes alert-out-zoom {
+  to { transform: scale(0.6); opacity: 0; }
+}
+
+@keyframes alert-out-flip {
+  to { transform: perspective(900px) rotateX(75deg); opacity: 0; }
+}
+
+@keyframes alert-emphasis-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.035); }
+}
+
+@keyframes alert-emphasis-flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+@keyframes alert-emphasis-shake {
+  0%, 100% { transform: none; }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
 }
 
 body {
@@ -136,6 +272,9 @@ section.text-slides.stack.present {
   flex-direction: row;
   height: 100vh;
   width: 100vw;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 11;
 }
 
 .hide {
@@ -160,39 +299,72 @@ section.text-slides.stack.present {
   align-items: flex-end;
 }
 
-#alert-background {
-  left: 0;
-  margin: 0;
-  opacity: 0;
-  overflow: hidden;
-  padding: 0.5em 0;
-  position: absolute;
-  transition: opacity 0.5s ease;
-  white-space: nowrap;
-  width: 100%;
-  z-index: 11;
+.alert-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55em;
+  box-sizing: border-box;
+  will-change: transform, opacity;
 }
 
-#alert-text {
-  margin: 0 0.5em;
-  opacity: 0;
-  overflow: visible;
-  padding: 0;
-  transition: opacity 0.5s linear;
-  z-index: 100;
+.alert-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+}
+
+.alert-icon svg {
+  width: 1.25em;
+  height: 1.25em;
+  display: block;
+}
+
+.alert-text {
+  overflow-wrap: break-word;
+  min-width: 0;
+}
+
+.alert-glass {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.alert-card {
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+}
+
+.alert-box.alert-scrolling {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.alert-box.alert-scrolling .alert-text {
+  display: inline-block;
+  min-width: 100%;
+  transform: translateX(101%);
   will-change: transform;
 }
 
+/* Entrances: a decisive ease-out; exits: ease-in. Durations are set inline
+   from the preset's animation speed. */
+.alert-anim-in-fade { animation: alert-in-fade 400ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.alert-anim-in-slideDown { animation: alert-in-slideDown 400ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.alert-anim-in-slideUp { animation: alert-in-slideUp 400ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.alert-anim-in-slideLeft { animation: alert-in-slideLeft 400ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.alert-anim-in-slideRight { animation: alert-in-slideRight 400ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.alert-anim-in-zoom { animation: alert-in-zoom 400ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.alert-anim-in-bounce { animation: alert-in-bounce 400ms cubic-bezier(0.34, 1.2, 0.64, 1) both; }
+.alert-anim-in-flip { animation: alert-in-flip 400ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 
-#alert-text.scrolling {
-  box-sizing: border-box;
-  transform: translateX(101%);
-  display: inline-block;
-  min-width: 100%;
-  padding-left: 2%;
-  padding-right: 2%;
-  text-align: center;
-}
+.alert-anim-out-fade { animation: alert-out-fade 400ms ease-in both; }
+.alert-anim-out-slideDown { animation: alert-out-slideDown 400ms ease-in both; }
+.alert-anim-out-slideUp { animation: alert-out-slideUp 400ms ease-in both; }
+.alert-anim-out-slideLeft { animation: alert-out-slideLeft 400ms ease-in both; }
+.alert-anim-out-slideRight { animation: alert-out-slideRight 400ms ease-in both; }
+.alert-anim-out-zoom { animation: alert-out-zoom 400ms ease-in both; }
+.alert-anim-out-flip { animation: alert-out-flip 400ms ease-in both; }
+
+.alert-emphasis-pulse { animation: alert-emphasis-pulse 1.6s ease-in-out infinite; }
+.alert-emphasis-flash { animation: alert-emphasis-flash 1.2s ease-in-out infinite; }
+.alert-emphasis-shake { animation: alert-emphasis-shake 0.9s ease-in-out infinite; }
 
 .footer {
   position: absolute;

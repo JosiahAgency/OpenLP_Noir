@@ -626,7 +626,15 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
         """
         Set an alert
         """
-        self._run_javascript('Display.alert("{text}", {settings});'.format(text=text, settings=settings))
+        # json.dumps the text so quotes and backslashes survive the round trip
+        # into Javascript
+        self._run_javascript('Display.alert({text}, {settings});'.format(text=json.dumps(text), settings=settings))
+
+    def hide_alert(self):
+        """
+        Hide the currently showing alert, playing its exit animation
+        """
+        self._run_javascript('Display.hideAlert();')
 
     @QtCore.Slot(result='QPixmap')
     def _grab_screenshot_safe_signal(self):
