@@ -24,18 +24,18 @@ from PySide6 import QtCore, QtWidgets, QtGui
 
 from openlp.core.common.i18n import translate
 from openlp.core.common.registry import Registry
+from openlp.plugins.alerts.forms.alertdialog import AlertDialog
 from openlp.plugins.alerts.lib.db import AlertItem
 from openlp.plugins.alerts.lib.placeholders import find_placeholders, substitute_placeholders
 from openlp.plugins.alerts.lib.presets import PRIORITY_BEHAVIOUR, AlertPriority, new_template_style, \
     resolve_template_style
-
-from openlp.plugins.alerts.forms.alertdialog import AlertDialog
 
 
 class AlertForm(QtWidgets.QDialog, AlertDialog):
     """
     Provide UI for the alert system
     """
+
     def __init__(self, plugin):
         """
         Initialise the alert form
@@ -115,7 +115,7 @@ class AlertForm(QtWidgets.QDialog, AlertDialog):
         self.priority_help_button.setToolTip('<qt>' + translate(
             'AlertsPlugin.AlertForm',
             '{queue} Its look and timing are set on the Style tab, not by priority.').format(
-                queue=queue_sentences[PRIORITY_BEHAVIOUR[priority]]) + '</qt>')
+            queue=queue_sentences[PRIORITY_BEHAVIOUR[priority]]) + '</qt>')
 
     def on_start_from_changed(self, index):
         """
@@ -256,8 +256,8 @@ class AlertForm(QtWidgets.QDialog, AlertDialog):
             QtWidgets.QMessageBox.warning(
                 self, translate('AlertsPlugin.AlertForm', 'Cannot Schedule'),
                 translate('AlertsPlugin.AlertForm',
-                         'This alert\'s text contains {name}-style parameters, so nobody would be there to fill '
-                         'them in when it fires automatically. Remove the schedule, or remove the parameters.'))
+                          'This alert\'s text contains {name}-style parameters, so nobody would be there to fill '
+                          'them in when it fires automatically. Remove the schedule, or remove the parameters.'))
             return False
         return True
 

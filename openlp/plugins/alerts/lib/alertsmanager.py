@@ -34,8 +34,7 @@ from openlp.core.common.registry import Registry, RegistryBase
 from openlp.core.display.screens import ScreenList
 from openlp.plugins.alerts.lib.db import AlertItem
 from openlp.plugins.alerts.lib.presets import (AlertPriority, PRIORITY_BEHAVIOUR, resolve_alert_settings,
-                                                resolve_template_style)
-
+                                               resolve_template_style)
 
 #: How often the scheduler looks for due alerts, in milliseconds.
 SCHEDULER_INTERVAL = 15000
@@ -192,7 +191,7 @@ class AlertsManager(QtCore.QObject, RegistryBase, LogMixin, RegistryProperties):
             if item.start_time and now < item.start_time:
                 continue
             due = item.last_fired is None or (
-                item.repeat_minutes > 0 and now >= item.last_fired + timedelta(minutes=item.repeat_minutes))
+                    item.repeat_minutes > 0 and now >= item.last_fired + timedelta(minutes=item.repeat_minutes))
             if not due:
                 continue
             style = resolve_template_style(item, self.settings)
