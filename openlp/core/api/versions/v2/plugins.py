@@ -300,6 +300,10 @@ def alert():
     alert_text = data.get('text', '')
     if alert_text:
         if Registry().get('plugin_manager').get_plugin_by_name('alerts').status == PluginStatus.Active:
+            # Intentionally bare text, no template: this always displays with
+            # the live Notice priority default style. Don't "fix" this to
+            # take a template/style, it's what keeps the remote API decoupled
+            # from the Alert Manager's saved templates.
             Registry().get('alerts_manager').alerts_text.emit([alert_text])
             return '', 204
     abort(400)

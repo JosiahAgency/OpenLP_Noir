@@ -24,7 +24,7 @@ The :mod:`db` module provides the database and schema that is the backend for th
 
 from sqlalchemy import Column
 from sqlalchemy.orm import Session, declarative_base
-from sqlalchemy.types import Boolean, DateTime, Integer, UnicodeText
+from sqlalchemy.types import Boolean, DateTime, Integer, Unicode, UnicodeText
 
 from openlp.core.db.helpers import init_db
 
@@ -34,14 +34,18 @@ Base = declarative_base()
 
 class AlertItem(Base):
     """
-    AlertItem model. As well as the alert text, each alert carries a priority
-    (which selects its style preset and queue behaviour) and an optional
-    schedule: a start/end window and a repeat interval in minutes. The
-    scheduler in AlertsManager fires enabled scheduled alerts automatically.
+    AlertItem model. As well as the alert text, each alert carries its own
+    style (a JSON snapshot of a preset dict — see
+    :mod:`openlp.plugins.alerts.lib.presets`) and a priority, which now only
+    selects its queue behaviour. An alert may also have an optional schedule:
+    a start/end window and a repeat interval in minutes. The scheduler in
+    AlertsManager fires enabled scheduled alerts automatically.
     """
     __tablename__ = 'alerts'
     id = Column(Integer, primary_key=True)
     text = Column(UnicodeText, nullable=False)
+    name = Column(Unicode(255), nullable=True)
+    style = Column(UnicodeText, nullable=True)
     priority = Column(Integer, nullable=False, server_default='0')
     scheduled = Column(Boolean, nullable=False, server_default='0')
     enabled = Column(Boolean, nullable=False, server_default='1')

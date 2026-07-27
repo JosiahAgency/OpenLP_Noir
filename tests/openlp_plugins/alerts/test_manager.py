@@ -22,13 +22,14 @@
 This module contains tests for the alerts manager: queueing, preemption and
 scheduling.
 """
+import json
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from openlp.plugins.alerts.lib.alertsmanager import AlertsManager
-from openlp.plugins.alerts.lib.presets import AlertPriority
+from openlp.plugins.alerts.lib.presets import AlertPriority, resolve_alert_settings
 
 
 @pytest.fixture
@@ -97,10 +98,27 @@ def test_display_alert_shows_immediately(alert_environment):
     # WHEN: An info alert is displayed
     alert_manager.display_alert('hello', AlertPriority.Info)
 
-    # THEN: The display was called and the alert is current
+    # THEN: The display was called and the alert is current, with the live Info default style
     assert mocked_live_controller.display.alert.call_count == 1
     assert alert_manager._current['text'] == 'hello'
+    assert alert_manager._current['style'] == resolve_alert_settings(alert_manager.settings, AlertPriority.Info)
     assert alert_manager._queue == []
+
+
+def test_display_alert_uses_the_style_it_is_given(alert_environment):
+    """A per-template style, if supplied, is used as-is rather than the priority default"""
+    # GIVEN: An alerts manager with nothing showing, and a distinctive style
+    alert_manager, mocked_live_controller = alert_environment
+    own_style = dict(resolve_alert_settings(alert_manager.settings, AlertPriority.Info))
+    own_style['fontSize'] = 54321
+
+    # WHEN: An alert is displayed with that style
+    alert_manager.display_alert('hello', AlertPriority.Info, style=own_style)
+
+    # THEN: The supplied style is what is current and what was sent to the display
+    assert alert_manager._current['style'] == own_style
+    displayed_settings = json.loads(mocked_live_controller.display.alert.call_args[0][1])
+    assert displayed_settings['fontSize'] == 54321
 
 
 def test_display_alert_queues_second_alert(alert_environment):
@@ -155,6 +173,7 @@ def test_check_schedules_fires_due_alert(alert_environment):
     scheduled_item = MagicMock()
     scheduled_item.text = 'scheduled hello'
     scheduled_item.priority = int(AlertPriority.Notice)
+    scheduled_item.style = None
     scheduled_item.enabled = True
     scheduled_item.start_time = datetime.now() - timedelta(minutes=5)
     scheduled_item.end_time = datetime.now() + timedelta(minutes=5)
@@ -171,6 +190,33 @@ def test_check_schedules_fires_due_alert(alert_environment):
     assert mocked_live_controller.display.alert.call_count == 1
     assert scheduled_item.last_fired is not None
     mocked_plugin.manager.save_object.assert_called_once_with(scheduled_item)
+
+
+def test_check_schedules_uses_the_items_own_style(alert_environment):
+    """A scheduled alert with its own saved style displays with that style, not the priority default"""
+    # GIVEN: An alerts manager whose plugin has a due scheduled alert with a distinctive saved style
+    alert_manager, mocked_live_controller = alert_environment
+    own_style = dict(resolve_alert_settings(alert_manager.settings, AlertPriority.Notice))
+    own_style['fontSize'] = 12345
+    scheduled_item = MagicMock()
+    scheduled_item.text = 'scheduled hello'
+    scheduled_item.priority = int(AlertPriority.Notice)
+    scheduled_item.style = json.dumps(own_style)
+    scheduled_item.enabled = True
+    scheduled_item.start_time = datetime.now() - timedelta(minutes=5)
+    scheduled_item.end_time = datetime.now() + timedelta(minutes=5)
+    scheduled_item.repeat_minutes = 10
+    scheduled_item.last_fired = None
+    mocked_plugin = MagicMock()
+    mocked_plugin.manager.get_all_objects.return_value = [scheduled_item]
+    alert_manager.plugin = mocked_plugin
+
+    # WHEN: The scheduler checks for due alerts
+    alert_manager.check_schedules()
+
+    # THEN: The alert was displayed with its own style, not the live Notice default
+    displayed_settings = json.loads(mocked_live_controller.display.alert.call_args[0][1])
+    assert displayed_settings['fontSize'] == 12345
 
 
 def test_check_schedules_disables_expired_alert(alert_environment):

@@ -33,7 +33,8 @@ from openlp.core.common.mixins import LogMixin, RegistryProperties
 from openlp.core.common.registry import Registry, RegistryBase
 from openlp.core.display.screens import ScreenList
 from openlp.plugins.alerts.lib.db import AlertItem
-from openlp.plugins.alerts.lib.presets import AlertPriority, PRIORITY_BEHAVIOUR, resolve_alert_settings
+from openlp.plugins.alerts.lib.presets import (AlertPriority, PRIORITY_BEHAVIOUR, resolve_alert_settings,
+                                                resolve_template_style)
 
 
 #: How often the scheduler looks for due alerts, in milliseconds.
@@ -90,7 +91,7 @@ class AlertsManager(QtCore.QObject, RegistryBase, LogMixin, RegistryProperties):
                 text = text.replace('\n', ' ')
             self.display_alert(text, AlertPriority.Notice)
 
-    def display_alert(self, text='', priority=AlertPriority.Info):
+    def display_alert(self, text='', priority=AlertPriority.Info, style=None):
         """
         Called from the Alert form (or the scheduler) to display an alert.
 
@@ -99,7 +100,10 @@ class AlertsManager(QtCore.QObject, RegistryBase, LogMixin, RegistryProperties):
         Critical interrupts whatever is showing (which is then re-queued).
 
         :param text: The text to display
-        :param priority: The AlertPriority of the alert
+        :param priority: The AlertPriority of the alert, used for queue ordering
+        :param style: The resolved style dict to display with. If not given,
+            falls back to the priority's current global default preset (this
+            is the path used by bare-text alerts, e.g. from the web remote).
         """
         self.log_debug(f'display alert called "{text}"')
         if not text:
@@ -107,7 +111,9 @@ class AlertsManager(QtCore.QObject, RegistryBase, LogMixin, RegistryProperties):
         if len(ScreenList()) == 1 and not self.settings.value('core/display on monitor'):
             return
         priority = AlertPriority(priority)
-        alert = {'text': text, 'priority': priority}
+        if style is None:
+            style = resolve_alert_settings(self.settings, priority)
+        alert = {'text': text, 'priority': priority, 'style': style}
         behaviour = PRIORITY_BEHAVIOUR[priority]
         if self._current is None:
             self._show_alert(alert)
@@ -129,9 +135,9 @@ class AlertsManager(QtCore.QObject, RegistryBase, LogMixin, RegistryProperties):
         """
         Push an alert to the display and start its hide timer.
 
-        :param alert: dict with ``text`` and ``priority``
+        :param alert: dict with ``text``, ``priority`` and ``style``
         """
-        settings = resolve_alert_settings(self.settings, alert['priority'])
+        settings = alert['style']
         self._current = alert
         self.live_controller.display.alert(alert['text'], json.dumps(settings))
         # The alert stays for its timeout (per scrolling pass when scrolling),
@@ -151,8 +157,7 @@ class AlertsManager(QtCore.QObject, RegistryBase, LogMixin, RegistryProperties):
         self.live_controller.display.hide_alert()
         if self._queue:
             next_alert = self._queue.pop(0)
-            exit_delay = EXIT_ANIMATION_BUFFER + int(
-                resolve_alert_settings(self.settings, next_alert['priority'])['animationSpeed'])
+            exit_delay = EXIT_ANIMATION_BUFFER + int(next_alert['style']['animationSpeed'])
             QtCore.QTimer.singleShot(exit_delay, lambda: self._resume_with(next_alert))
 
     def _resume_with(self, alert):
@@ -190,7 +195,8 @@ class AlertsManager(QtCore.QObject, RegistryBase, LogMixin, RegistryProperties):
                 item.repeat_minutes > 0 and now >= item.last_fired + timedelta(minutes=item.repeat_minutes))
             if not due:
                 continue
-            self.display_alert(item.text, AlertPriority(item.priority))
+            style = resolve_template_style(item, self.settings)
+            self.display_alert(item.text, AlertPriority(item.priority), style=style)
             item.last_fired = now
             if item.repeat_minutes == 0:
                 # One-shot alert: it has done its job

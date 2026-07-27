@@ -22,9 +22,11 @@
 This module contains tests for the alert style presets.
 """
 import json
+from unittest.mock import MagicMock
 
 from openlp.plugins.alerts.lib.presets import (DEFAULT_PRESETS, PRIORITY_KEYS, AlertPriority, get_alert_presets,
-                                               resolve_alert_settings, save_alert_presets)
+                                               new_template_style, resolve_alert_settings, resolve_template_style,
+                                               save_alert_presets)
 
 
 def test_default_presets_cover_all_priorities(settings):
@@ -100,3 +102,49 @@ def test_resolve_alert_settings_includes_priority(settings):
     # THEN: The dict is the critical preset plus its priority key
     assert resolved['priority'] == 'critical'
     assert resolved['alertType'] == DEFAULT_PRESETS['critical']['alertType']
+
+
+def test_new_template_style_copies_the_current_default(settings):
+    """A new template starts from an independent copy of the chosen priority's live default"""
+    # GIVEN: A customized Important default
+    settings.setValue('alerts/presets', json.dumps({'important': {'fontSize': 77}}))
+
+    # WHEN: A new template style is built for Important
+    style = new_template_style(settings, AlertPriority.Important)
+
+    # THEN: It reflects the live default, tagged with the priority key
+    assert style['fontSize'] == 77
+    assert style['priority'] == 'important'
+
+    # AND: Mutating it does not affect the live presets
+    style['fontSize'] = 1
+    assert get_alert_presets(settings)['important']['fontSize'] == 77
+
+
+def test_resolve_template_style_uses_the_templates_own_style(settings):
+    """A template with its own saved style uses it, filtered to known keys"""
+    # GIVEN: An AlertItem-like object with its own style, including a stale key
+    own_style = dict(DEFAULT_PRESETS['notice'])
+    own_style['fontSize'] = 99
+    own_style['bogusKey'] = True
+    alert_item = MagicMock(priority=int(AlertPriority.Notice), style=json.dumps(own_style))
+
+    # WHEN: The template's style is resolved
+    resolved = resolve_template_style(alert_item, settings)
+
+    # THEN: The saved style applies, the stale key is dropped, and priority is stamped
+    assert resolved['fontSize'] == 99
+    assert 'bogusKey' not in resolved
+    assert resolved['priority'] == 'notice'
+
+
+def test_resolve_template_style_falls_back_without_a_saved_style(settings):
+    """A template with no saved style (e.g. pre-dating per-template styling) falls back to its priority default"""
+    # GIVEN: An AlertItem-like object with no style of its own
+    alert_item = MagicMock(priority=int(AlertPriority.Critical), style=None)
+
+    # WHEN: The template's style is resolved
+    resolved = resolve_template_style(alert_item, settings)
+
+    # THEN: It matches the live Critical default
+    assert resolved == resolve_alert_settings(settings, AlertPriority.Critical)

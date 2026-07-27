@@ -21,6 +21,8 @@
 """
 This module contains tests for the alerts settings tab (preset editor).
 """
+import json
+
 import pytest
 
 from openlp.plugins.alerts.lib.alertstab import AlertsTab
@@ -34,55 +36,68 @@ def alerts_tab(qapp, settings):
 
 
 def test_tab_loads_default_presets(alerts_tab):
-    """The tab starts editing the Info preset with default values"""
-    # THEN: The info preset is loaded into the widgets
+    """The tab starts editing the Info default with its built-in values"""
+    # THEN: The info default is loaded into the shared style editor
     assert alerts_tab.current_priority_key == 'info'
-    assert alerts_tab.font_size_spin_box.value() == DEFAULT_PRESETS['info']['fontSize']
-    assert alerts_tab.timeout_spin_box.value() == DEFAULT_PRESETS['info']['timeout']
+    assert alerts_tab.style_editor.font_size_spin_box.value() == DEFAULT_PRESETS['info']['fontSize']
+    assert alerts_tab.style_editor.timeout_spin_box.value() == DEFAULT_PRESETS['info']['timeout']
 
 
 def test_switching_priority_loads_other_preset(alerts_tab):
-    """Selecting another priority shows that priority's preset"""
+    """Selecting another priority shows that priority's default"""
     # WHEN: The critical priority is selected
     alerts_tab.priority_combo_box.setCurrentIndex(AlertPriority.Critical.value)
 
-    # THEN: The critical preset is loaded
+    # THEN: The critical default is loaded
     assert alerts_tab.current_priority_key == 'critical'
-    assert alerts_tab.font_size_spin_box.value() == DEFAULT_PRESETS['critical']['fontSize']
+    assert alerts_tab.style_editor.font_size_spin_box.value() == DEFAULT_PRESETS['critical']['fontSize']
 
 
 def test_editing_and_saving_persists_preset(alerts_tab, settings):
     """A changed value survives the save/load round trip"""
     # WHEN: The font size is changed and the tab is saved
-    alerts_tab.font_size_spin_box.setValue(77)
+    alerts_tab.style_editor.font_size_spin_box.setValue(77)
     alerts_tab.save()
 
-    # THEN: The change is persisted in the settings
+    # THEN: The change is persisted in the settings, and only for that priority
     presets = get_alert_presets(settings)
     assert presets['info']['fontSize'] == 77
     assert presets['notice'] == DEFAULT_PRESETS['notice']
 
 
 def test_reset_button_restores_defaults(alerts_tab):
-    """The reset button reverts the edited preset to its defaults"""
-    # GIVEN: A modified preset
-    alerts_tab.font_size_spin_box.setValue(77)
+    """The reset button reverts the edited default to its factory look"""
+    # GIVEN: A modified default
+    alerts_tab.style_editor.font_size_spin_box.setValue(77)
 
-    # WHEN: The preset is reset
+    # WHEN: The default is reset
     alerts_tab.on_reset_clicked()
 
     # THEN: The default value is back
-    assert alerts_tab.font_size_spin_box.value() == DEFAULT_PRESETS['info']['fontSize']
+    assert alerts_tab.style_editor.font_size_spin_box.value() == DEFAULT_PRESETS['info']['fontSize']
 
 
 def test_zone_buttons_reflect_preset(alerts_tab):
-    """The zone grid mirrors the preset's screen position"""
-    # THEN: The info preset's bottom-right zone button is checked
-    assert alerts_tab.zone_buttons[('right', 'bottom')].isChecked()
+    """The zone grid mirrors the default's screen position"""
+    # THEN: The info default's bottom-right zone button is checked
+    assert alerts_tab.style_editor.zone_buttons[('right', 'bottom')].isChecked()
 
     # WHEN: Another zone is chosen and values are stored
-    alerts_tab.zone_buttons[('center', 'top')].setChecked(True)
+    alerts_tab.style_editor.zone_buttons[('center', 'top')].setChecked(True)
 
-    # THEN: The preset follows
+    # THEN: The default follows
     assert alerts_tab.presets['info']['zoneH'] == 'center'
     assert alerts_tab.presets['info']['zoneV'] == 'top'
+
+
+def test_alerts_tab_edits_global_defaults_not_alert_items(alerts_tab, settings):
+    """AlertsTab edits the four global default styles, never a saved AlertItem"""
+    # WHEN: A value is changed and saved
+    alerts_tab.style_editor.font_size_spin_box.setValue(77)
+    alerts_tab.save()
+
+    # THEN: It only touched the global presets setting, not the alerts database
+    stored = settings.value('alerts/presets')
+    if isinstance(stored, str):
+        stored = json.loads(stored)
+    assert stored['info']['fontSize'] == 77

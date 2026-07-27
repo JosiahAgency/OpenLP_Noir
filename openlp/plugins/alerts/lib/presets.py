@@ -24,6 +24,7 @@ levels and the per-priority style presets (typography, background, position,
 animation and behaviour). Each priority owns one fully editable preset; an
 alert only carries its text and priority, and the preset supplies the look.
 """
+import copy
 import json
 from enum import IntEnum
 
@@ -272,3 +273,52 @@ def resolve_alert_settings(settings, priority):
     preset = get_alert_presets(settings)[priority.key]
     preset['priority'] = priority.key
     return preset
+
+
+def new_template_style(settings, priority):
+    """
+    A starting style for a brand-new alert template: a standalone copy of the
+    given priority's current global preset, so editing it afterwards cannot
+    affect (or be affected by) that priority's default.
+
+    :param settings: A Settings instance.
+    :param priority: An AlertPriority (or int priority value) to start from.
+    :return: A fully independent preset dict.
+    """
+    priority = AlertPriority(priority)
+    style = copy.deepcopy(get_alert_presets(settings)[priority.key])
+    style['priority'] = priority.key
+    return style
+
+
+def resolve_template_style(alert_item, settings):
+    """
+    Build the settings dict handed to the display Javascript for a saved
+    alert template. Templates carry their own style; alerts saved before
+    per-template styling existed (or otherwise missing a style) fall back to
+    their priority's current global preset.
+
+    :param alert_item: An AlertItem.
+    :param settings: A Settings instance.
+    :return: The template's style dict, plus the priority key under ``priority``.
+    """
+    priority = AlertPriority(alert_item.priority or 0)
+    style = None
+    if alert_item.style:
+        try:
+            decoded = json.loads(alert_item.style)
+        except (TypeError, ValueError):
+            decoded = None
+        if isinstance(decoded, dict):
+            # Start from the base preset so a template saved before a new
+            # style field was introduced still gets a sane value for it, then
+            # only accept known keys so stale/bad entries can't leak into the
+            # display Javascript.
+            style = dict(_BASE_PRESET)
+            for name, value in decoded.items():
+                if name in _BASE_PRESET:
+                    style[name] = value
+    if style is None:
+        return resolve_alert_settings(settings, priority)
+    style['priority'] = priority.key
+    return style

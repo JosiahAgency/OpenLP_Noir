@@ -24,11 +24,16 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from openlp.core.common.i18n import translate
 from openlp.core.lib.ui import create_button, create_button_box
 from openlp.core.ui.icons import UiIcons
+from openlp.plugins.alerts.lib.presets import AlertPriority
+from openlp.plugins.alerts.lib.style_editor import StyleEditorWidget
 
 
 class AlertDialog(object):
     """
-    Alert UI Class
+    Alert UI Class. The dialog is a template list on the left and a tabbed
+    editor (Message / Style / Schedule) on the right, since each saved
+    template now carries its own style rather than inheriting one of four
+    fixed priority looks.
     """
     @staticmethod
     def _create_help_button(parent, name):
@@ -71,37 +76,117 @@ class AlertDialog(object):
         :param alert_dialog: The dialog
         """
         alert_dialog.setObjectName('alert_dialog')
-        alert_dialog.resize(480, 420)
+        alert_dialog.resize(980, 640)
         alert_dialog.setWindowIcon(UiIcons().main_icon)
-        self.alert_dialog_layout = QtWidgets.QGridLayout(alert_dialog)
+        self.alert_dialog_layout = QtWidgets.QHBoxLayout(alert_dialog)
         self.alert_dialog_layout.setObjectName('alert_dialog_layout')
-        self.alert_text_layout = QtWidgets.QFormLayout()
-        self.alert_text_layout.setObjectName('alert_text_layout')
-        self.alert_entry_label = QtWidgets.QLabel(alert_dialog)
-        self.alert_entry_label.setObjectName('alert_entry_label')
-        self.alert_text_edit = QtWidgets.QLineEdit(alert_dialog)
+        self._setup_list_panel(alert_dialog)
+        self._setup_editor_panel(alert_dialog)
+        self.retranslate_ui(alert_dialog)
+
+    def _setup_list_panel(self, alert_dialog):
+        """The saved-template list, on the left."""
+        self.list_panel = QtWidgets.QWidget(alert_dialog)
+        self.list_panel_layout = QtWidgets.QVBoxLayout(self.list_panel)
+        self.list_panel_layout.setContentsMargins(0, 0, 0, 0)
+        self.template_list_label = QtWidgets.QLabel(self.list_panel)
+        self.list_panel_layout.addWidget(self.template_list_label)
+        self.alert_list_widget = QtWidgets.QListWidget(self.list_panel)
+        self.alert_list_widget.setAlternatingRowColors(True)
+        self.alert_list_widget.setObjectName('alert_list_widget')
+        self.list_panel_layout.addWidget(self.alert_list_widget)
+        self.manage_button_layout = QtWidgets.QHBoxLayout()
+        self.manage_button_layout.setObjectName('manage_button_layout')
+        self.new_button = QtWidgets.QPushButton(self.list_panel)
+        self.new_button.setIcon(UiIcons().new)
+        self.new_button.setObjectName('new_button')
+        self.manage_button_layout.addWidget(self.new_button)
+        self.save_button = QtWidgets.QPushButton(self.list_panel)
+        self.save_button.setEnabled(False)
+        self.save_button.setIcon(UiIcons().save)
+        self.save_button.setObjectName('save_button')
+        self.manage_button_layout.addWidget(self.save_button)
+        self.delete_button = create_button(self.list_panel, 'delete_button', role='delete', enabled=False,
+                                           click=alert_dialog.on_delete_button_clicked)
+        self.manage_button_layout.addWidget(self.delete_button)
+        self.list_panel_layout.addLayout(self.manage_button_layout)
+        self.list_panel.setMinimumWidth(260)
+        self.list_panel.setMaximumWidth(340)
+        self.alert_dialog_layout.addWidget(self.list_panel)
+
+    def _setup_editor_panel(self, alert_dialog):
+        """The tabbed template editor, plus the display buttons, on the right."""
+        self.editor_panel = QtWidgets.QWidget(alert_dialog)
+        self.editor_panel_layout = QtWidgets.QVBoxLayout(self.editor_panel)
+        self.editor_panel_layout.setContentsMargins(0, 0, 0, 0)
+        self.editor_tabs = QtWidgets.QTabWidget(self.editor_panel)
+        self.editor_tabs.setObjectName('editor_tabs')
+        self._setup_message_tab()
+        self._setup_style_tab()
+        self._setup_schedule_tab()
+        self.editor_panel_layout.addWidget(self.editor_tabs)
+        self.display_button = create_button(alert_dialog, 'display_button', icon=UiIcons().live, enabled=False)
+        self.display_close_button = create_button(alert_dialog, 'display_close_button', icon=UiIcons().live,
+                                                  enabled=False)
+        self.button_box = create_button_box(alert_dialog, 'button_box', ['close', 'help'],
+                                            [self.display_button, self.display_close_button])
+        self.editor_panel_layout.addWidget(self.button_box)
+        self.alert_dialog_layout.addWidget(self.editor_panel)
+
+    def _setup_message_tab(self):
+        """Template name, text (with named placeholders) and queue priority."""
+        self.message_tab = QtWidgets.QWidget()
+        layout = QtWidgets.QFormLayout(self.message_tab)
+        self.name_label = QtWidgets.QLabel(self.message_tab)
+        self.name_edit = QtWidgets.QLineEdit(self.message_tab)
+        self.name_edit.setObjectName('name_edit')
+        self.name_label.setBuddy(self.name_edit)
+        layout.addRow(self.name_label, self.name_edit)
+        self.alert_entry_label = QtWidgets.QLabel(self.message_tab)
+        self.alert_text_edit = QtWidgets.QLineEdit(self.message_tab)
         self.alert_text_edit.setObjectName('alert_text_edit')
         self.alert_entry_label.setBuddy(self.alert_text_edit)
-        self.alert_text_layout.addRow(self.alert_entry_label, self.alert_text_edit)
-        self.alert_parameter = QtWidgets.QLabel(alert_dialog)
-        self.alert_parameter.setObjectName('alert_parameter')
-        self.parameter_edit = QtWidgets.QLineEdit(alert_dialog)
-        self.parameter_edit.setObjectName('parameter_edit')
-        self.alert_parameter.setBuddy(self.parameter_edit)
-        self.parameter_help_button = self._create_help_button(alert_dialog, 'parameter_help_button')
-        self.alert_text_layout.addRow(self.alert_parameter,
-                                      self._create_row_with_help(self.parameter_edit, self.parameter_help_button))
-        self.priority_label = QtWidgets.QLabel(alert_dialog)
-        self.priority_label.setObjectName('priority_label')
-        self.priority_combo_box = QtWidgets.QComboBox(alert_dialog)
+        layout.addRow(self.alert_entry_label, self.alert_text_edit)
+        self.placeholders_label = QtWidgets.QLabel(self.message_tab)
+        self.placeholders_label.setObjectName('placeholders_label')
+        self.placeholders_label.setWordWrap(True)
+        layout.addRow('', self.placeholders_label)
+        self.priority_label = QtWidgets.QLabel(self.message_tab)
+        self.priority_combo_box = QtWidgets.QComboBox(self.message_tab)
         self.priority_combo_box.setObjectName('priority_combo_box')
         self.priority_label.setBuddy(self.priority_combo_box)
-        self.priority_help_button = self._create_help_button(alert_dialog, 'priority_help_button')
-        self.alert_text_layout.addRow(self.priority_label,
-                                      self._create_row_with_help(self.priority_combo_box, self.priority_help_button))
-        self.alert_dialog_layout.addLayout(self.alert_text_layout, 0, 0, 1, 2)
-        # Scheduling
-        self.schedule_group_box = QtWidgets.QGroupBox(alert_dialog)
+        self.priority_help_button = self._create_help_button(self.message_tab, 'priority_help_button')
+        layout.addRow(self.priority_label,
+                      self._create_row_with_help(self.priority_combo_box, self.priority_help_button))
+        self.editor_tabs.addTab(self.message_tab, '')
+
+    def _setup_style_tab(self):
+        """The template's own style: type/position, typography, background, animation."""
+        self.style_tab = QtWidgets.QWidget()
+        style_tab_layout = QtWidgets.QVBoxLayout(self.style_tab)
+        start_from_row = QtWidgets.QHBoxLayout()
+        self.start_from_label = QtWidgets.QLabel(self.style_tab)
+        self.start_from_combo_box = QtWidgets.QComboBox(self.style_tab)
+        self.start_from_combo_box.setObjectName('start_from_combo_box')
+        self.start_from_combo_box.addItems(AlertPriority.display_names())
+        self.start_from_help_button = self._create_help_button(self.style_tab, 'start_from_help_button')
+        start_from_row.addWidget(self.start_from_label)
+        start_from_row.addWidget(self.start_from_combo_box)
+        start_from_row.addWidget(self.start_from_help_button)
+        start_from_row.addStretch()
+        style_tab_layout.addLayout(start_from_row)
+        self.style_editor = StyleEditorWidget(self.style_tab)
+        style_editor_row = QtWidgets.QHBoxLayout()
+        style_editor_row.addWidget(self.style_editor.preset_tabs, 2)
+        style_editor_row.addWidget(self.style_editor.preview_group_box, 1)
+        style_tab_layout.addLayout(style_editor_row)
+        self.editor_tabs.addTab(self.style_tab, '')
+
+    def _setup_schedule_tab(self):
+        """The optional start/end window and repeat interval."""
+        self.schedule_tab = QtWidgets.QWidget()
+        schedule_tab_layout = QtWidgets.QVBoxLayout(self.schedule_tab)
+        self.schedule_group_box = QtWidgets.QGroupBox(self.schedule_tab)
         self.schedule_group_box.setObjectName('schedule_group_box')
         self.schedule_group_box.setCheckable(True)
         self.schedule_group_box.setChecked(False)
@@ -127,34 +212,9 @@ class AlertDialog(object):
         self.schedule_layout.addRow(self.repeat_interval_label,
                                     self._create_row_with_help(self.repeat_interval_spin_box,
                                                                self.schedule_help_button))
-        self.alert_dialog_layout.addWidget(self.schedule_group_box, 1, 0, 1, 2)
-        self.alert_list_widget = QtWidgets.QListWidget(alert_dialog)
-        self.alert_list_widget.setAlternatingRowColors(True)
-        self.alert_list_widget.setObjectName('alert_list_widget')
-        self.alert_dialog_layout.addWidget(self.alert_list_widget, 2, 0)
-        self.manage_button_layout = QtWidgets.QVBoxLayout()
-        self.manage_button_layout.setObjectName('manage_button_layout')
-        self.new_button = QtWidgets.QPushButton(alert_dialog)
-        self.new_button.setIcon(UiIcons().new)
-        self.new_button.setObjectName('new_button')
-        self.manage_button_layout.addWidget(self.new_button)
-        self.save_button = QtWidgets.QPushButton(alert_dialog)
-        self.save_button.setEnabled(False)
-        self.save_button.setIcon(UiIcons().save)
-        self.save_button.setObjectName('save_button')
-        self.manage_button_layout.addWidget(self.save_button)
-        self.delete_button = create_button(alert_dialog, 'delete_button', role='delete', enabled=False,
-                                           click=alert_dialog.on_delete_button_clicked)
-        self.manage_button_layout.addWidget(self.delete_button)
-        self.manage_button_layout.addStretch()
-        self.alert_dialog_layout.addLayout(self.manage_button_layout, 2, 1)
-        self.display_button = create_button(alert_dialog, 'display_button', icon=UiIcons().live, enabled=False)
-        self.display_close_button = create_button(alert_dialog, 'display_close_button', icon=UiIcons().live,
-                                                  enabled=False)
-        self.button_box = create_button_box(alert_dialog, 'button_box', ['close', 'help'],
-                                            [self.display_button, self.display_close_button])
-        self.alert_dialog_layout.addWidget(self.button_box, 3, 0, 1, 2)
-        self.retranslate_ui(alert_dialog)
+        schedule_tab_layout.addWidget(self.schedule_group_box)
+        schedule_tab_layout.addStretch()
+        self.editor_tabs.addTab(self.schedule_tab, '')
 
     def retranslate_ui(self, alert_dialog):
         """
@@ -162,19 +222,23 @@ class AlertDialog(object):
 
         :param alert_dialog: The dialog
         """
-        alert_dialog.setWindowTitle(translate('AlertsPlugin.AlertForm', 'Alert Message'))
+        alert_dialog.setWindowTitle(translate('AlertsPlugin.AlertForm', 'Alert Templates'))
+        self.template_list_label.setText(translate('AlertsPlugin.AlertForm', 'Saved alerts:'))
+        self.editor_tabs.setTabText(0, translate('AlertsPlugin.AlertForm', 'Message'))
+        self.editor_tabs.setTabText(1, translate('AlertsPlugin.AlertForm', 'Style'))
+        self.editor_tabs.setTabText(2, translate('AlertsPlugin.AlertForm', 'Schedule'))
+        self.name_label.setText(translate('AlertsPlugin.AlertForm', '&Name:'))
+        self.name_edit.setPlaceholderText(translate('AlertsPlugin.AlertForm', 'Optional — shown in the list below'))
         self.alert_entry_label.setText(translate('AlertsPlugin.AlertForm', 'Alert &text:'))
         self.alert_text_edit.setPlaceholderText(
-            translate('AlertsPlugin.AlertForm', 'e.g. Would the owner of car <> please move it'))
-        self.alert_parameter.setText(translate('AlertsPlugin.AlertForm', '&Parameter:'))
-        self.parameter_edit.setPlaceholderText(
-            translate('AlertsPlugin.AlertForm', 'Optional — replaces <> in the alert text'))
-        self.parameter_help_button.setToolTip('<qt>' + translate(
-            'AlertsPlugin.AlertForm',
-            'The parameter is optional. Put <> in the alert text as a placeholder, and it is swapped for the '
-            'parameter when the alert is displayed. This lets you reuse one saved alert with different details, '
-            'e.g. text "Car <> is blocking the exit" with parameter "KDA 123B".') + '</qt>')
+            translate('AlertsPlugin.AlertForm', 'e.g. Would the owner of car {plate} please move it'))
         self.priority_label.setText(translate('AlertsPlugin.AlertForm', 'P&riority:'))
+        self.start_from_label.setText(translate('AlertsPlugin.AlertForm', 'Start from:'))
+        self.start_from_help_button.setToolTip('<qt>' + translate(
+            'AlertsPlugin.AlertForm',
+            'Copies that priority\'s current default look as a starting point for this template\'s own style. '
+            'Only applies to a brand-new, unsaved template — once a template has been saved once, it keeps its '
+            'own style regardless of this selection.') + '</qt>')
         self.schedule_group_box.setTitle(translate('AlertsPlugin.AlertForm', 'Schedule this alert'))
         self.start_time_label.setText(translate('AlertsPlugin.AlertForm', 'Start:'))
         self.end_time_label.setText(translate('AlertsPlugin.AlertForm', 'End:'))
@@ -187,7 +251,8 @@ class AlertDialog(object):
         self.schedule_help_button.setToolTip('<qt>' + translate(
             'AlertsPlugin.AlertForm',
             'Store the schedule with New or Save. The alert then displays by itself between the start and end '
-            'times, repeating at the interval set here — you do not need to click Display.') + '</qt>')
+            'times, repeating at the interval set here — you do not need to click Display. Alerts with named '
+            'parameters in their text cannot be scheduled, since no one is there to fill them in.') + '</qt>')
         self.new_button.setText(translate('AlertsPlugin.AlertForm', '&New'))
         self.save_button.setText(translate('AlertsPlugin.AlertForm', '&Save'))
         self.display_button.setText(translate('AlertsPlugin.AlertForm', 'Displ&ay'))
