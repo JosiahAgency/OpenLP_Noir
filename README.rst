@@ -3,8 +3,8 @@
 
 |pipeline| |license| |python| |qt| |platform| |edition|
 
-.. |pipeline| image:: https://gitlab.com/JosiahAgency/openlp/badges/NCSDA_Version/pipeline.svg
-   :target: https://gitlab.com/JosiahAgency/openlp/-/pipelines
+.. |pipeline| image:: https://github.com/JosiahAgency/OpenLP_Noir/actions/workflows/tests.yml/badge.svg?branch=NCSDA_Version
+   :target: https://github.com/JosiahAgency/OpenLP_Noir/actions/workflows/tests.yml
    :alt: Pipeline status
 
 .. |license| image:: https://img.shields.io/badge/license-GPL--3.0-2ea44f.svg
