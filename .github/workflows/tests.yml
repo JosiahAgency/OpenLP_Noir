@@ -1,0 +1,133 @@
+name: Tests
+
+# This mirrors the "test" stage of .gitlab-ci.yml so that commits mirrored to
+# GitHub also get CI feedback. Build/deploy stages are intentionally left out
+# since they rely on OpenLP's own release infrastructure and GitLab secrets.
+on:
+  push:
+  pull_request:
+
+env:
+  PYTHON_VERSION: "3.13.2"
+
+jobs:
+  lint-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install flake8 and PySide6 (for pyside6-rcc)
+        run: pip install flake8 PySide6
+      - name: Generate resources.py
+        run: sh scripts/generate_resources.sh
+      - name: Run flake8
+        run: flake8
+
+  lint-javascript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install
+      - name: Run eslint
+        run: pnpm lint
+
+  test-javascript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Enable corepack (pnpm)
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install
+      - name: Point karma at the runner's Chrome
+        run: echo "CHROMIUM_BIN=$(which google-chrome-stable || which google-chrome || which chromium-browser)" >> "$GITHUB_ENV"
+      - name: Run karma tests
+        run: pnpm test --browsers ChromiumHeadlessCI
+
+  test-linux:
+    runs-on: ubuntu-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            xvfb unixodbc-dev libpq-dev libenchant-2-2 \
+            libxkbcommon-x11-0 libgl1 libegl1
+      - name: Install OpenLP with test extras
+        run: pip install -e '.[darkstyle,mysql,odbc,postgresql,spellcheck,sword-bibles,test]'
+      - name: Generate resources.py
+        run: sh scripts/generate_resources.sh
+      - name: Run tests
+        run: xvfb-run -a -s '-screen 0 1024x768x24' pytest --color=no --disable-warnings
+
+  test-windows:
+    runs-on: windows-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Install Windows Feature 'Server Media Foundation'
+        shell: pwsh
+        run: Install-WindowsFeature Server-Media-Foundation
+      - name: Download PySide6 required files
+        shell: pwsh
+        run: |
+          $zipFileName = 'requiredfiles.zip'
+          Invoke-WebRequest -OutFile "$env:Temp\$zipFileName" -Uri "https://get.openlp.org/win-sdk/$zipFileName"
+          Unblock-File -Path "$env:Temp\$zipFileName"
+          Expand-Archive -Path "$env:Temp\$zipFileName" -DestinationPath "$env:WinDir\System32"
+      - name: Pin Python version
+        run: uv python pin ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: uv sync --group test
+      - name: Install PyICU wheel
+        shell: pwsh
+        run: |
+          $pyIcuVersion = '2.16.2'
+          $pythonVersion = $env:PYTHON_VERSION.Replace('.', '').Substring(0, 3)
+          $pyIcuPackageFileName = "PyICU-$pyIcuVersion-cp$pythonVersion-cp$pythonVersion-win_amd64.whl"
+          uv add "https://github.com/cgohlke/pyicu-build/releases/download/v$pyIcuVersion/$pyIcuPackageFileName"
+      - name: Run tests
+        run: uv run pytest --color=no --disable-warnings
+
+  test-macos:
+    runs-on: macos-14
+    env:
+      QT_QPA_PLATFORM: offscreen
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      HOMEBREW_NO_INSTALL_CLEANUP: "1"
+      HOMEBREW_NO_ENV_HINTS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PyICU build dependencies
+        run: brew install pkg-config icu4c
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Pin Python version
+        run: uv python pin ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: |
+          export PATH="$PATH:/opt/homebrew/opt/icu4c/bin:/opt/homebrew/opt/icu4c/sbin"
+          export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/opt/homebrew/opt/icu4c/lib/pkgconfig"
+          uv sync --group test
+      - name: Run tests
+        run: uv run pytest --color=no --disable-warnings
