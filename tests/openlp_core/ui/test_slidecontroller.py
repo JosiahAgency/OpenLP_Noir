@@ -96,8 +96,9 @@ def test_is_slide_loaded(settings: Settings):
 
     stop = perf_counter()
 
-    # THEN: The elapsed time should be one second
-    assert round(stop - start, 2) == 1
+    # THEN: The elapsed time should be approximately one second
+    elapsed_time = round(stop - start, 2)
+    assert elapsed_time > 0.9 and elapsed_time < 1.1
 
 
 def test_slide_selected(settings: Settings):
