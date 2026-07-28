@@ -172,10 +172,14 @@ test-windows:
     - Install-WindowsFeature Server-Media-Foundation
     - "# Downloading the necessary files for PySide6 from OpenLP"
     - $zipFileName = 'requiredfiles.zip'
+    - $extractPath = Join-Path $env:Temp 'requiredfiles'
     - Invoke-WebRequest -OutFile "$env:Temp\$zipFileName" -Uri "https://get.openlp.org/win-sdk/$zipFileName"
     - Unblock-File -Path "$env:Temp\$zipFileName"
     - "# Extracting the ZIP file"
-    - Expand-Archive -Path "$env:Temp\$zipFileName" -DestinationPath "$env:WinDir\System32"
+    - if (Test-Path $extractPath) { Remove-Item -Path $extractPath -Recurse -Force }
+    - New-Item -ItemType Directory -Path $extractPath | Out-Null
+    - Expand-Archive -Path "$env:Temp\$zipFileName" -DestinationPath $extractPath -Force
+    - Get-ChildItem -Path $extractPath -Recurse -File | ForEach-Object { $relativePath = $_.FullName.Substring($extractPath.Length).TrimStart('\'); $destinationPath = Join-Path "$env:WinDir\System32" $relativePath; $destinationDir = Split-Path -Path $destinationPath -Parent; if (-not (Test-Path $destinationDir)) { New-Item -ItemType Directory -Path $destinationDir | Out-Null }; if (-not (Test-Path $destinationPath)) { Copy-Item -Path $_.FullName -Destination $destinationPath } }
     - !reference [ .install_dependencies, script ]
     - $pyIcuVersion = '2.16.2'
     - $pythonVersion = $env:PYTHON_VERSION_WINDOWS_AND_MACOS.Replace('.', '').Substring(0, 3)
