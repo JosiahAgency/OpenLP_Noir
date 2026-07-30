@@ -490,7 +490,7 @@ def test_update_auto_completer_search_no_bible(media_item: BibleMediaItem):
     media_item.bible = None
     with patch.object(media_item, 'get_common_books') as mocked_get_common_books, \
             patch('openlp.plugins.bibles.lib.mediaitem.set_case_insensitive_completer') \
-                    as mocked_set_case_insensitive_completer:
+            as mocked_set_case_insensitive_completer:
         # WHEN: Calling update_auto_completer
         media_item.update_auto_completer()
 
@@ -511,7 +511,7 @@ def test_update_auto_completer_search_reference_type(media_item: BibleMediaItem)
     with patch.object(media_item, 'get_common_books', return_value=book_list_1), \
             patch('openlp.plugins.bibles.lib.mediaitem.get_locale_key', side_effect=lambda x: x), \
             patch('openlp.plugins.bibles.lib.mediaitem.set_case_insensitive_completer') \
-                    as mocked_set_case_insensitive_completer:
+            as mocked_set_case_insensitive_completer:
         # WHEN: Calling update_auto_completer
         media_item.update_auto_completer()
 
@@ -531,7 +531,7 @@ def test_update_auto_completer_search_combined_type(media_item: BibleMediaItem):
     with patch.object(media_item, 'get_common_books', return_value=book_list_1), \
             patch('openlp.plugins.bibles.lib.mediaitem.get_locale_key', side_effect=lambda x: x), \
             patch('openlp.plugins.bibles.lib.mediaitem.set_case_insensitive_completer') \
-                    as mocked_set_case_insensitive_completer:
+            as mocked_set_case_insensitive_completer:
         # WHEN: Calling update_auto_completer
         media_item.update_auto_completer()
 
@@ -840,7 +840,7 @@ def test_on_second_combo_box_index_changed_mode_not_changed(media_item: BibleMed
     media_item.select_book_combo_box = MagicMock()
     with patch.object(media_item, 'initialise_advanced_bible'), \
             patch('openlp.plugins.bibles.lib.mediaitem.critical_error_message_box') \
-                    as mocked_critical_error_message_box:
+            as mocked_critical_error_message_box:
         # WHEN: The previously selected bible is one bible and the new selection is another bible
         media_item.second_bible = mocked_bible_1
         media_item.second_combo_box = MagicMock(**{'currentData.return_value': mocked_bible_2})
@@ -1540,7 +1540,7 @@ def test_display_results_results(media_item: BibleMediaItem):
     with patch.object(media_item, 'build_display_results', return_value=[
         {'item_title': 'Title 1'}, {'item_title': 'Title 2'}]), \
             patch.object(media_item, 'add_built_results_to_list_widget') as \
-                    mocked_add_built_results_to_list_widget:
+            mocked_add_built_results_to_list_widget:
         media_item.search_results = ['results']
         media_item.list_view = MagicMock()
 
