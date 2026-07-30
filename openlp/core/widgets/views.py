@@ -32,8 +32,8 @@ from openlp.core.common.platform import is_win
 from openlp.core.common.registry import Registry
 from openlp.core.lib.serviceitem import ItemCapabilities, ServiceItem
 from openlp.core.ui.style import NOIR_CUE, NOIR_INK_0, NOIR_INK_1, NOIR_INK_2, NOIR_INK_3, NOIR_INK_4, \
-    NOIR_ON_AIR, NOIR_TEXT_BODY, NOIR_TEXT_HI, NOIR_TEXT_LOW, NOIR_TEXT_MID, NOIR_TEXT_ON_ACCENT, \
-    UiThemes, is_ui_theme
+    NOIR_ON_AIR, NOIR_PLUGIN_COLORS, NOIR_TEXT_BODY, NOIR_TEXT_HI, NOIR_TEXT_LOW, NOIR_TEXT_MID, \
+    NOIR_TEXT_ON_ACCENT, NOIR_VERSE_TAG_COLORS, UiThemes, is_ui_theme
 from openlp.core.widgets.layouts import AspectRatioLayout
 
 
@@ -48,9 +48,11 @@ SCROLL_HINT = {
 # by NoirSlideDelegate
 VERSE_TAG_ROLE = QtCore.Qt.ItemDataRole.UserRole + 1
 # Data roles used by NoirServiceDelegate: a caption line of metadata painted
-# under the item title, and whether the item is currently on the live output
+# under the item title, whether the item is currently on the live output, and
+# the plugin name used to tint the icon chip
 SERVICE_META_ROLE = QtCore.Qt.ItemDataRole.UserRole + 2
 SERVICE_LIVE_ROLE = QtCore.Qt.ItemDataRole.UserRole + 3
+SERVICE_PLUGIN_ROLE = QtCore.Qt.ItemDataRole.UserRole + 4
 
 
 class NoirSlideDelegate(QtWidgets.QStyledItemDelegate):
@@ -91,6 +93,17 @@ class NoirSlideDelegate(QtWidgets.QStyledItemDelegate):
     def _node_label(self, index):
         verse_tag = index.data(VERSE_TAG_ROLE)
         return str(verse_tag) if verse_tag else str(index.row() + 1)
+
+    def _verse_tag_color(self, verse_tag):
+        """
+        A muted tint for the idle rail pill, keyed off the uppercase first
+        letter of the (already-translated) verse tag. Returns None for
+        anything unmapped (non-song slides, numeric tags, other locales)
+        so the pill falls back to today's neutral gray.
+        """
+        if not verse_tag:
+            return None
+        return NOIR_VERSE_TAG_COLORS.get(str(verse_tag)[0].upper())
 
     def _accent_color(self):
         """
@@ -175,8 +188,17 @@ class NoirSlideDelegate(QtWidgets.QStyledItemDelegate):
             painter.setBrush(accent)
             node_text = QtGui.QColor(NOIR_TEXT_ON_ACCENT) if self.is_live else QtGui.QColor(NOIR_INK_0)
         else:
-            painter.setPen(QtGui.QPen(QtGui.QColor(NOIR_INK_4), 1.5))
-            painter.setBrush(QtGui.QColor(NOIR_INK_1 if is_past else NOIR_INK_2))
+            tag_color = None if is_past else self._verse_tag_color(index.data(VERSE_TAG_ROLE))
+            if tag_color:
+                node_fill = QtGui.QColor(tag_color)
+                node_fill.setAlpha(30)
+                node_border = QtGui.QColor(tag_color)
+                node_border.setAlpha(150)
+            else:
+                node_fill = QtGui.QColor(NOIR_INK_1 if is_past else NOIR_INK_2)
+                node_border = QtGui.QColor(NOIR_INK_4)
+            painter.setPen(QtGui.QPen(node_border, 1.5))
+            painter.setBrush(node_fill)
             node_text = QtGui.QColor(NOIR_TEXT_LOW if is_past else NOIR_TEXT_MID)
         painter.drawRoundedRect(node, self.NODE_HEIGHT / 2, self.NODE_HEIGHT / 2)
         painter.setFont(node_font)
@@ -248,6 +270,21 @@ class NoirServiceDelegate(QtWidgets.QStyledItemDelegate):
         font.setPointSizeF(max(base_font.pointSizeF() - 1.5, 6.5))
         return font
 
+    def _chip_colors(self, plugin_name):
+        """
+        The icon chip's fill/border, tinted per plugin when one is known.
+        Alpha is kept below the card's own selected/on-air alphas so plugin
+        colour never outranks selection or live-state signalling.
+        """
+        accent = NOIR_PLUGIN_COLORS.get(plugin_name)
+        if not accent:
+            return QtGui.QColor(NOIR_INK_3), QtGui.QColor(NOIR_INK_4)
+        fill = QtGui.QColor(accent)
+        fill.setAlpha(40)
+        border = QtGui.QColor(accent)
+        border.setAlpha(130)
+        return fill, border
+
     def paint(self, painter, option, index):
         if index.parent().isValid():
             self._paint_slide_row(painter, option, index)
@@ -317,8 +354,9 @@ class NoirServiceDelegate(QtWidgets.QStyledItemDelegate):
         # Plugin icon in a rounded chip
         chip = QtCore.QRectF(card.left() + self.CARD_PADDING,
                              card.center().y() - self.CHIP_SIZE / 2, self.CHIP_SIZE, self.CHIP_SIZE)
-        painter.setPen(QtGui.QPen(QtGui.QColor(NOIR_INK_4), 1))
-        painter.setBrush(QtGui.QColor(NOIR_INK_3))
+        chip_fill, chip_border = self._chip_colors(index.data(SERVICE_PLUGIN_ROLE))
+        painter.setPen(QtGui.QPen(chip_border, 1))
+        painter.setBrush(chip_fill)
         painter.drawRoundedRect(chip, 8, 8)
         icon = index.data(QtCore.Qt.ItemDataRole.DecorationRole)
         if icon is not None and not icon.isNull():
@@ -672,6 +710,18 @@ class ListWidgetWithDnD(QtWidgets.QListWidget):
         self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
         self.setAlternatingRowColors(True)
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+        self._needs_initial_layout = True
+
+    def showEvent(self, event):
+        """
+        Force a relayout the first time this list becomes visible. Items may have been added while the widget
+        (and its ancestor media-manager panel) was hidden during plugin initialise(), which leaves Qt's internal
+        item-layout cache stale against a zero-size viewport and produces overlapping rows once shown.
+        """
+        super().showEvent(event)
+        if self._needs_initial_layout:
+            self._needs_initial_layout = False
+            self.doItemsLayout()
 
     def activateDnD(self):
         """

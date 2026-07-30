@@ -21,6 +21,8 @@
 """
 Package to test the openlp.core.widgets.docks package.
 """
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from PySide6 import QtGui, QtWidgets
@@ -102,6 +104,27 @@ def test_sidebar_remove_item(sidebar):
     assert sidebar.currentIndex() == 0
     assert sidebar.currentWidget().objectName() == 'bibles'
     assert sidebar.header.text() == 'Bibles'
+
+
+def test_library_rail_paintevent_ends_painter_when_drawing_raises(sidebar):
+    """
+    Test that LibraryRail.paintEvent always ends its painter, even if painting raises
+    (e.g. a deleted rail button raising RuntimeError from geometry()) -- a painter left
+    active on the widget corrupts the backing store and crashes a later, unrelated repaint.
+    """
+    # GIVEN: A sidebar with an active rail button, and a painter whose drawing raises
+    sidebar.addItem(_page('songs'), QtGui.QIcon(), 'Songs')
+    mocked_painter = MagicMock()
+    mocked_painter.drawRoundedRect.side_effect = RuntimeError('boom')
+    with patch('openlp.core.widgets.docks.QtWidgets.QWidget.paintEvent'), \
+            patch('openlp.core.widgets.docks.QtGui.QPainter', return_value=mocked_painter):
+
+        # WHEN: The rail is painted and drawing fails
+        with pytest.raises(RuntimeError):
+            sidebar.rail.paintEvent(MagicMock())
+
+        # THEN: The painter should still have been ended
+        mocked_painter.end.assert_called_once()
 
 
 def test_sidebar_item_enabled_and_text(sidebar):

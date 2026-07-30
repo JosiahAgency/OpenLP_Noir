@@ -54,7 +54,8 @@ from openlp.core.ui.starttimeform import StartTimeForm
 from openlp.core.ui.style import UiThemes, is_ui_theme
 from openlp.core.widgets.dialogs import FileDialog
 from openlp.core.widgets.toolbar import OpenLPToolbar
-from openlp.core.widgets.views import NoirServiceDelegate, SERVICE_LIVE_ROLE, SERVICE_META_ROLE
+from openlp.core.widgets.views import NoirServiceDelegate, SERVICE_LIVE_ROLE, SERVICE_META_ROLE, \
+    SERVICE_PLUGIN_ROLE
 
 
 class ServiceManagerList(QtWidgets.QTreeWidget):
@@ -1517,6 +1518,7 @@ class ServiceManager(QtWidgets.QWidget, RegistryBase, Ui_ServiceManager, LogMixi
             tree_widget_item.setData(0, SERVICE_META_ROLE, self._service_item_caption(service_item_from_item))
             tree_widget_item.setData(0, SERVICE_LIVE_ROLE,
                                      service_item_from_item.unique_identifier == self.live_item_identifier)
+            tree_widget_item.setData(0, SERVICE_PLUGIN_ROLE, service_item_from_item.name)
             tree_widget_item.setSelected(item['selected'])
             # Add the children to their parent tree_widget_item.
             for slide_index, slide in enumerate(service_item_from_item.get_frames()):

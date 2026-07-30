@@ -196,6 +196,8 @@ class ServiceItem(RegistryProperties):
             self.icon = UiIcons().picture
         elif self.name == 'media':
             self.icon = UiIcons().video
+        elif self.name == 'egwlibrary':
+            self.icon = UiIcons().library
         else:
             self.icon = UiIcons().custom
 

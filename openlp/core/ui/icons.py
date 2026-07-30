@@ -30,7 +30,9 @@ from openlp.core.common import Singleton
 from openlp.core.common.applocation import AppLocation
 from openlp.core.common.registry import Registry
 from openlp.core.lib import build_icon
-from openlp.core.ui.style import NOIR_CUE, NOIR_ON_AIR, NOIR_SUCCESS, NOIR_TEXT_HI, NOIR_TEXT_LOW, \
+from openlp.core.ui.style import NOIR_CUE, NOIR_ON_AIR, NOIR_PLUGIN_ALERTS, NOIR_PLUGIN_BIBLES, \
+    NOIR_PLUGIN_CUSTOM, NOIR_PLUGIN_IMAGES, NOIR_PLUGIN_LIBRARY, NOIR_PLUGIN_MEDIA, \
+    NOIR_PLUGIN_PRESENTATIONS, NOIR_PLUGIN_SONGS, NOIR_SUCCESS, NOIR_TEXT_HI, NOIR_TEXT_LOW, \
     NOIR_WARNING, UiThemes, is_ui_theme, is_ui_theme_dark
 
 
@@ -42,7 +44,7 @@ log = logging.getLogger(__name__)
 NOIR_ICON_LIST = {
     'active': {'icon': 'ph.hands-clapping'},
     'add': {'icon': 'ph.plus-circle'},
-    'alert': {'icon': 'ph.megaphone'},
+    'alert': {'icon': 'ph.megaphone', 'attr': NOIR_PLUGIN_ALERTS},
     'arrow_down': {'icon': 'ph.arrow-down'},
     'arrow_left': {'icon': 'ph.arrow-left'},
     'arrow_right': {'icon': 'ph.arrow-right'},
@@ -52,7 +54,7 @@ NOIR_ICON_LIST = {
     'address': {'icon': 'ph.book-open'},
     'back': {'icon': 'ph.skip-back'},
     'backspace': {'icon': 'ph.x'},
-    'bible': {'icon': 'ph.book-open'},
+    'bible': {'icon': 'ph.book-open', 'attr': NOIR_PLUGIN_BIBLES},
     'blank': {'icon': 'ph.eye-slash'},
     'blank_theme': {'icon': 'ph.image-square'},
     'bold': {'icon': 'ph.text-bolder'},
@@ -65,7 +67,7 @@ NOIR_ICON_LIST = {
     'close': {'icon': 'ph.x-circle'},
     'copy': {'icon': 'ph.copy-simple'},
     'copyright': {'icon': 'ph.copyright'},
-    'custom': {'icon': 'ph.note-pencil'},
+    'custom': {'icon': 'ph.note-pencil', 'attr': NOIR_PLUGIN_CUSTOM},
     'database': {'icon': 'ph.database'},
     'default': {'icon': 'ph.info'},
     'desktop': {'icon': 'ph.monitor'},
@@ -84,11 +86,12 @@ NOIR_ICON_LIST = {
     'inactive': {'icon': 'ph.hands-clapping', 'attr': NOIR_TEXT_LOW},
     'info': {'icon': 'ph.info'},
     'italic': {'icon': 'ph.text-italic'},
+    'library': {'icon': 'ph.books', 'attr': NOIR_PLUGIN_LIBRARY},
     'light_bulb': {'icon': 'ph.lightbulb'},
     'live': {'icon': 'ph.broadcast'},
     'live_presentation': {'icon': 'ph.presentation-chart'},
     'live_theme': {'icon': 'ph.paint-brush-broad'},
-    'live_black': {'icon': 'ph.monitor'},
+    'live_black': {'icon': 'ph.rectangle'},
     'live_desktop': {'icon': 'ph.monitor-play'},
     'loop': {'icon': 'ph.repeat'},
     'manual': {'icon': 'ph.book-bookmark'},
@@ -98,7 +101,7 @@ NOIR_ICON_LIST = {
     'move_up': {'icon': 'ph.arrow-up'},
     'move_down': {'icon': 'ph.arrow-down'},
     'move_end': {'icon': 'ph.arrow-line-down'},
-    'music': {'icon': 'ph.music-notes'},
+    'music': {'icon': 'ph.music-notes', 'attr': NOIR_PLUGIN_SONGS},
     'network_stream': {'icon': 'ph.link-simple'},
     'new': {'icon': 'ph.file-plus'},
     'new_group': {'icon': 'ph.folder-simple-plus'},
@@ -112,7 +115,7 @@ NOIR_ICON_LIST = {
     'play_slides': {'icon': 'ph.play-circle'},
     'plugin_list': {'icon': 'ph.puzzle-piece'},
     'plus': {'icon': 'ph.plus'},
-    'presentation': {'icon': 'ph.presentation'},
+    'presentation': {'icon': 'ph.presentation', 'attr': NOIR_PLUGIN_PRESENTATIONS},
     'preview': {'icon': 'ph.eye'},
     'projector': {'icon': 'ph.projector-screen'},
     'projector_connect': {'icon': 'ph.link'},
@@ -127,7 +130,7 @@ NOIR_ICON_LIST = {
     'projector_select_connect': {'icon': 'ph.link', 'attr': NOIR_SUCCESS},
     'projector_select_disconnect': {'icon': 'ph.link-break', 'attr': NOIR_ON_AIR},
     'projector_warmup': {'icon': 'ph.projector-screen', 'attr': NOIR_WARNING},
-    'picture': {'icon': 'ph.image'},
+    'picture': {'icon': 'ph.image', 'attr': NOIR_PLUGIN_IMAGES},
     'print': {'icon': 'ph.printer'},
     'remote': {'icon': 'ph.wifi-high'},
     'repeat': {'icon': 'ph.repeat'},
@@ -159,7 +162,7 @@ NOIR_ICON_LIST = {
     'user': {'icon': 'ph.user'},
     'usermo': {'icon': 'ph.user-plus'},
     'users': {'icon': 'ph.users'},
-    'video': {'icon': 'ph.film-strip'},
+    'video': {'icon': 'ph.film-strip', 'attr': NOIR_PLUGIN_MEDIA},
     'view_list': {'icon': 'ph.list-dashes'},
     'view_grid': {'icon': 'ph.squares-four'},
     'volunteer': {'icon': 'ph.users-three'}
@@ -228,6 +231,7 @@ class UiIcons(metaclass=Singleton):
             'inactive': {'icon': 'mdi.human-handsup', 'attr': 'lightGray'},
             'info': {'icon': 'mdi.information-variant'},
             'italic': {'icon': 'mdi.format-italic'},
+            'library': {'icon': 'mdi.bookshelf'},
             'light_bulb': {'icon': 'mdi.lightbulb-outline'},
             'live': {'icon': 'op.live'},
             'live_presentation': {'icon': 'op.live-presentation'},

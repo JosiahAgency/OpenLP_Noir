@@ -109,6 +109,43 @@ NOIR_WARNING = '#D9A23C'
 # grip hover, and the text color painted on top of the on-air red.
 NOIR_LINE_HOVER = '#3A4250'
 NOIR_TEXT_ON_ACCENT = '#FFFFFF'
+# Per-plugin identity accents, used for icon tint and service-list chip tint.
+# Muted (lower saturation) vs NOIR_CUE/NOIR_ON_AIR so plugin colour never
+# competes with selection/live-state signalling.
+NOIR_PLUGIN_SONGS = '#7E79C8'
+NOIR_PLUGIN_BIBLES = '#5BB5B9'
+NOIR_PLUGIN_PRESENTATIONS = '#9E7EC8'
+NOIR_PLUGIN_MEDIA = '#B77BC6'
+NOIR_PLUGIN_IMAGES = '#C775B9'
+NOIR_PLUGIN_CUSTOM = '#C46E96'
+NOIR_PLUGIN_ALERTS = '#91B356'
+NOIR_PLUGIN_LIBRARY = '#62AF5A'
+NOIR_PLUGIN_COLORS = {
+    'songs': NOIR_PLUGIN_SONGS,
+    'bibles': NOIR_PLUGIN_BIBLES,
+    'presentations': NOIR_PLUGIN_PRESENTATIONS,
+    'media': NOIR_PLUGIN_MEDIA,
+    'images': NOIR_PLUGIN_IMAGES,
+    'custom': NOIR_PLUGIN_CUSTOM,
+    'alerts': NOIR_PLUGIN_ALERTS,
+    'egwlibrary': NOIR_PLUGIN_LIBRARY,
+}
+# Verse-type tints for the idle rail pill in NoirSlideDelegate, keyed by the
+# uppercase first letter of the (translated) verse tag.
+NOIR_VERSE_VERSE = '#8477C5'
+NOIR_VERSE_CHORUS = '#CA7DCA'
+NOIR_VERSE_BRIDGE = '#A77BC6'
+NOIR_VERSE_PRE_CHORUS = '#7CB262'
+NOIR_VERSE_INTRO = '#5DB3B6'
+NOIR_VERSE_ENDING = '#C67BA7'
+NOIR_VERSE_TAG_COLORS = {
+    'V': NOIR_VERSE_VERSE,
+    'C': NOIR_VERSE_CHORUS,
+    'B': NOIR_VERSE_BRIDGE,
+    'P': NOIR_VERSE_PRE_CHORUS,
+    'I': NOIR_VERSE_INTRO,
+    'E': NOIR_VERSE_ENDING,
+}
 # Preferred UI font families, best first. Lato ships with OpenLP (see
 # BUNDLED_FONT_DIR) so it is always available; the rest of the list is a
 # fallback for the unlikely case the bundled files fail to register.

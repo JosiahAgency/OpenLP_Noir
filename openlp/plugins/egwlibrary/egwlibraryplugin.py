@@ -51,7 +51,7 @@ class EGWLibraryPlugin(Plugin):
         super().__init__('egwlibrary', EGWLibraryMediaItem, EGWLibraryTab)
         self.weight = -2
         self.manager = EGWLibraryManager()
-        self.icon_path = UiIcons().book
+        self.icon_path = UiIcons().library
         self.icon = build_icon(self.icon_path)
         Registry().register('egwlibrary_manager', self.manager)
         # The state service name must match the RegistryBase registration, which is

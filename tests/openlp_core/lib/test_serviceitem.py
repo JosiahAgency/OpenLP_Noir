@@ -1095,7 +1095,7 @@ def test_add_from_text_per_slide_footer_html_is_honoured(mock_uiicons, settings,
 
 @pytest.mark.parametrize('plugin_name,icon', [('songs', 'music'), ('bibles', 'bible'),
                                               ('presentations', 'presentation'), ('images', 'picture'),
-                                              ('media', 'video')])
+                                              ('media', 'video'), ('egwlibrary', 'library')])
 def test_add_icon(registry, plugin_name, icon):
     """Test that adding an icon works according to the plugin name"""
     # GIVEN: A service item

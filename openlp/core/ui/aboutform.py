@@ -29,6 +29,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from openlp.core.common.i18n import UiStrings, translate
 from openlp.core.lib.ui import create_button, create_button_box
 from openlp.core.ui.icons import UiIcons
+from openlp.core.ui.style import UiThemes, is_ui_theme
 from openlp.core.version import get_version
 
 
@@ -60,7 +61,10 @@ class AboutForm(QtWidgets.QDialog):
         self.base_layout.setObjectName('base_layout')
         self.logo_label = QtWidgets.QLabel(self)
         self.logo_label.setPixmap(QtGui.QPixmap(':/graphics/openlp-about-logo.png'))
-        self.logo_label.setStyleSheet('background-color: #fff')
+        if is_ui_theme(UiThemes.Noir):
+            self.logo_label.setStyleSheet('background-color: transparent')
+        else:
+            self.logo_label.setStyleSheet('background-color: #fff')
         self.logo_label.setMargin(8)
         self.logo_label.setObjectName('logo_label')
         self.base_layout.addWidget(self.logo_label)

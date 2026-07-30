@@ -87,3 +87,27 @@ def test_about_form_date(mock_settings):
 
     # THEN: The date should be in the text twice.
     assert about_text.count(date_string, 0) == 1, "The text string should be added twice to the license string"
+
+
+@patch('openlp.core.ui.aboutform.is_ui_theme', return_value=True)
+def test_about_form_logo_background_noir(mocked_is_ui_theme, mock_settings):
+    """
+    Test that the logo background is transparent under the Noir theme, not a hardcoded white box
+    """
+    # WHEN: The about form is created with the Noir theme active
+    about_form = AboutForm(None)
+
+    # THEN: The logo label should have a transparent background
+    assert 'background-color: transparent' in about_form.logo_label.styleSheet()
+
+
+@patch('openlp.core.ui.aboutform.is_ui_theme', return_value=False)
+def test_about_form_logo_background_legacy(mocked_is_ui_theme, mock_settings):
+    """
+    Test that the logo background stays white under non-Noir themes, unchanged from before
+    """
+    # WHEN: The about form is created with a non-Noir theme active
+    about_form = AboutForm(None)
+
+    # THEN: The logo label should keep its original white background
+    assert 'background-color: #fff' in about_form.logo_label.styleSheet()

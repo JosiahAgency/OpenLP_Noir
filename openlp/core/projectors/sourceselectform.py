@@ -185,17 +185,20 @@ class FingerTabBarWidget(QtWidgets.QTabBar):
         :param event: Repaint event signal
         """
         painter = QtWidgets.QStylePainter(self)
-        option = QtWidgets.QStyleOptionTab()
-
-        for index in range(self.count()):
-            self.initStyleOption(option, index)
-            tabRect = self.tabRect(index)
-            tabRect.moveLeft(10)
-            painter.drawControl(QtWidgets.QStyle.ControlElement.CE_TabBarTabShape, option)
-            painter.drawText(tabRect, QtCore.Qt.AlignmentFlag.AlignVCenter |
-                             QtCore.Qt.TextFlag.TextDontClip,
-                             self.tabText(index))
-        painter.end()
+        # The painter must always be ended before this method returns: an active painter left on the widget
+        # corrupts the backing store and crashes a later, unrelated repaint.
+        try:
+            option = QtWidgets.QStyleOptionTab()
+            for index in range(self.count()):
+                self.initStyleOption(option, index)
+                tabRect = self.tabRect(index)
+                tabRect.moveLeft(10)
+                painter.drawControl(QtWidgets.QStyle.ControlElement.CE_TabBarTabShape, option)
+                painter.drawText(tabRect, QtCore.Qt.AlignmentFlag.AlignVCenter |
+                                 QtCore.Qt.TextFlag.TextDontClip,
+                                 self.tabText(index))
+        finally:
+            painter.end()
 
     def tabSizeHint(self, index):
         """

@@ -90,14 +90,20 @@ class LibraryRail(QtWidgets.QWidget):
         if not self._active_button:
             return
         painter = QtGui.QPainter(self)
-        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
-        center_y = self._active_button.geometry().center().y()
-        bar = QtCore.QRectF(0, center_y - self.INDICATOR_HEIGHT / 2,
-                            self.INDICATOR_WIDTH, self.INDICATOR_HEIGHT)
-        painter.setPen(QtCore.Qt.PenStyle.NoPen)
-        painter.setBrush(QtGui.QColor(NOIR_CUE))
-        painter.drawRoundedRect(bar, self.INDICATOR_WIDTH / 2, self.INDICATOR_WIDTH / 2)
-        painter.end()
+        # The painter must always be ended before this method returns: an active painter left on the widget
+        # corrupts the backing store and crashes a later, unrelated repaint (see ListWidgetWithDnD.paintEvent
+        # in widgets/views.py). self._active_button.geometry() can also raise RuntimeError if the button was
+        # deleted out from under us, which the try/finally covers too.
+        try:
+            painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+            center_y = self._active_button.geometry().center().y()
+            bar = QtCore.QRectF(0, center_y - self.INDICATOR_HEIGHT / 2,
+                                self.INDICATOR_WIDTH, self.INDICATOR_HEIGHT)
+            painter.setPen(QtCore.Qt.PenStyle.NoPen)
+            painter.setBrush(QtGui.QColor(NOIR_CUE))
+            painter.drawRoundedRect(bar, self.INDICATOR_WIDTH / 2, self.INDICATOR_WIDTH / 2)
+        finally:
+            painter.end()
 
 
 class LibrarySidebar(QtWidgets.QWidget):

@@ -26,13 +26,15 @@ import pytest
 from types import GeneratorType
 from unittest.mock import MagicMock, call, patch
 
-from PySide6 import QtWidgets
+from PySide6 import QtGui, QtWidgets
 
 from openlp.core.common.i18n import UiStrings
 from openlp.core.common.registry import Registry
 from openlp.core.lib.serviceitem import ServiceItem
-from openlp.core.widgets.views import ListPreviewWidget, ListWidgetWithDnD, TreeWidgetWithDnD, handle_mime_data_urls
+from openlp.core.widgets.views import ListPreviewWidget, ListWidgetWithDnD, NoirServiceDelegate, \
+    NoirSlideDelegate, TreeWidgetWithDnD, handle_mime_data_urls
 from openlp.core.ui.icons import UiIcons
+from openlp.core.ui.style import NOIR_INK_3, NOIR_INK_4, NOIR_PLUGIN_SONGS, NOIR_VERSE_CHORUS, NOIR_VERSE_VERSE
 from tests.utils.osdinteraction import read_service_from_file
 
 
@@ -606,6 +608,30 @@ def test_clear_search_while_typing():
     assert widget.no_results_text == UiStrings().ShortResults
 
 
+def test_showevent_forces_layout_once():
+    """
+    Test that showEvent forces a relayout the first time the widget becomes visible, to fix rows added while the
+    widget was hidden overlapping once shown, but does not force a relayout on subsequent show events.
+    """
+    # GIVEN: An instance of ListWidgetWithDnD
+    widget = ListWidgetWithDnD()
+    show_event = QtGui.QShowEvent()
+    with patch.object(widget, 'doItemsLayout') as mocked_do_items_layout:
+
+        # WHEN: showEvent fires for the first time
+        widget.showEvent(show_event)
+
+        # THEN: A relayout should have been forced, and the flag cleared
+        mocked_do_items_layout.assert_called_once()
+        assert widget._needs_initial_layout is False
+
+        # WHEN: showEvent fires again
+        widget.showEvent(show_event)
+
+        # THEN: No additional relayout should have been forced
+        mocked_do_items_layout.assert_called_once()
+
+
 def test_all_items_no_list_items():
     """
     Test allItems when there are no items in the list widget
@@ -751,3 +777,46 @@ def test_change_slide(preview_widget, state_media):
     preview_widget.change_slide(1)
     # THEN: The current_slide_number should reflect the change.
     assert preview_widget.current_slide_number() == 1, 'The current slide number should  be 1.'
+
+
+@pytest.mark.parametrize('verse_tag,expected_color', [
+    ('V1', NOIR_VERSE_VERSE),
+    ('C2', NOIR_VERSE_CHORUS),
+    ('O1', None),
+    ('4', None),
+    (None, None),
+    ('', None),
+])
+def test_noir_slide_delegate_verse_tag_color(verse_tag, expected_color):
+    """_verse_tag_color should tint known verse-type letters and fall back to None otherwise"""
+    # GIVEN: A NoirSlideDelegate
+    delegate = NoirSlideDelegate(QtWidgets.QWidget())
+
+    # WHEN: Asking for the color of a verse tag
+    color = delegate._verse_tag_color(verse_tag)
+
+    # THEN: Known verse-type letters resolve to their tint, everything else is None
+    assert color == expected_color
+
+
+@pytest.mark.parametrize('plugin_name,expected_accent', [
+    ('songs', NOIR_PLUGIN_SONGS),
+    ('unknown_plugin', None),
+    (None, None),
+])
+def test_noir_service_delegate_chip_colors(plugin_name, expected_accent):
+    """_chip_colors should tint known plugins and fall back to the neutral chip colors otherwise"""
+    # GIVEN: A NoirServiceDelegate
+    delegate = NoirServiceDelegate(QtWidgets.QWidget())
+
+    # WHEN: Asking for the chip colors of a plugin
+    fill, border = delegate._chip_colors(plugin_name)
+
+    # THEN: A known plugin gets its accent tinted in, otherwise the neutral ink colors are used
+    if expected_accent:
+        assert fill.name(QtGui.QColor.NameFormat.HexRgb) == expected_accent.lower()
+        assert fill.alpha() == 40
+        assert border.alpha() == 130
+    else:
+        assert fill == QtGui.QColor(NOIR_INK_3)
+        assert border == QtGui.QColor(NOIR_INK_4)
