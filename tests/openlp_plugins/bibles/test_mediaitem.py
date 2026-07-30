@@ -26,7 +26,7 @@ from unittest.mock import MagicMock, call, patch
 
 from PySide6 import QtCore, QtWidgets
 
-from openlp.core.common.enum import LayoutStyle
+from openlp.core.common.enum import LayoutStyle, ReferencePlacement
 from openlp.core.common.registry import Registry
 from openlp.core.lib.mediamanageritem import MediaManagerItem
 from openlp.core.lib.serviceitem import ItemCapabilities
@@ -1462,7 +1462,9 @@ def test_on_text_search_all_results_in_both_books(media_item, mocked_log):
         # THEN: The search results for both bibles should be returned
         assert media_item.search_results == [mocked_verse_1, mocked_verse_2]
         assert media_item.second_search_results == [mocked_verse_1a, mocked_verse_2a]
-        assert mocked_log.debug.called is False
+        not_found_calls = [call for call in mocked_log.debug.call_args_list
+                           if 'not found in Second Bible' in call.args[0]]
+        assert not_found_calls == []
         assert Registry().get('main_window').information_message.called is False
         mocked_display_results.assert_called_once_with()
 
@@ -1490,7 +1492,9 @@ def test_on_text_search_not_all_results_in_both_books(media_item, mocked_log):
         #       the missing verses
         assert media_item.search_results == [mocked_verse_1]
         assert media_item.second_search_results == [mocked_verse_1a]
-        assert mocked_log.debug.call_count == 2
+        not_found_calls = [call for call in mocked_log.debug.call_args_list
+                           if 'not found in Second Bible' in call.args[0]]
+        assert len(not_found_calls) == 2
         assert Registry().get('main_window').information_message.called is True
         mocked_display_results.assert_called_once_with()
 
@@ -1666,6 +1670,7 @@ def test_generate_slide_data_data_string(media_item: BibleMediaItem):
     mocked_service_item = MagicMock()
     slide_data = {
         'book': 'Matthew',
+        'book_abbreviation': 'Matt',
         'chapter': '1',
         'verse': '2',
         'version': 'Bible version 104',
@@ -1710,6 +1715,7 @@ def test_generate_slide_data_data_string_one_bible(media_item: BibleMediaItem):
     mocked_service_item = MagicMock()
     slide_data = {
         'book': 'Matthew',
+        'book_abbreviation': 'Matt',
         'chapter': '1',
         'verse': '2',
         'version': 'Bible version 104',
@@ -1745,6 +1751,7 @@ def test_generate_slide_data_whole_verse_continuous_can_word_split(media_item: B
     mocked_service_item = MagicMock()
     slide_data = {
         'book': 'Matthew',
+        'book_abbreviation': 'Matt',
         'chapter': '1',
         'verse': '2',
         'version': 'Bible version 104',
@@ -1768,6 +1775,7 @@ def test_generate_slide_data_whole_verse_continuous_can_word_split(media_item: B
 def _create_mocked_footer_slide_items():
     slide_data = {
         'book': 'Matthew',
+        'book_abbreviation': 'Matt',
         'chapter': '1',
         'verse': '2',
         'version': 'Bible version 104',
@@ -1789,15 +1797,19 @@ def test_generate_slide_data_footer_reference_only(media_item: BibleMediaItem):
     media_item.format_verse = MagicMock(return_value='')
     media_item.settings_tab = MagicMock(bible_theme='', show_reference_in_footer=True,
                                         show_version_in_footer=False, show_copyright_in_footer=False,
-                                        show_permission_in_footer=False)
+                                        show_permission_in_footer=False,
+                                        reference_placement=ReferencePlacement.Footer)
 
     # WHEN: generate_slide_data is called
     media_item.generate_slide_data(mocked_service_item, item=_create_mocked_footer_slide_items())
 
-    # THEN: the footer should only contain the verse reference
+    # THEN: the footer should only contain the verse reference, and the slide text should not contain an
+    #       inline reference marker (reference_placement defaults to Footer)
     assert len(mocked_service_item.raw_footer) == 1
     assert 'Matthew' in mocked_service_item.raw_footer[0]
     assert 'Bible version 104' not in mocked_service_item.raw_footer[0]
+    slide_text = mocked_service_item.add_from_text.call_args_list[0].args[0]
+    assert 'Matt' not in slide_text
 
 
 def test_generate_slide_data_footer_version_only(media_item: BibleMediaItem):
@@ -1836,3 +1848,73 @@ def test_generate_slide_data_footer_all_disabled(media_item: BibleMediaItem):
 
     # THEN: the footer should be empty
     assert mocked_service_item.raw_footer == []
+
+
+def test_generate_slide_data_reference_inline(media_item: BibleMediaItem):
+    """
+    Test that the short reference is appended inline after the verse text, and suppressed from the footer,
+    when reference placement is Inline -- even though the "show reference in footer" checkbox is still on
+    (placement and the checkbox are independent axes)
+    """
+    # GIVEN: A mocked service item and settings with reference placement set to Inline
+    mocked_service_item = MagicMock()
+    mocked_service_item.raw_footer = []
+    media_item.format_verse = MagicMock(return_value='')
+    media_item.settings_tab = MagicMock(bible_theme='', layout_style=LayoutStyle.VersePerSlide,
+                                        show_reference_in_footer=True, show_version_in_footer=False,
+                                        show_copyright_in_footer=False, show_permission_in_footer=False,
+                                        reference_placement=ReferencePlacement.Inline)
+
+    # WHEN: generate_slide_data is called
+    with patch('openlp.plugins.bibles.lib.mediaitem.get_reference_separators',
+              return_value={'verse': ':', 'range': '-', 'list': ','}):
+        media_item.generate_slide_data(mocked_service_item, item=_create_mocked_footer_slide_items())
+
+    # THEN: the footer should stay empty, and the slide text should contain the short inline reference
+    assert mocked_service_item.raw_footer == []
+    slide_text = mocked_service_item.add_from_text.call_args_list[0].args[0]
+    assert 'Matt' in slide_text
+    assert '1:2' in slide_text
+    assert 'text from matthew 1:2' in slide_text
+
+
+@pytest.mark.parametrize('layout_style', [
+    LayoutStyle.VersePerSlide, LayoutStyle.VersePerLine, LayoutStyle.Continuous, LayoutStyle.WholeVerseContinuous
+])
+def test_generate_slide_data_reference_inline_all_layout_styles(media_item: BibleMediaItem, layout_style):
+    """
+    Test that an inline reference is appended after every verse regardless of layout style, since for
+    VersePerLine/Continuous/WholeVerseContinuous multiple verses can share a single raw slide that gets
+    re-paginated later by the renderer -- so the reference can't be added once per finalised slide.
+    """
+    # GIVEN: Two mocked verses and settings with reference placement set to Inline
+    mocked_service_item = MagicMock()
+    mocked_service_item.raw_footer = []
+    slide_data_1 = {
+        'book': 'Matthew', 'book_abbreviation': 'Matt', 'chapter': 1, 'verse': 1,
+        'version': 'Bible version 104', 'copyright': 'copywrong', 'permissions': 'all the permissions',
+        'second_bible': '', 'text': 'verse one text'
+    }
+    slide_data_2 = {
+        'book': 'Matthew', 'book_abbreviation': 'Matt', 'chapter': 1, 'verse': 2,
+        'version': 'Bible version 104', 'copyright': 'copywrong', 'permissions': 'all the permissions',
+        'second_bible': '', 'text': 'verse two text'
+    }
+    mocked_items = [MagicMock(**{'data.return_value': slide_data_1}),
+                    MagicMock(**{'data.return_value': slide_data_2})]
+    media_item.format_verse = MagicMock(return_value='')
+    media_item.settings_tab = MagicMock(bible_theme='', layout_style=layout_style,
+                                        show_reference_in_footer=False, show_version_in_footer=False,
+                                        show_copyright_in_footer=False, show_permission_in_footer=False,
+                                        reference_placement=ReferencePlacement.Inline)
+
+    # WHEN: generate_slide_data is called
+    with patch('openlp.plugins.bibles.lib.mediaitem.get_reference_separators',
+              return_value={'verse': ':', 'range': '-', 'list': ','}):
+        media_item.generate_slide_data(mocked_service_item, item=mocked_items)
+
+    # THEN: a reference marker should appear once per verse, across however many slides were generated
+    all_text = ' '.join(call.args[0] for call in mocked_service_item.add_from_text.call_args_list)
+    assert all_text.count('Matt') == 2
+    assert '1:1' in all_text
+    assert '1:2' in all_text

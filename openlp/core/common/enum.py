@@ -114,6 +114,15 @@ class LanguageSelection(IntEnum):
 
 
 @unique
+class ReferencePlacement(IntEnum):
+    """
+    An enumeration for where a book/chapter/verse (or book/page/paragraph) reference is displayed.
+    """
+    Footer = 0
+    Inline = 1
+
+
+@unique
 class ServiceItemType(IntEnum):
     """
     Defines the type of service item

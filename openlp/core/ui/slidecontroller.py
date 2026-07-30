@@ -1070,6 +1070,12 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         """
         Set the preview display's zoom factor based on the size relative to the display size
         """
+        if size.width() <= 0:
+            # A transient layout pass (e.g. a media manager dock/tab switch briefly
+            # collapsing this panel) can report a width of 0 before settling. Skip it
+            # rather than computing a zero scale; set_scale() would reject it anyway,
+            # and a follow-up resize with the real size will correct things shortly.
+            return
         display_with = 0
         for screen in self.screens:
             if screen.is_display:

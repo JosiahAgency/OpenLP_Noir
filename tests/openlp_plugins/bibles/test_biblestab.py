@@ -24,6 +24,7 @@ This module contains tests for the lib submodule of the Bible plugin.
 import pytest
 from unittest.mock import MagicMock, patch
 
+from openlp.core.common.enum import ReferencePlacement
 from openlp.core.common.registry import Registry
 from openlp.plugins.bibles.lib.biblestab import BiblesTab
 
@@ -116,6 +117,34 @@ def test_save_footer_settings(form):
     assert form.settings.value('bibles/footer show version') is False
     assert form.settings.value('bibles/footer show copyright') is False
     assert form.settings.value('bibles/footer show permission') is True
+
+
+def test_load_reference_placement_default(form):
+    """
+    Test that reference placement defaults to Footer
+    """
+    # WHEN: Load is invoked
+    form.load()
+
+    # THEN: The combo box should default to Footer
+    assert form.reference_placement_combo_box.currentIndex() == ReferencePlacement.Footer
+
+
+def test_save_reference_placement(form):
+    """
+    Test that changing reference placement to Inline is saved
+    """
+    # GIVEN: A loaded form with the reference placement combo box set to Inline
+    form.load()
+    form.reference_placement_combo_box.setCurrentIndex(ReferencePlacement.Inline)
+    form.on_reference_placement_combo_box_changed()
+
+    # WHEN: Save is invoked (without rebuilding the global reference separators)
+    with patch('openlp.plugins.bibles.lib.biblestab.update_reference_separators'):
+        form.save()
+
+    # THEN: The setting should reflect the combo box state
+    assert form.settings.value('bibles/reference placement') == ReferencePlacement.Inline
 
 
 def test_check_box_toggles_persist(form):

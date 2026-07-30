@@ -1734,3 +1734,67 @@ def test_window_enum_callback_without_filename_check(mocked_win32gui, presentati
     assert doc.presentation_hwnd == hwnd
     mocked_win32gui.FlashWindowEx.assert_not_called()
     assert result is False
+
+
+@pytest.mark.skipif(not is_win(), reason='This test only works on Windows')
+@patch('openlp.plugins.presentations.lib.powerpointcontroller.winreg')
+@patch('openlp.plugins.presentations.lib.powerpointcontroller.Dispatch')
+def test_check_available_not_installed_skips_com_call(mocked_dispatch, mocked_winreg, settings, mock_plugin):
+    """
+    Test that check_available returns False, and never calls Dispatch, when none of PowerPoint's ProgID
+    variants are registered.
+    """
+    # GIVEN: A controller and a registry lookup that finds no PowerPoint.Application ProgID
+    controller = PowerpointController(plugin=mock_plugin)
+    mocked_winreg.QueryValue.side_effect = FileNotFoundError()
+
+    # WHEN: check_available is called
+    result = controller.check_available()
+
+    # THEN: It should return False and never attempt a COM call
+    assert result is False
+    mocked_dispatch.assert_not_called()
+
+
+@pytest.mark.skipif(not is_win(), reason='This test only works on Windows')
+@patch('openlp.plugins.presentations.lib.powerpointcontroller.winreg')
+@patch('openlp.plugins.presentations.lib.powerpointcontroller.Dispatch')
+def test_check_available_success_is_registry_only(mocked_dispatch, mocked_winreg, settings, mock_plugin):
+    """
+    Test that check_available returns True and records the com_obj_name purely from the registry lookup,
+    without ever instantiating a live COM object. An earlier implementation launched PowerPoint via
+    Dispatch() and Quit() it again just to answer "is it available", which raced the out-of-process
+    server's own teardown and could bring down the whole application with an unrecoverable RPC/SEH fault.
+    """
+    # GIVEN: A controller and a registered ProgID
+    controller = PowerpointController(plugin=mock_plugin)
+    mocked_winreg.QueryValue.return_value = 'Microsoft PowerPoint Presentation'
+
+    # WHEN: check_available is called
+    result = controller.check_available()
+
+    # THEN: It should return True, record the successful ProgID, and never touch a live COM object
+    assert result is True
+    assert controller.com_obj_name == 'PowerPoint.Application'
+    mocked_dispatch.assert_not_called()
+
+
+@pytest.mark.skipif(not is_win(), reason='This test only works on Windows')
+@patch('openlp.plugins.presentations.lib.powerpointcontroller.winreg')
+@patch('openlp.plugins.presentations.lib.powerpointcontroller.Dispatch')
+def test_check_available_all_registry_lookups_fail_returns_false(
+        mocked_dispatch, mocked_winreg, settings, mock_plugin):
+    """
+    Test that check_available returns False if every ProgID variant is missing from the registry.
+    """
+    # GIVEN: A controller and a registry lookup that fails for every ProgID variant
+    controller = PowerpointController(plugin=mock_plugin)
+    mocked_winreg.QueryValue.side_effect = OSError()
+
+    # WHEN: check_available is called
+    result = controller.check_available()
+
+    # THEN: It should return False after trying every known ProgID variant, without calling Dispatch
+    assert result is False
+    assert mocked_winreg.QueryValue.call_count == 6
+    mocked_dispatch.assert_not_called()

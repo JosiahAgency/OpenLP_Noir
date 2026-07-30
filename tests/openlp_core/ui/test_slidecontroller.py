@@ -247,6 +247,40 @@ def test_on_controller_size_changed_can_not_expand(settings: Settings):
     slide_controller.set_hide_mode_menu.assert_not_called()
 
 
+def test_on_preview_resize_zero_width_ignored(settings: Settings):
+    """
+    Test that on_preview_resize ignores a transient zero-width size instead of computing
+    and forwarding a zero scale, which the display would otherwise turn into a
+    degenerate `zoom: 0%` CSS value.
+    """
+    # GIVEN: A new SlideController instance with a mocked preview display
+    slide_controller = SlideController(None)
+    slide_controller.preview_display = MagicMock()
+
+    # WHEN: on_preview_resize is called with a zero-width size
+    slide_controller.on_preview_resize(QtCore.QSize(0, 100))
+
+    # THEN: The preview display's scale should never be touched
+    slide_controller.preview_display.set_scale.assert_not_called()
+
+
+def test_on_preview_resize_positive_width_sets_scale(settings: Settings):
+    """
+    Test that on_preview_resize computes and forwards a scale for a real, positive width.
+    """
+    # GIVEN: A new SlideController instance with a mocked preview display and display screen
+    slide_controller = SlideController(None)
+    slide_controller.preview_display = MagicMock()
+    mocked_screen = MagicMock(is_display=True, display_geometry=MagicMock(width=MagicMock(return_value=1000)))
+    slide_controller.screens = [mocked_screen]
+
+    # WHEN: on_preview_resize is called with a real width
+    slide_controller.on_preview_resize(QtCore.QSize(250, 100))
+
+    # THEN: The preview display's scale should be set to the size ratio
+    slide_controller.preview_display.set_scale.assert_called_once_with(0.25)
+
+
 def test_receive_spin_delay(mock_settings: MagicMock):
     """
     Test that the spin box is updated accordingly after a call to receive_spin_delay()

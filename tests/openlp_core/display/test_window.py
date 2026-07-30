@@ -226,6 +226,27 @@ def test_set_scale_initialised(display_window_env, mock_settings):
     display_window.run_in_display.assert_called_once_with('setScale', 50.0)
 
 
+def test_set_scale_ignores_zero_scale(display_window_env, mock_settings):
+    """
+    Test that a zero scale (e.g. from a caller computing a ratio off a transient,
+    not-yet-settled widget width of 0) is ignored rather than forwarded to the display,
+    since `zoom: 0%` is a degenerate CSS value that has been linked to a native crash.
+    """
+    # GIVEN: An initialised display window with a known good scale already set
+    display_window = DisplayWindow()
+    display_window._is_initialised = True
+    display_window.scale = 0.5
+    display_window.run_in_display = MagicMock()
+
+    # WHEN: set_scale is called with a zero (or negative) scale
+    display_window.set_scale(0)
+    display_window.set_scale(-1)
+
+    # THEN: javascript should not be run and the last good scale should be kept
+    display_window.run_in_display.assert_not_called()
+    assert display_window.scale == 0.5
+
+
 @pytest.mark.skip(reason="Currently broken due to migration to Hatch")
 def test_set_display_custom_url_works_http(registry, display_window_env, mock_settings):
     """

@@ -70,19 +70,27 @@ class PowerpointController(PresentationController):
     def check_available(self):
         """
         PowerPoint is able to run on this machine.
+
+        This is a registry-only check: it never launches (or attaches to and Quit()s) a real PowerPoint
+        COM object. An earlier version actually called Dispatch()/Quit() here to verify PowerPoint could be
+        automated, but that is fundamentally unsafe to do just to answer "is it available" -- releasing a
+        COM proxy for an Application we just told to Quit() races the out-of-process server's own teardown,
+        and was observed to bring down the whole process with an unrecoverable RPC/SEH fault (not a normal,
+        catchable Python exception) rather than a clean failure. Checking that a ProgID resolves in the
+        registry is enough to know PowerPoint is installed; whether it can actually be automated is left to
+        discover at real use time in start_process(), whose failures are already handled there.
         """
         log.debug('check_available')
-        if is_win():
-            # Entry postfixes are for versions 16=2016-2021, 15=2013, 14=2010, 12=2007, 17=future?
-            for entry in ['', '.16', '.17', '.15', '.14', '.12']:
-                try:
-                    process = Dispatch('PowerPoint.Application' + entry)
-                    self.com_obj_name = 'PowerPoint.Application' + entry
-                    if process.Presentations.Count == 0:
-                        process.Quit()
-                    return True
-                except (AttributeError, pywintypes.com_error):
-                    pass
+        if not is_win():
+            return False
+        # Entry postfixes are for versions 16=2016-2021, 15=2013, 14=2010, 12=2007, 17=future?
+        for entry in ['', '.16', '.17', '.15', '.14', '.12']:
+            try:
+                winreg.QueryValue(winreg.HKEY_CLASSES_ROOT, 'PowerPoint.Application' + entry)
+            except OSError:
+                continue
+            self.com_obj_name = 'PowerPoint.Application' + entry
+            return True
         return False
 
     if is_win():

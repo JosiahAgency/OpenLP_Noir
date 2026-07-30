@@ -617,6 +617,16 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
         """
         Set the HTML scale
         """
+        if scale <= 0:
+            # A zero or negative scale can arrive from a caller computing a ratio from a
+            # transient, not-yet-settled widget size (e.g. width() == 0 mid-layout-pass
+            # while docks/tabs are being resized). Forwarding that becomes `zoom: 0%` in
+            # the display's CSS, which is a degenerate value that has been linked to a
+            # native access violation in QtWebEngine's compositor (Qt6Gui.dll). Ignore it
+            # and keep the last good scale; a follow-up resize with a real size will
+            # correct it.
+            log.warning('set_scale: ignoring non-positive scale %s', scale)
+            return
         self.scale = scale
         # Only scale if initialised (scale run again once initialised)
         if self._is_initialised:

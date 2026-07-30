@@ -48,6 +48,7 @@ class EGWLibraryPlugin(Plugin):
     log.info('EGW Library Plugin loaded')
 
     def __init__(self):
+        log.debug('EGW Library Plugin __init__')
         super().__init__('egwlibrary', EGWLibraryMediaItem, EGWLibraryTab)
         self.weight = -2
         self.manager = EGWLibraryManager()
@@ -58,6 +59,7 @@ class EGWLibraryPlugin(Plugin):
         # derived from the class name: EGWLibraryPlugin -> "egw_library_plugin".
         State().add_service('egw_library', self.weight, is_plugin=True)
         State().update_pre_conditions('egw_library', self.check_pre_conditions())
+        log.debug('EGW Library Plugin __init__ complete')
 
     @staticmethod
     def about():
@@ -72,7 +74,9 @@ class EGWLibraryPlugin(Plugin):
         """
         Check the plugin can run.
         """
-        return self.manager.session is not None
+        result = self.manager.session is not None
+        log.debug('check_pre_conditions: {result}'.format(result=result))
+        return result
 
     def uses_theme(self, theme):
         """
@@ -81,9 +85,9 @@ class EGWLibraryPlugin(Plugin):
         :param theme: The theme
         :return: 1 if the theme is being used, otherwise returns 0
         """
-        if str(self.settings_tab.egw_theme) == theme:
-            return 1
-        return 0
+        in_use = 1 if str(self.settings_tab.egw_theme) == theme else 0
+        log.debug('uses_theme {theme}: {in_use}'.format(theme=theme, in_use=in_use))
+        return in_use
 
     def rename_theme(self, old_theme, new_theme):
         """
@@ -93,6 +97,7 @@ class EGWLibraryPlugin(Plugin):
         :param new_theme: The new name the plugin should now use.
         :return: None
         """
+        log.debug('rename_theme {old} -> {new}'.format(old=old_theme, new=new_theme))
         self.settings_tab.egw_theme = new_theme
         self.settings_tab.save()
 

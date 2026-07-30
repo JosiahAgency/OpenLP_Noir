@@ -42,6 +42,7 @@ class BiblePlugin(Plugin):
     log.info('Bible Plugin loaded')
 
     def __init__(self):
+        log.debug('Bible Plugin __init__')
         super(BiblePlugin, self).__init__('bibles', BibleMediaItem, BiblesTab)
         self.weight = -9
         self.icon_path = UiIcons().bible
@@ -49,6 +50,7 @@ class BiblePlugin(Plugin):
         self.manager = BibleManager(self)
         State().add_service('bible', self.weight, is_plugin=True)
         State().update_pre_conditions('bible', self.check_pre_conditions())
+        log.debug('Bible Plugin __init__ complete')
 
     def initialise(self):
         """
@@ -73,6 +75,7 @@ class BiblePlugin(Plugin):
         action_list.remove_action(self.import_bible_item, UiStrings().Import)
         self.import_bible_item.setVisible(False)
         self.export_bible_item.setVisible(False)
+        log.debug('Bible Plugin finalise complete')
 
     def add_import_menu_item(self, import_menu):
         """
@@ -80,6 +83,7 @@ class BiblePlugin(Plugin):
 
         :param import_menu: The menu to insert the menu item into.
         """
+        log.debug('add_import_menu_item')
         self.import_bible_item = create_action(import_menu, 'importBibleItem',
                                                text=translate('BiblesPlugin', '&Bible'), visible=False,
                                                triggers=self.on_bible_import_click)
@@ -91,6 +95,7 @@ class BiblePlugin(Plugin):
 
         :param export_menu: The menu to insert the menu item into.
         """
+        log.debug('add_export_menu_item')
         self.export_bible_item = create_action(export_menu, 'exportBibleItem',
                                                text=translate('BiblesPlugin', '&Bible'), visible=False)
         export_menu.addAction(self.export_bible_item)
@@ -99,6 +104,7 @@ class BiblePlugin(Plugin):
         """
         Show the Bible Import wizard
         """
+        log.debug('on_bible_import_click')
         if self.media_item:
             self.media_item.on_import_click()
 
@@ -119,9 +125,9 @@ class BiblePlugin(Plugin):
         :param theme: The theme
         :return: 1 if the theme is being used, otherwise returns 0
         """
-        if str(self.settings_tab.bible_theme) == theme:
-            return 1
-        return 0
+        in_use = 1 if str(self.settings_tab.bible_theme) == theme else 0
+        log.debug('uses_theme {theme}: {in_use}'.format(theme=theme, in_use=in_use))
+        return in_use
 
     def rename_theme(self, old_theme, new_theme):
         """
@@ -131,6 +137,7 @@ class BiblePlugin(Plugin):
         :param new_theme:  The new name the plugin should now use.
         :return: None
         """
+        log.debug('rename_theme {old} -> {new}'.format(old=old_theme, new=new_theme))
         self.settings_tab.bible_theme = new_theme
         self.settings_tab.save()
 

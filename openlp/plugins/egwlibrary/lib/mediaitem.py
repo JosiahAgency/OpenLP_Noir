@@ -28,7 +28,7 @@ from typing import Any
 
 from PySide6 import QtCore, QtWidgets
 
-from openlp.core.common.enum import EGWSearch
+from openlp.core.common.enum import EGWSearch, ReferencePlacement
 from openlp.core.common.i18n import UiStrings, translate
 from openlp.core.lib.mediamanageritem import MediaManagerItem
 from openlp.core.lib.serviceitem import ItemCapabilities
@@ -54,6 +54,7 @@ class EGWLibraryMediaItem(MediaManagerItem):
     log.info('EGW Library Media Item loaded')
 
     def __init__(self, parent, plugin):
+        log.debug('EGWLibraryMediaItem __init__')
         self.icon_path = 'egwlibrary/egwlibrary'
         self.manager = plugin.manager
         # Debounce timer for search-as-you-type
@@ -64,11 +65,13 @@ class EGWLibraryMediaItem(MediaManagerItem):
         self.search_is_interactive = True
         super().__init__(parent, plugin)
         self.search_timer.timeout.connect(self.on_search_timer_timeout)
+        log.debug('EGWLibraryMediaItem __init__ complete')
 
     def setup_item(self):
         """
         Do some additional setup.
         """
+        log.debug('setup_item')
         self.egwlibrary_go_live.connect(self.go_live_remote)
         self.egwlibrary_add_to_service.connect(self.add_to_service_remote)
         self.single_service_item = False
@@ -79,6 +82,7 @@ class EGWLibraryMediaItem(MediaManagerItem):
         """
         Set which icons the media manager toolbar should show.
         """
+        log.debug('required_icons')
         super().required_icons()
         self.has_import_icon = True
         self.has_new_icon = False
@@ -90,6 +94,7 @@ class EGWLibraryMediaItem(MediaManagerItem):
         """
         Add the book selector row and the search field.
         """
+        log.debug('add_end_header_bar')
         self.book_widget = QtWidgets.QWidget(self)
         self.book_widget.setObjectName('book_widget')
         self.book_layout = QtWidgets.QFormLayout(self.book_widget)
@@ -113,6 +118,7 @@ class EGWLibraryMediaItem(MediaManagerItem):
         """
         Set the translated texts of the media item.
         """
+        log.debug('retranslate_ui')
         self.book_label.setText(translate('EGWLibraryPlugin.MediaItem', 'Book:'))
         self.all_books_check_box.setText(translate('EGWLibraryPlugin.MediaItem', 'Search all books'))
         self.search_text_label.setText('{text}:'.format(text=UiStrings().Search))
@@ -122,6 +128,7 @@ class EGWLibraryMediaItem(MediaManagerItem):
         """
         Initialise the UI so it can provide searches.
         """
+        log.debug('initialise')
         self.search_text_edit.set_search_types([
             (EGWSearch.Smart, UiIcons().search_comb,
                 translate('EGWLibraryPlugin.MediaItem', 'Text or Reference'),
@@ -136,17 +143,20 @@ class EGWLibraryMediaItem(MediaManagerItem):
         self.populate_book_combo_box()
         self.all_books_check_box.setChecked(self.settings.value('egwlibrary/search all books'))
         self.config_update()
+        log.debug('initialise complete')
 
     def config_update(self):
         """
         Reload values that depend on the settings.
         """
+        log.debug('config_update')
         self.is_search_as_you_type_enabled = self.settings.value('egwlibrary/is search while typing enabled')
 
     def on_focus(self):
         """
         Set the focus to the search field.
         """
+        log.debug('on_focus')
         self.search_text_edit.setFocus()
         self.search_text_edit.selectAll()
 
@@ -155,6 +165,7 @@ class EGWLibraryMediaItem(MediaManagerItem):
         Fill the book combo box with the books in the library and update the search
         completer with all the book names and aliases.
         """
+        log.debug('populate_book_combo_box')
         self.book_combo_box.clear()
         books = self.manager.get_books()
         for book in books:
@@ -165,17 +176,21 @@ class EGWLibraryMediaItem(MediaManagerItem):
         aliases = self.manager.get_all_objects(Alias)
         completions = sorted({alias.display + ' ' for alias in aliases})
         set_case_insensitive_completer(completions, self.search_text_edit)
+        log.debug('populate_book_combo_box complete: {count} book(s)'.format(count=len(books)))
 
     def on_book_combo_box_activated(self):
         """
         Remember the selected book.
         """
+        log.debug('on_book_combo_box_activated: {book}'.format(book=self.book_combo_box.currentText()))
         self.settings.setValue('egwlibrary/last selected book', self.book_combo_box.currentText())
 
     def on_all_books_check_box_changed(self):
         """
         Remember the "search all books" choice and re-run the search with the new scope.
         """
+        log.debug('on_all_books_check_box_changed: {checked}'.format(
+            checked=self.all_books_check_box.isChecked()))
         self.settings.setValue('egwlibrary/search all books', self.all_books_check_box.isChecked())
         self.book_combo_box.setEnabled(not self.all_books_check_box.isChecked())
         if self.search_text_edit.displayText():
@@ -185,6 +200,7 @@ class EGWLibraryMediaItem(MediaManagerItem):
         """
         Import one or more books from JSON files or EGW Estate PDF exports.
         """
+        log.debug('on_import_click')
         file_paths, _ = FileDialog.getOpenFileNames(
             self, translate('EGWLibraryPlugin.MediaItem', 'Import EGW Library Book(s)'),
             self.settings.value('egwlibrary/last directory import'),
@@ -192,11 +208,13 @@ class EGWLibraryMediaItem(MediaManagerItem):
                       'EGW Library book files (*.json *.pdf);;JSON book files (*.json);;'
                       'EGW Estate PDF exports (*.pdf)'))
         if not file_paths:
+            log.debug('on_import_click: no files selected')
             return
         self.application.set_busy_cursor()
         imported = []
         errors = []
         for file_path in file_paths:
+            log.debug('on_import_click: importing {path}'.format(path=file_path))
             try:
                 if file_path.suffix.lower() == '.pdf':
                     self._import_pdf(file_path, imported)
@@ -204,10 +222,14 @@ class EGWLibraryMediaItem(MediaManagerItem):
                     for book, paragraph_count in import_json_file(self.manager, file_path):
                         imported.append('{title} ({count})'.format(title=book.title, count=paragraph_count))
             except (EGWImportError, EGWPdfError) as import_error:
+                log.warning('on_import_click: failed to import {path}: {error}'.format(
+                    path=file_path, error=import_error))
                 errors.append(str(import_error))
         self.settings.setValue('egwlibrary/last directory import', file_paths[0].parent)
         self.populate_book_combo_box()
         self.application.set_normal_cursor()
+        log.debug('on_import_click complete: {imported} imported, {errors} error(s)'.format(
+            imported=len(imported), errors=len(errors)))
         if errors:
             critical_error_message_box(
                 translate('EGWLibraryPlugin.MediaItem', 'Import Problems'), '\n'.join(errors))
@@ -227,6 +249,7 @@ class EGWLibraryMediaItem(MediaManagerItem):
         :param imported: The list of "Title (count)" strings to append to on success.
         :raises EGWPdfError | EGWImportError: When conversion or import fails.
         """
+        log.debug('_import_pdf: {path}'.format(path=file_path))
         book_data, warnings = convert_pdf_book(file_path)
         # The details dialog needs a normal cursor; on_import_click set the busy one
         self.application.set_normal_cursor()
@@ -234,17 +257,21 @@ class EGWLibraryMediaItem(MediaManagerItem):
             details_dialog = PdfBookDetailsDialog(self, file_path.name, book_data, warnings)
             if not details_dialog.exec():
                 # The user chose not to import this PDF
+                log.debug('_import_pdf: user cancelled the details dialog for {path}'.format(path=file_path))
                 return
             book_data = details_dialog.book_data()
         finally:
             self.application.set_busy_cursor()
         book, paragraph_count = import_book(self.manager, book_data)
+        log.debug('_import_pdf complete: {title} ({count} paragraphs)'.format(
+            title=book.title, count=paragraph_count))
         imported.append('{title} ({count})'.format(title=book.title, count=paragraph_count))
 
     def on_delete_click(self):
         """
         Delete the book currently selected in the book combo box from the library.
         """
+        log.debug('on_delete_click')
         book_id = self.book_combo_box.currentData()
         if book_id is None:
             return
@@ -256,10 +283,13 @@ class EGWLibraryMediaItem(MediaManagerItem):
                       'You will need to re-import this book to use it again.').format(book=book_title),
             defaultButton=QtWidgets.QMessageBox.StandardButton.No)
         if answer == QtWidgets.QMessageBox.StandardButton.No:
+            log.debug('on_delete_click: user cancelled deleting {book}'.format(book=book_title))
             return
+        log.debug('on_delete_click: deleting {book} (id={id})'.format(book=book_title, id=book_id))
         self.manager.delete_book(book_id)
         self.populate_book_combo_box()
         self.list_view.clear()
+        log.debug('on_delete_click complete')
 
     def on_search_text_edit_changed(self, text):
         """
@@ -278,6 +308,7 @@ class EGWLibraryMediaItem(MediaManagerItem):
         """
         Perform the search-as-you-type search.
         """
+        log.debug('on_search_timer_timeout')
         self.do_search()
         self.search_is_interactive = True
 
@@ -285,6 +316,7 @@ class EGWLibraryMediaItem(MediaManagerItem):
         """
         Perform a search when the search button is clicked or return is pressed.
         """
+        log.debug('on_search_text_button_clicked')
         self.search_timer.stop()
         self.search_is_interactive = True
         self.do_search()
@@ -296,10 +328,12 @@ class EGWLibraryMediaItem(MediaManagerItem):
         aliases and falls back to a full text search.
         """
         search_text = self.search_text_edit.displayText().strip()
+        log.debug('do_search: "{text}"'.format(text=search_text))
         if not search_text:
             self.list_view.clear()
             return
         if not self.manager.get_books():
+            log.debug('do_search: no books in the library')
             if self.search_is_interactive:
                 self.main_window.information_message(
                     translate('EGWLibraryPlugin.MediaItem', 'No books in the library'),
@@ -318,6 +352,7 @@ class EGWLibraryMediaItem(MediaManagerItem):
             # live right away. Chapter rows are for browsing, so leave them unselected.
             select_results = bool(results) and results[0]['type'] == 'paragraph'
         elif search_type == EGWSearch.Reference:
+            log.debug('do_search: no book matched reference in "{text}"'.format(text=search_text))
             if self.search_is_interactive:
                 critical_error_message_box(
                     translate('EGWLibraryPlugin.MediaItem', 'Book not found'),
@@ -335,6 +370,7 @@ class EGWLibraryMediaItem(MediaManagerItem):
         if select_results:
             self.list_view.selectAll()
         self.application.set_normal_cursor()
+        log.debug('do_search complete: {count} result(s)'.format(count=len(results)))
 
     def reference_search(self, book, reference):
         """
@@ -344,6 +380,8 @@ class EGWLibraryMediaItem(MediaManagerItem):
         :param reference: The parsed reference dict from
             :func:`~openlp.plugins.egwlibrary.lib.parse_reference`.
         """
+        log.debug('reference_search: book={book}, reference={reference}'.format(
+            book=book.abbreviation, reference=reference))
         if reference['chapter'] is not None:
             chapter = self.manager.get_chapter(book.id, reference['chapter'])
             if not chapter:
@@ -374,6 +412,8 @@ class EGWLibraryMediaItem(MediaManagerItem):
         """
         book_id = None if self.all_books_check_box.isChecked() else self.book_combo_box.currentData()
         show_book = self.all_books_check_box.isChecked()
+        log.debug('do_text_search: "{text}", book_id={book_id}, show_book={show_book}'.format(
+            text=search_text, book_id=book_id, show_book=show_book))
         return [self.build_paragraph_result(paragraph.book, paragraph, show_book=show_book)
                 for paragraph in self.manager.text_search(search_text, book_id=book_id)]
 
@@ -433,8 +473,10 @@ class EGWLibraryMediaItem(MediaManagerItem):
         :param item: The list widget items to use instead of the current selection
         :param kwargs: Consume other unused args specified by the base implementation.
         """
+        log.debug('generate_slide_data')
         items = item if item else self.list_view.selectedItems()
         if not items:
+            log.debug('generate_slide_data: no items selected')
             return False
         paragraph_datas = []
         for list_item in items:
@@ -447,13 +489,18 @@ class EGWLibraryMediaItem(MediaManagerItem):
             else:
                 paragraph_datas.append(data)
         if not paragraph_datas:
+            log.debug('generate_slide_data: no paragraphs resolved from selection')
             return False
         # Slides: one paragraph per slide, with the citation as a superscript marker
         references = []
         copyrights = []
         book_titles = []
+        reference_placement = self.settings.value('egwlibrary/reference placement')
         for data in paragraph_datas:
-            marker = data['reference'].replace('{abbr} '.format(abbr=data['abbreviation']), '', 1)
+            if reference_placement == ReferencePlacement.Inline:
+                marker = data['reference']
+            else:
+                marker = data['reference'].replace('{abbr} '.format(abbr=data['abbreviation']), '', 1)
             slide_text = '{{su}}{marker}&nbsp;{{/su}}{text}'.format(marker=marker, text=data['text'])
             service_item.add_from_text(slide_text)
             references.append(data['reference'])
@@ -469,7 +516,8 @@ class EGWLibraryMediaItem(MediaManagerItem):
         if self.plugin.settings_tab and self.plugin.settings_tab.egw_theme:
             service_item.theme = self.plugin.settings_tab.egw_theme
         # Footer, following the Bible footer pattern
-        if self.settings.value('egwlibrary/footer show reference'):
+        if (self.settings.value('egwlibrary/footer show reference')
+                and reference_placement == ReferencePlacement.Footer):
             service_item.raw_footer.append('{books}: {references}'.format(
                 books=', '.join(book_titles), references=reference_text))
         if self.settings.value('egwlibrary/footer show copyright') and copyrights:
@@ -482,6 +530,7 @@ class EGWLibraryMediaItem(MediaManagerItem):
         service_item.add_capability(ItemCapabilities.CanLoop)
         service_item.add_capability(ItemCapabilities.CanWordSplit)
         service_item.add_capability(ItemCapabilities.CanEditTitle)
+        log.debug('generate_slide_data complete: {count} paragraph(s)'.format(count=len(paragraph_datas)))
         return True
 
     @QtCore.Slot(str, bool, result=list)
@@ -492,6 +541,7 @@ class EGWLibraryMediaItem(MediaManagerItem):
         :param string: The search string
         :param show_error: Unused, errors are never shown for remote searches.
         """
+        log.debug('search (remote API): "{text}"'.format(text=string))
         reference = parse_reference(string)
         book = self.manager.get_book_by_alias(reference['book']) if reference else None
         if book and (reference['chapter'] is not None or reference['from_page'] is not None):

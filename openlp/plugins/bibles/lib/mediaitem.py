@@ -26,7 +26,7 @@ from typing import Any
 
 from PySide6 import QtCore, QtWidgets
 
-from openlp.core.common.enum import BibleSearch, DisplayStyle, LayoutStyle
+from openlp.core.common.enum import BibleSearch, DisplayStyle, LayoutStyle, ReferencePlacement
 from openlp.core.common.i18n import UiStrings, get_locale_key, translate
 from openlp.core.common.registry import Registry
 from openlp.core.lib import ServiceItemContext
@@ -39,6 +39,7 @@ from openlp.core.widgets.edits import SearchEdit
 from openlp.plugins.bibles.forms.bibleimportform import BibleImportForm
 from openlp.plugins.bibles.forms.editbibleform import EditBibleForm
 from openlp.plugins.bibles.lib import get_reference_match, get_reference_separator
+from openlp.plugins.bibles.lib.db import BiblesResourcesDB
 from openlp.plugins.bibles.lib.versereferencelist import VerseReferenceList
 
 log = logging.getLogger(__name__)
@@ -97,6 +98,7 @@ class BibleMediaItem(MediaManagerItem):
         :param args: Positional arguments to pass to the super method. (tuple)
         :param kwargs: Keyword arguments to pass to the super method. (dict)
         """
+        log.debug('BibleMediaItem __init__')
         self.clear_icon = UiIcons().square
         self.save_results_icon = UiIcons().save
         self.sort_icon = UiIcons().sort
@@ -112,6 +114,7 @@ class BibleMediaItem(MediaManagerItem):
         self.search_timer.timeout.connect(self.on_search_timer_timeout)
         super().__init__(*args, **kwargs)
         Registry().register_function('populate_bible_combo_boxes', self.populate_bible_combo_boxes)
+        log.debug('BibleMediaItem __init__ complete')
 
     def setup_item(self):
         """
@@ -119,6 +122,7 @@ class BibleMediaItem(MediaManagerItem):
 
         :return: None
         """
+        log.debug('setup_item')
         self.bibles_go_live.connect(self.go_live_remote)
         self.bibles_add_to_service.connect(self.add_to_service_remote)
         # Place to store the search results for both bibles.
@@ -135,6 +139,7 @@ class BibleMediaItem(MediaManagerItem):
 
         :return: None
         """
+        log.debug('required_icons')
         super().required_icons()
         self.has_import_icon = True
         self.has_new_icon = False
@@ -225,6 +230,7 @@ class BibleMediaItem(MediaManagerItem):
         self.page_layout.addWidget(self.results_view_tab)
 
     def setup_ui(self):
+        log.debug('setup_ui')
         super().setup_ui()
         sort_model = QtCore.QSortFilterProxyModel(self.select_book_combo_box)
         model = self.select_book_combo_box.model()
@@ -280,6 +286,7 @@ class BibleMediaItem(MediaManagerItem):
 
         :return: None
         """
+        log.debug('on_focus')
         if self.search_tab.isVisible():
             self.search_edit.setFocus()
             self.search_edit.selectAll()
@@ -432,11 +439,14 @@ class BibleMediaItem(MediaManagerItem):
 
         :return: None
         """
+        log.debug('on_import_click')
         if not hasattr(self, 'import_wizard'):
             self.import_wizard = BibleImportForm(self, self.plugin.manager, self.plugin)
         # If the import was not cancelled then reload.
         if self.import_wizard.exec():
             self.reload_bibles()
+        else:
+            log.debug('on_import_click: user cancelled the import wizard')
 
     def on_edit_click(self):
         """
@@ -444,6 +454,7 @@ class BibleMediaItem(MediaManagerItem):
 
         :return: None
         """
+        log.debug('on_edit_click')
         if self.bible:
             self.edit_bible_form = EditBibleForm(self, self.main_window, self.plugin.manager)
             self.edit_bible_form.load_bible(self.bible.name)
@@ -456,6 +467,7 @@ class BibleMediaItem(MediaManagerItem):
 
         :return: None
         """
+        log.debug('on_delete_click')
         if self.bible:
             if QtWidgets.QMessageBox.question(
                 self, UiStrings().ConfirmDelete,
@@ -463,7 +475,9 @@ class BibleMediaItem(MediaManagerItem):
                           'Are you sure you want to completely delete "{bible}" Bible from OpenLP?\n\n'
                           'You will need to re-import this Bible to use it again.').format(bible=self.bible.name),
                     defaultButton=QtWidgets.QMessageBox.StandardButton.No) == QtWidgets.QMessageBox.StandardButton.No:
+                log.debug('on_delete_click: user cancelled deleting {bible}'.format(bible=self.bible.name))
                 return
+            log.debug('on_delete_click: deleting {bible}'.format(bible=self.bible.name))
             self.plugin.manager.delete_bible(self.bible.name)
             self.reload_bibles()
 
@@ -703,9 +717,11 @@ class BibleMediaItem(MediaManagerItem):
 
         :return: None
         """
+        log.debug('on_search_button_clicked')
         self.search_timer.stop()
         self.search_status = SearchStatus.SearchButton
         if not self.bible:
+            log.debug('on_search_button_clicked: no bible selected')
             self.main_window.information_message(UiStrings().BibleNoBiblesTitle, UiStrings().BibleNoBibles)
             return
         self.search_button.setEnabled(False)
@@ -725,6 +741,7 @@ class BibleMediaItem(MediaManagerItem):
 
         :return: None
         """
+        log.debug('select_search')
         verse_range = self.plugin.manager.process_verse_range(
             self.select_book_combo_box.currentData(), self.from_chapter.currentData(), self.from_verse.currentData(),
             self.to_chapter.currentData(), self.to_verse.currentData())
@@ -740,6 +757,7 @@ class BibleMediaItem(MediaManagerItem):
 
         :return: None
         """
+        log.debug('text_reference_search: "{text}"'.format(text=search_text))
         self.search_results = []
         verse_refs = self.plugin.manager.parse_ref(self.bible.name, search_text)
         self.search_results = self.plugin.manager.get_verses(self.bible.name, verse_refs, True)
@@ -752,6 +770,7 @@ class BibleMediaItem(MediaManagerItem):
         We are doing a 'Text Search'.
         This search is called on def text_search by 'Search' Text and Combined Searches.
         """
+        log.debug('on_text_search: "{text}"'.format(text=text))
         self.search_results = self.plugin.manager.verse_search(self.bible.name, text)
         if self.search_results is None:
             return
@@ -778,6 +797,7 @@ class BibleMediaItem(MediaManagerItem):
                               'Bible "{name}".\nOnly verses found in both Bibles will be shown.\n\n'
                               '{count:d} verses have not been included in the results.'
                               ).format(second_name=self.second_bible.name, name=self.bible.name, count=not_found_count))
+        log.debug('on_text_search complete: {count} result(s)'.format(count=len(self.search_results)))
         self.display_results()
 
     def text_search(self):
@@ -847,6 +867,7 @@ class BibleMediaItem(MediaManagerItem):
 
         :return: None
         """
+        log.debug('display_results: {count} result(s)'.format(count=len(self.search_results)))
         self.current_results = self.build_display_results(self.bible, self.second_bible, self.search_results)
         self.search_results = []
         self.add_built_results_to_list_widget(self.current_results)
@@ -880,6 +901,7 @@ class BibleMediaItem(MediaManagerItem):
         for count, verse in enumerate(search_results):
             data = {
                 'book': verse.book.get_name(language_selection),
+                'book_abbreviation': BiblesResourcesDB.get_book_by_id(verse.book.book_reference_id)['abbreviation'],
                 'chapter': verse.chapter,
                 'verse': verse.verse,
                 'bible': self.bible.name,
@@ -935,6 +957,7 @@ class BibleMediaItem(MediaManagerItem):
         else:
             items = self.list_view.selectedItems()
         if not items:
+            log.debug('generate_slide_data: no items selected')
             return False
         bible_text = ''
         old_chapter = -1
@@ -945,26 +968,32 @@ class BibleMediaItem(MediaManagerItem):
             verses.add(
                 data['book'], data['chapter'], data['verse'], data['version'], data['copyright'], data['permissions'])
             verse_text = self.format_verse(old_chapter, data['chapter'], data['verse'])
+            reference = self.format_verse_reference(data['book_abbreviation'], data['chapter'], data['verse'])
             # We only support 'Verse Per Slide' when using a scond bible
             if data['second_bible']:
                 second_text = self.format_verse(old_chapter, data['chapter'], data['verse'])
-                bible_text = '{first_version}{data[text]}\n\n{second_version}{data[second_text]}'\
-                    .format(first_version=verse_text, second_version=second_text, data=data)
+                bible_text = '{first_version}{data[text]}{reference}\n\n{second_version}{data[second_text]}' \
+                    '{reference}'.format(first_version=verse_text, second_version=second_text, reference=reference,
+                                         data=data)
                 raw_slides.append(bible_text.rstrip())
                 bible_text = ''
             # If we are 'Verse Per Slide' then create a new slide.
             elif self.settings_tab.layout_style == LayoutStyle.VersePerSlide:
-                bible_text = '{first_version}{data[text]}'.format(first_version=verse_text, data=data)
+                bible_text = '{first_version}{data[text]}{reference}'.format(
+                    first_version=verse_text, data=data, reference=reference)
                 raw_slides.append(bible_text.rstrip())
                 bible_text = ''
             # If we are 'Verse Per Line' then force a new line.
             elif self.settings_tab.layout_style == LayoutStyle.VersePerLine:
-                bible_text = '{bible} {verse}{data[text]}\n'.format(bible=bible_text, verse=verse_text, data=data)
+                bible_text = '{bible} {verse}{data[text]}{reference}\n'.format(
+                    bible=bible_text, verse=verse_text, data=data, reference=reference)
             elif self.settings_tab.layout_style == LayoutStyle.WholeVerseContinuous:
-                bible_text = '{bible} {verse}{data[text]}\n'.format(bible=bible_text, verse=verse_text, data=data)
+                bible_text = '{bible} {verse}{data[text]}{reference}\n'.format(
+                    bible=bible_text, verse=verse_text, data=data, reference=reference)
             # We have to be 'Continuous'.
             else:
-                bible_text = '{bible} {verse}{data[text]}'.format(bible=bible_text, verse=verse_text, data=data)
+                bible_text = '{bible} {verse}{data[text]}{reference}'.format(
+                    bible=bible_text, verse=verse_text, data=data, reference=reference)
             bible_text = bible_text.strip(' ')
             old_chapter = data['chapter']
         # Add service item data (handy things for http api)
@@ -986,7 +1015,8 @@ class BibleMediaItem(MediaManagerItem):
             'bibles': bibles
         }
         # Add footer
-        if self.settings_tab.show_reference_in_footer:
+        if (self.settings_tab.show_reference_in_footer
+                and self.settings_tab.reference_placement == ReferencePlacement.Footer):
             service_item.raw_footer.append(verses.format_verses())
         if data['second_bible']:
             verses.add_version(data['second_version'], data['second_copyright'], data['second_permissions'])
@@ -1017,6 +1047,7 @@ class BibleMediaItem(MediaManagerItem):
             service_item.theme = self.settings_tab.bible_theme
         for slide in raw_slides:
             service_item.add_from_text(slide)
+        log.debug('generate_slide_data complete: {count} slide(s)'.format(count=len(raw_slides)))
         return True
 
     def format_verse(self, old_chapter, chapter, verse):
@@ -1045,6 +1076,28 @@ class BibleMediaItem(MediaManagerItem):
             DisplayStyle.Square: ('[', ']')
         }[self.settings_tab.display_style]
         return '{{su}}{bracket[0]}{verse_text}{bracket[1]}&nbsp;{{/su}}'.format(verse_text=verse_text, bracket=bracket)
+
+    def format_verse_reference(self, book_abbreviation, chapter, verse):
+        """
+        Formats and returns a short, superscript reference to be shown inline after a verse's text, when
+        "Reference placement" is set to Inline. For example::
+
+            '{su}&nbsp;Gen&nbsp;1:1{/su}'
+
+        Uses ``&nbsp;`` (not a literal space) around the marker so the word-wrap/pagination in
+        core/display/render.py can never strand the reference on its own, or split it away from the verse
+        text it belongs to, when a slide overflows mid-verse.
+
+        :param book_abbreviation: The short form of the book name (e.g. 'Gen').
+        :param chapter: The chapter number (int).
+        :param verse: The verse number (int).
+        :return: An empty string, or a formatted, superscript reference string.
+        """
+        if self.settings_tab.reference_placement != ReferencePlacement.Inline:
+            return ''
+        verse_separator = get_reference_separators()['verse']
+        return '{{su}}&nbsp;{book}&nbsp;{chapter}{sep}{verse}{{/su}}'.format(
+            book=book_abbreviation, chapter=chapter, sep=verse_separator, verse=verse)
 
     def search_options(self, option=None):
         """
@@ -1087,6 +1140,7 @@ class BibleMediaItem(MediaManagerItem):
         :param show_error: do we show the error
         :return: the results of the search
         """
+        log.debug('search (remote API): "{text}"'.format(text=string))
         if self.bible is None:
             return []
         reference = self.plugin.manager.parse_ref(self.bible.name, string)
@@ -1100,6 +1154,7 @@ class BibleMediaItem(MediaManagerItem):
         """
         Create a media item from an item id.
         """
+        log.debug('create_item_from_id: {id}'.format(id=item_id))
         if self.bible is None:
             return []
         reference = self.plugin.manager.parse_ref(self.bible.name, item_id)
