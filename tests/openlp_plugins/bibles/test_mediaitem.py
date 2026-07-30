@@ -21,9 +21,9 @@
 """
 This module contains tests for the lib submodule of the Presentations plugin.
 """
-import pytest
 from unittest.mock import MagicMock, call, patch
 
+import pytest
 from PySide6 import QtCore, QtWidgets
 
 from openlp.core.common.enum import LayoutStyle, ReferencePlacement
@@ -93,7 +93,6 @@ def test_get_reference_separators():
     """
     # GIVEN: A mocked get_reference_separator from the :mod:`openlp.plugins.bibles.lib` module
     with patch('openlp.plugins.bibles.lib.mediaitem.get_reference_separator') as mocked_get_reference_separator:
-
         # WHEN: Calling get_reference_separators
         result = get_reference_separators()
 
@@ -158,7 +157,6 @@ def test_setup_item(media_item: BibleMediaItem):
 
     # GIVEN: A mocked Registry.register_function method and an instance of BibleMediaItem
     with patch.object(Registry(), 'register_function') as mocked_register_function:
-
         # WHEN: Calling setup_itme
         media_item.setup_item()
 
@@ -376,7 +374,6 @@ def test_populate_bible_combo_boxes(media_item: BibleMediaItem):
     with patch('openlp.plugins.bibles.lib.mediaitem.get_locale_key', side_effect=lambda x: x), \
             patch('openlp.plugins.bibles.lib.mediaitem.find_and_set_in_combo_box') as mocked_set_combo_box, \
             patch.object(media_item, 'on_version_combo_box_index_changed'):
-
         # WHEN: Calling populate_bible_combo_boxes
         media_item.populate_bible_combo_boxes()
 
@@ -435,7 +432,6 @@ def test_initialise_advanced_bible_no_bible(media_item: BibleMediaItem):
     # GIVEN: An instance of :class:`MediaManagerItem`
     media_item.select_book_combo_box = MagicMock()
     with patch.object(media_item, 'get_common_books') as mocked_get_common_books:
-
         # WHEN: Calling initialise_advanced_bible() when there is no main bible
         media_item.bible = None
         result = media_item.initialise_advanced_bible()
@@ -454,7 +450,6 @@ def test_initialise_advanced_bible_add_books_with_last_id_found(media_item: Bibl
     media_item.select_book_combo_box = MagicMock(**{'findData.return_value': 2})
     with patch.object(media_item, 'get_common_books', return_value=book_list_1), \
             patch.object(media_item, 'on_advanced_book_combo_box'):
-
         # WHEN: Calling initialise_advanced_bible() with the last_id argument set
         media_item.bible = MagicMock()
         media_item.initialise_advanced_bible(10)
@@ -474,7 +469,6 @@ def test_initialise_advanced_bible_add_books_with_last_id_not_found(media_item: 
     media_item.select_book_combo_box = MagicMock(**{'findData.return_value': -1})
     with patch.object(media_item, 'get_common_books', return_value=book_list_1), \
             patch.object(media_item, 'on_advanced_book_combo_box'):
-
         # WHEN: Calling initialise_advanced_bible() with the last_id argument set
         media_item.bible = MagicMock()
         media_item.initialise_advanced_bible(10)
@@ -496,8 +490,7 @@ def test_update_auto_completer_search_no_bible(media_item: BibleMediaItem):
     media_item.bible = None
     with patch.object(media_item, 'get_common_books') as mocked_get_common_books, \
             patch('openlp.plugins.bibles.lib.mediaitem.set_case_insensitive_completer') \
-            as mocked_set_case_insensitive_completer:
-
+                    as mocked_set_case_insensitive_completer:
         # WHEN: Calling update_auto_completer
         media_item.update_auto_completer()
 
@@ -518,8 +511,7 @@ def test_update_auto_completer_search_reference_type(media_item: BibleMediaItem)
     with patch.object(media_item, 'get_common_books', return_value=book_list_1), \
             patch('openlp.plugins.bibles.lib.mediaitem.get_locale_key', side_effect=lambda x: x), \
             patch('openlp.plugins.bibles.lib.mediaitem.set_case_insensitive_completer') \
-            as mocked_set_case_insensitive_completer:
-
+                    as mocked_set_case_insensitive_completer:
         # WHEN: Calling update_auto_completer
         media_item.update_auto_completer()
 
@@ -539,8 +531,7 @@ def test_update_auto_completer_search_combined_type(media_item: BibleMediaItem):
     with patch.object(media_item, 'get_common_books', return_value=book_list_1), \
             patch('openlp.plugins.bibles.lib.mediaitem.get_locale_key', side_effect=lambda x: x), \
             patch('openlp.plugins.bibles.lib.mediaitem.set_case_insensitive_completer') \
-            as mocked_set_case_insensitive_completer:
-
+                    as mocked_set_case_insensitive_completer:
         # WHEN: Calling update_auto_completer
         media_item.update_auto_completer()
 
@@ -558,7 +549,6 @@ def test_on_import_click_no_import_wizard_attr(media_item: BibleMediaItem):
     with patch('openlp.plugins.bibles.lib.mediaitem.BibleImportForm',
                return_value=mocked_bible_import_form_instance) as mocked_bible_import_form, \
             patch.object(media_item, 'reload_bibles') as mocked_reload_bibles:
-
         # WHEN: Calling on_import_click
         media_item.on_import_click()
 
@@ -576,7 +566,6 @@ def test_on_import_click_wizard_not_canceled(media_item: BibleMediaItem):
     media_item.import_wizard = mocked_import_wizard
 
     with patch.object(media_item, 'reload_bibles') as mocked_reload_bibles:
-
         # WHEN: Calling on_import_click
         media_item.on_import_click()
 
@@ -591,7 +580,6 @@ def test_on_edit_click_no_bible(media_item: BibleMediaItem):
     """
     # GIVEN: An instance of :class:`MediaManagerItem`
     with patch('openlp.plugins.bibles.lib.mediaitem.EditBibleForm') as mocked_edit_bible_form:
-
         # WHEN: A main bible is not selected and on_edit_click is called
         media_item.bible = None
         media_item.on_edit_click()
@@ -611,7 +599,6 @@ def test_on_edit_click_user_cancel_edit_form(media_item: BibleMediaItem):
     with patch('openlp.plugins.bibles.lib.mediaitem.EditBibleForm', return_value=mocked_edit_bible_form_instance) \
             as mocked_edit_bible_form, \
             patch.object(media_item, 'reload_bibles') as mocked_reload_bibles:
-
         # WHEN: on_edit_click is called, and the user cancels the EditBibleForm
         media_item.on_edit_click()
 
@@ -632,7 +619,6 @@ def test_on_edit_click_user_accepts_edit_form(media_item: BibleMediaItem):
                return_value=mocked_edit_bible_form_instance) \
             as mocked_edit_bible_form, \
             patch.object(media_item, 'reload_bibles') as mocked_reload_bibles:
-
         # WHEN: on_edit_click is called, and the user accpets the EditBibleForm
         media_item.on_edit_click()
 
@@ -647,7 +633,6 @@ def test_on_delete_click_no_bible(media_item: BibleMediaItem):
     """
     # GIVEN: An instance of :class:`MediaManagerItem`
     with patch('openlp.plugins.bibles.lib.mediaitem.QtWidgets.QMessageBox') as mocked_qmessage_box:
-
         # WHEN: A main bible is not selected and on_delete_click is called
         media_item.bible = None
         media_item.on_delete_click()
@@ -665,7 +650,6 @@ def test_on_delete_click_response_no(media_item: BibleMediaItem):
     media_item.bible = MagicMock()
     with patch('openlp.plugins.bibles.lib.mediaitem.QtWidgets.QMessageBox.question',
                return_value=QtWidgets.QMessageBox.StandardButton.No) as mocked_qmessage_box:
-
         # WHEN: on_delete_click is called
         media_item.on_delete_click()
 
@@ -684,7 +668,6 @@ def test_on_delete_click_response_yes(media_item: BibleMediaItem):
     with patch('openlp.plugins.bibles.lib.mediaitem.QtWidgets.QMessageBox.question',
                return_value=QtWidgets.QMessageBox.StandardButton.Yes) as mocked_qmessage_box, \
             patch.object(media_item, 'reload_bibles'):
-
         # WHEN: on_delete_click is called
         media_item.on_delete_click()
 
@@ -770,7 +753,6 @@ def test_on_clear_button_clicked(media_item: BibleMediaItem):
     media_item.list_view = MagicMock(**{'selectedItems.return_value': ['Some', 'Results']})
     media_item.results_view_tab = MagicMock(**{'currentIndex.return_value': ResultsTab.Search})
     with patch.object(media_item, 'on_results_view_tab_total_update'):
-
         # WHEN: Calling on_clear_button_clicked
         media_item.on_clear_button_clicked()
 
@@ -792,7 +774,6 @@ def test_on_save_results_button_clicked(media_item: BibleMediaItem):
 
     with patch.object(media_item, 'on_results_view_tab_total_update') as \
             mocked_on_results_view_tab_total_update:
-
         # WHEN: When the save_results_button is clicked
         media_item.on_save_results_button_clicked()
 
@@ -824,7 +805,6 @@ def test_on_version_combo_box_index_changed_no_bible(media_item: BibleMediaItem)
     media_item.version_combo_box = MagicMock(**{'currentData.return_value': None})
     media_item.select_book_combo_box = MagicMock()
     with patch.object(media_item, 'initialise_advanced_bible'):
-
         # WHEN: Calling on_version_combo_box_index_changed
         media_item.on_version_combo_box_index_changed()
 
@@ -842,7 +822,6 @@ def test_on_version_combo_box_index_changed_bible_selected(media_item: BibleMedi
     media_item.version_combo_box = MagicMock(**{'currentData.return_value': mocked_bible_db})
     media_item.select_book_combo_box = MagicMock()
     with patch.object(media_item, 'initialise_advanced_bible'):
-
         # WHEN: Calling on_version_combo_box_index_changed
         media_item.on_version_combo_box_index_changed()
 
@@ -861,8 +840,7 @@ def test_on_second_combo_box_index_changed_mode_not_changed(media_item: BibleMed
     media_item.select_book_combo_box = MagicMock()
     with patch.object(media_item, 'initialise_advanced_bible'), \
             patch('openlp.plugins.bibles.lib.mediaitem.critical_error_message_box') \
-            as mocked_critical_error_message_box:
-
+                    as mocked_critical_error_message_box:
         # WHEN: The previously selected bible is one bible and the new selection is another bible
         media_item.second_bible = mocked_bible_1
         media_item.second_combo_box = MagicMock(**{'currentData.return_value': mocked_bible_2})
@@ -887,7 +865,6 @@ def test_on_second_combo_box_index_changed_single_to_dual_user_abort(media_item:
     with patch.object(media_item, 'initialise_advanced_bible'), \
             patch('openlp.plugins.bibles.lib.mediaitem.critical_error_message_box',
                   return_value=QtWidgets.QMessageBox.StandardButton.No) as mocked_critical_error_message_box:
-
         # WHEN: The previously selected bible is None and the new selection is a bible and the user selects yes
         #       to the dialog box
         media_item.second_bible = None
@@ -917,7 +894,6 @@ def test_on_second_combo_box_index_changed_single_to_dual(media_item: BibleMedia
             patch.object(media_item, 'display_results'), \
             patch('openlp.plugins.bibles.lib.mediaitem.critical_error_message_box',
                   return_value=QtWidgets.QMessageBox.StandardButton.Yes) as mocked_critical_error_message_box:
-
         # WHEN: The previously selected bible is None and the new selection is a bible and the user selects yes
         #       to the dialog box
         media_item.second_bible = None
@@ -973,7 +949,6 @@ def test_on_advanced_book_combo_box(media_item: BibleMediaItem):
     media_item.search_button = MagicMock()
     with patch('openlp.plugins.bibles.lib.mediaitem.critical_error_message_box') \
             as mocked_critical_error_message_box:
-
         # WHEN: Calling on_advanced_book_combo_box
         media_item.on_advanced_book_combo_box()
 
@@ -1035,7 +1010,6 @@ def test_on_from_chapter_activated_invalid_to_chapter(media_item: BibleMediaItem
     media_item.to_verse = MagicMock()
     media_item.plugin.manager.get_verse_count_by_book_ref_id.return_value = 20
     with patch.object(media_item, 'adjust_combo_box') as mocked_adjust_combo_box:
-
         # WHEN: Calling on_from_chapter_activated
         media_item.on_from_chapter_activated()
 
@@ -1059,7 +1033,6 @@ def test_on_from_chapter_activated_same_chapter(media_item: BibleMediaItem):
     media_item.to_verse = MagicMock()
     media_item.plugin.manager.get_verse_count_by_book_ref_id.return_value = 20
     with patch.object(media_item, 'adjust_combo_box') as mocked_adjust_combo_box:
-
         # WHEN: Calling on_from_chapter_activated
         media_item.on_from_chapter_activated()
 
@@ -1120,7 +1093,6 @@ def test_on_from_verse_equal(media_item: BibleMediaItem):
     media_item.to_verse = MagicMock()
     media_item.plugin.manager.get_verse_count_by_book_ref_id.return_value = 20
     with patch.object(media_item, 'adjust_combo_box') as mocked_adjust_combo_box:
-
         # WHEN: Calling on_from_verse
         media_item.on_from_verse()
 
@@ -1142,7 +1114,6 @@ def test_on_to_chapter_same_chapter_from_greater_than(media_item: BibleMediaItem
     media_item.to_verse = MagicMock(**{'currentData.return_value': 7})
     media_item.plugin.manager.get_verse_count_by_book_ref_id.return_value = 20
     with patch.object(media_item, 'adjust_combo_box') as mocked_adjust_combo_box:
-
         # WHEN: Calling on_tp_chapter
         media_item.on_to_chapter()
 
@@ -1163,7 +1134,6 @@ def test_on_from_verse_chapters_not_equal(media_item: BibleMediaItem):
     media_item.to_verse = MagicMock(**{'currentData.return_value': 7})
     media_item.plugin.manager.get_verse_count_by_book_ref_id.return_value = 20
     with patch.object(media_item, 'adjust_combo_box') as mocked_adjust_combo_box:
-
         # WHEN: Calling on_from_chapter_activated
         media_item.on_to_chapter()
 
@@ -1184,7 +1154,6 @@ def test_on_from_verse_from_verse_less_than(media_item: BibleMediaItem):
     media_item.to_verse = MagicMock(**{'currentData.return_value': 7})
     media_item.plugin.manager.get_verse_count_by_book_ref_id.return_value = 20
     with patch.object(media_item, 'adjust_combo_box') as mocked_adjust_combo_box:
-
         # WHEN: Calling on_from_chapter_activated
         media_item.on_to_chapter()
 
@@ -1205,7 +1174,7 @@ def test_adjust_combo_box_no_restore(media_item: BibleMediaItem):
     # THEN: The combo_box should be cleared, and new items added
     mocked_combo_box.clear.assert_called_once_with()
     assert mocked_combo_box.addItem.call_args_list == \
-        [call('10', 10), call('11', 11), call('12', 12), call('13', 13)]
+           [call('10', 10), call('11', 11), call('12', 12), call('13', 13)]
 
 
 def test_adjust_combo_box_restore_found(media_item: BibleMediaItem):
@@ -1222,7 +1191,7 @@ def test_adjust_combo_box_restore_found(media_item: BibleMediaItem):
     #       reselected
     mocked_combo_box.clear.assert_called_once_with()
     assert mocked_combo_box.addItem.call_args_list == \
-        [call('10', 10), call('11', 11), call('12', 12), call('13', 13)]
+           [call('10', 10), call('11', 11), call('12', 12), call('13', 13)]
     mocked_combo_box.setCurrentIndex.assert_called_once_with(2)
 
 
@@ -1240,7 +1209,7 @@ def test_adjust_combo_box_restore_not_found(media_item: BibleMediaItem):
     # THEN: The combo_box should be cleared, and new items added. Finally the first item should be selected
     mocked_combo_box.clear.assert_called_once_with()
     assert mocked_combo_box.addItem.call_args_list == \
-        [call('10', 10), call('11', 11), call('12', 12), call('13', 13)]
+           [call('10', 10), call('11', 11), call('12', 12), call('13', 13)]
     mocked_combo_box.setCurrentIndex.assert_called_once_with(0)
 
 
@@ -1266,7 +1235,6 @@ def test_on_search_button_search_tab(media_item: BibleMediaItem):
     media_item.search_button = MagicMock()
     media_item.search_tab = MagicMock(**{'isVisible.return_value': True})
     with patch.object(media_item, 'text_search') as mocked_text_search:
-
         # WHEN: Calling on_search_button_clicked and the 'Search' tab is selected
         media_item.on_search_button_clicked()
 
@@ -1284,7 +1252,6 @@ def test_on_search_button_select_tab(media_item: BibleMediaItem):
     media_item.search_tab = MagicMock(**{'isVisible.return_value': False})
     media_item.select_tab = MagicMock(**{'isVisible.return_value': True})
     with patch.object(media_item, 'select_search') as mocked_select_search:
-
         # WHEN: Calling on_search_button_clicked and the 'Select' tab is selected
         media_item.on_search_button_clicked()
 
@@ -1303,7 +1270,6 @@ def test_select_search_single_bible(media_item: BibleMediaItem):
     media_item.to_chapter = MagicMock()
     media_item.to_verse = MagicMock()
     with patch.object(media_item, 'display_results') as mocked_display_results:
-
         # WHEN: Calling select_search and there is only one bible selected
         media_item.bible = mocked_bible_1
         media_item.second_bible = None
@@ -1325,7 +1291,6 @@ def test_select_search_dual_bibles(media_item: BibleMediaItem):
     media_item.to_chapter = MagicMock()
     media_item.to_verse = MagicMock()
     with patch.object(media_item, 'display_results') as mocked_display_results:
-
         # WHEN: Calling select_search and there are two bibles selected
         media_item.bible = mocked_bible_1
         media_item.second_bible = mocked_bible_2
@@ -1342,7 +1307,6 @@ def test_text_reference_search_single_bible(media_item: BibleMediaItem):
     """
     # GIVEN: An instance of :class:`MediaManagerItem` and mocked plugin.manager.get_verses
     with patch.object(media_item, 'display_results') as mocked_display_results:
-
         # WHEN: Calling text_reference_search with only one bible selected
         media_item.bible = mocked_bible_1
         media_item.second_bible = None
@@ -1542,7 +1506,6 @@ def test_on_search_timer_timeout(media_item: BibleMediaItem):
     """
     # GIVEN: An instance of BibleMediaItem
     with patch.object(media_item, 'text_search') as mocked_text_search:
-
         # WHEN: Calling on_search_timer_timeout
         media_item.on_search_timer_timeout()
 
@@ -1562,7 +1525,6 @@ def test_display_results_no_results(media_item: BibleMediaItem):
     media_item.search_results = []
 
     with patch.object(media_item, 'build_display_results', return_value=[]):
-
         # WHEN: Calling display_results with True
         media_item.display_results()
 
@@ -1577,8 +1539,8 @@ def test_display_results_results(media_item: BibleMediaItem):
     # GIVEN: An instance of BibleMediaItem and a mocked build_display_results which returns a list of results
     with patch.object(media_item, 'build_display_results', return_value=[
         {'item_title': 'Title 1'}, {'item_title': 'Title 2'}]), \
-        patch.object(media_item, 'add_built_results_to_list_widget') as \
-            mocked_add_built_results_to_list_widget:
+            patch.object(media_item, 'add_built_results_to_list_widget') as \
+                    mocked_add_built_results_to_list_widget:
         media_item.search_results = ['results']
         media_item.list_view = MagicMock()
 
@@ -1867,7 +1829,7 @@ def test_generate_slide_data_reference_inline(media_item: BibleMediaItem):
 
     # WHEN: generate_slide_data is called
     with patch('openlp.plugins.bibles.lib.mediaitem.get_reference_separators',
-              return_value={'verse': ':', 'range': '-', 'list': ','}):
+               return_value={'verse': ':', 'range': '-', 'list': ','}):
         media_item.generate_slide_data(mocked_service_item, item=_create_mocked_footer_slide_items())
 
     # THEN: the footer should stay empty, and the slide text should contain the short inline reference
@@ -1910,7 +1872,7 @@ def test_generate_slide_data_reference_inline_all_layout_styles(media_item: Bibl
 
     # WHEN: generate_slide_data is called
     with patch('openlp.plugins.bibles.lib.mediaitem.get_reference_separators',
-              return_value={'verse': ':', 'range': '-', 'list': ','}):
+               return_value={'verse': ':', 'range': '-', 'list': ','}):
         media_item.generate_slide_data(mocked_service_item, item=mocked_items)
 
     # THEN: a reference marker should appear once per verse, across however many slides were generated
