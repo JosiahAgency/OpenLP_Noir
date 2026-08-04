@@ -87,7 +87,7 @@ class SongBeamerImport(SongImport):
         (re.compile('<[/]?wordwrap>'), ''),
         (re.compile('<[/]?strike>'), ''),
         (re.compile('<[/]?h.*?>'), ''),
-        (re.compile('<[/]?s.*?>', re.IGNORECASE), ''),
+        (re.compile(r'</?s(?:\s[^<>]*?)?>', re.IGNORECASE), ''),
         (re.compile('<[/]?linespacing.*?>'), ''),
         (re.compile('<[/]?c.*?>'), ''),
         (re.compile('<align.*?>'), ''),
