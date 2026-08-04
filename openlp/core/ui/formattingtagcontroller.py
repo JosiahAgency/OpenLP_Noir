@@ -42,7 +42,7 @@ class FormattingTagController(object):
             r'(?P<tag>[^\s/!?>]+)(?:\s+[^\s=]+="[^"]*")*\s*(?P<empty>/)?'
             r'|(?P<cdata>!\[CDATA\[(?:(?!\]\]>).)*\]\])'
             r'|(?P<procinst>\?(?:(?!\?>).)*\?)'
-            r'|(?P<comment>!--(?:(?!-->).)*--))>')
+            r'|(?P<comment>!--(?:(?!--!?\>).)*(?:--!?)\>))>')
         self.html_regex = re.compile(r'^(?:[^<>]*%s)*[^<>]*$' % self.html_tag_regex.pattern)
 
     def pre_save(self):
