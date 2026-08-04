@@ -179,6 +179,18 @@ function _buildRadialGradient(width, startColor, endColor) {
 }
 
 /**
+ * Convert a point-based theme value to CSS pixels.
+ * Using px for theme text rendering keeps layout composition stable across
+ * displays that report different DPI characteristics.
+ * @private
+ * @param {number|string} pointValue - Value expressed in points
+ * @returns {number} The equivalent value in CSS pixels
+ */
+function _pointValueToPx(pointValue) {
+  return (Number(pointValue) || 0) * (96 / 72);
+}
+
+/**
  * Build a set of text shadows to form an outline
  * @private
  * @param {number} size - The desired width of the outline
@@ -192,7 +204,7 @@ function _buildTextOutline(size, color) {
   // Loop through all the possible size iterations and add them to the array
   for (let i = from; i <= size; i++) {
     for (let j = from; j <= size; j++) {
-      shadows.push(color + " " + i + "pt " + j + "pt 0pt");
+      shadows.push(color + " " + _pointValueToPx(i) + "px " + _pointValueToPx(j) + "px 0px");
     }
   }
   return shadows;
@@ -212,7 +224,7 @@ function _buildTextShadow(offset, size, color) {
   let to = size + offset;
   for (let i = from; i <= to; i++) {
     for (let j = from; j <= to; j++) {
-      shadows.push(color + " " + i + "pt " + j + "pt 0pt");
+      shadows.push(color + " " + _pointValueToPx(i) + "px " + _pointValueToPx(j) + "px 0px");
     }
   }
   return shadows;
@@ -1310,7 +1322,7 @@ var Display = {
       p = $(".slides > section > section > p");
     }
     p = p[0];
-    p.style.fontSize = "" + fontSize + "pt";
+    p.style.fontSize = _pointValueToPx(fontSize) + "px";
     var d = $(".slides > section")[0];
     var lh = parseFloat(_getStyle(p, "line-height"));
     var dh = parseFloat(_getStyle(d, "height"));
@@ -1487,7 +1499,7 @@ var Display = {
     var mainStyle = {
       color: Display._theme.font_main_color,
       "font-family": Display._theme.font_main_name,
-      "font-size": `${Display._theme.font_main_size}pt`,
+      "font-size": `${_pointValueToPx(Display._theme.font_main_size)}px`,
       "font-style": Display._theme.font_main_italics ? "italic" : "",
       "font-weight": Display._theme.font_main_bold ? "bold" : "",
       "line-height": `${100 + Display._theme.font_main_line_adjustment}%`,
@@ -1539,7 +1551,7 @@ var Display = {
       left: `${Display._theme.font_footer_x}px`,
       color: Display._theme.font_footer_color,
       "font-family": Display._theme.font_footer_name,
-      "font-size": `${Display._theme.font_footer_size}pt`,
+      "font-size": `${_pointValueToPx(Display._theme.font_footer_size)}px`,
       "font-style": Display._theme.font_footer_italics ? "italic" : "",
       "font-weight": Display._theme.font_footer_bold ? "bold" : "",
       "line-height": `${100 + Display._theme.font_footer_line_adjustment}%`,
