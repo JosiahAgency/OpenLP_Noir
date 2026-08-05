@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import logging
+import os
 ##########################################################################
 # OpenLP - Open Source Lyrics Projection                                 #
 # ---------------------------------------------------------------------- #
@@ -19,17 +21,14 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>. #
 ##########################################################################
 from collections import namedtuple
-import logging
-import mako
-import os
 from pathlib import Path
 from shutil import copyfile
 from typing import Any
 
+import mako
 from PySide6 import QtCore, QtWidgets
 from sqlalchemy.sql import or_
 
-from openlp.core.state import State
 from openlp.core.common.applocation import AppLocation
 from openlp.core.common.enum import SongFirstSlideMode, SongSearch
 from openlp.core.common.i18n import UiStrings, get_natural_key, translate
@@ -40,8 +39,9 @@ from openlp.core.lib.mediamanageritem import MediaManagerItem
 from openlp.core.lib.plugin import PluginStatus
 from openlp.core.lib.serviceitem import ItemCapabilities
 from openlp.core.lib.ui import create_widget_action, critical_error_message_box
-from openlp.core.ui.icons import UiIcons
+from openlp.core.state import State
 from openlp.core.ui.confirmationform import ConfirmationForm
+from openlp.core.ui.icons import UiIcons
 from openlp.plugins.songs.forms.editsongform import EditSongForm
 from openlp.plugins.songs.forms.songexportform import SongExportForm
 from openlp.plugins.songs.forms.songimportform import SongImportForm
@@ -50,7 +50,6 @@ from openlp.plugins.songs.lib import VerseType, clean_string, delete_song
 from openlp.plugins.songs.lib.db import Author, AuthorType, SongBook, MediaFile, Song, SongBookEntry, Topic
 from openlp.plugins.songs.lib.openlyricsxml import OpenLyrics, SongXML
 from openlp.plugins.songs.lib.ui import SongStrings
-
 
 log = logging.getLogger(__name__)
 
@@ -79,11 +78,12 @@ class SongMediaItem(MediaManagerItem):
         self.edit_item = None
         self.quick_preview_allowed = True
         self.has_search = True
+        self.search_timer = self.create_debounce_timer(self.on_search_timer_timeout)
 
     def _update_background_audio(self, song, item):
         song.media_files = []
         for i, bga in enumerate(item.background_audio):
-            dest_path =\
+            dest_path = \
                 AppLocation.get_section_data_path(self.plugin.name) / 'audio' / str(song.id) / os.path.split(bga[0])[1]
             create_paths(dest_path.parent)
             copyfile(AppLocation.get_section_data_path('servicemanager') / bga[0], dest_path)
@@ -154,27 +154,27 @@ class SongMediaItem(MediaManagerItem):
         self.open_lyrics = OpenLyrics(self.plugin.manager)
         self.search_text_edit.set_search_types([
             (SongSearch.Entire, UiIcons().music,
-                translate('SongsPlugin.MediaItem', 'Entire Song'),
-                translate('SongsPlugin.MediaItem', 'Search Entire Song...')),
+             translate('SongsPlugin.MediaItem', 'Entire Song'),
+             translate('SongsPlugin.MediaItem', 'Search Entire Song...')),
             (SongSearch.Titles, UiIcons().search_text,
-                translate('SongsPlugin.MediaItem', 'Titles'),
-                translate('SongsPlugin.MediaItem', 'Search Titles...')),
+             translate('SongsPlugin.MediaItem', 'Titles'),
+             translate('SongsPlugin.MediaItem', 'Search Titles...')),
             (SongSearch.Lyrics, UiIcons().search_lyrics,
-                translate('SongsPlugin.MediaItem', 'Lyrics'),
-                translate('SongsPlugin.MediaItem', 'Search Lyrics...')),
+             translate('SongsPlugin.MediaItem', 'Lyrics'),
+             translate('SongsPlugin.MediaItem', 'Search Lyrics...')),
             (SongSearch.Authors, UiIcons().user, SongStrings().Authors,
-                translate('SongsPlugin.MediaItem', 'Search Authors...')),
+             translate('SongsPlugin.MediaItem', 'Search Authors...')),
             (SongSearch.Topics, UiIcons().light_bulb, SongStrings().Topics,
-                translate('SongsPlugin.MediaItem', 'Search Topics...')),
+             translate('SongsPlugin.MediaItem', 'Search Topics...')),
             (SongSearch.Books, UiIcons().address, SongStrings().SongBooks,
-                translate('SongsPlugin.MediaItem', 'Search Songbooks...')),
+             translate('SongsPlugin.MediaItem', 'Search Songbooks...')),
             (SongSearch.Themes, UiIcons().theme, UiStrings().Themes, UiStrings().SearchThemes),
             (SongSearch.Copyright, UiIcons().copyright,
-                translate('SongsPlugin.MediaItem', 'Copyright'),
-                translate('SongsPlugin.MediaItem', 'Search Copyright...')),
+             translate('SongsPlugin.MediaItem', 'Copyright'),
+             translate('SongsPlugin.MediaItem', 'Search Copyright...')),
             (SongSearch.CCLInumber, UiIcons().search_ccli,
-                translate('SongsPlugin.MediaItem', 'CCLI number'),
-                translate('SongsPlugin.MediaItem', 'Search CCLI number...'))
+             translate('SongsPlugin.MediaItem', 'CCLI number'),
+             translate('SongsPlugin.MediaItem', 'Search CCLI number...'))
         ])
         self.config_update()
 
@@ -185,79 +185,83 @@ class SongMediaItem(MediaManagerItem):
 
     def on_search_text_button_clicked(self):
         # Reload the list considering the new search type.
+        self.list_view.set_loading_state(True)
         search_keywords = str(self.search_text_edit.displayText())
         search_type = self.search_text_edit.current_search_type()
         filter_clauses = []
         is_fav = self.favourite_toggle_button.isChecked()
-        if is_fav and search_type not in [SongSearch.Authors, SongSearch.Topics]:
-            filter_clauses.append(Song.is_favourite.is_(True))
-        if search_type == SongSearch.Entire:
-            log.debug('Entire Song Search')
-            search_results = self.search_entire(search_keywords, *filter_clauses)
-            self.display_results_song(search_results)
-        elif search_type == SongSearch.Titles:
-            log.debug('Titles Search')
-            search_string = '%{text}%'.format(text=clean_string(search_keywords))
-            filter_clauses.append(Song.search_title.like(search_string))
-            search_results = self.plugin.manager.get_all_objects(Song, *filter_clauses)
-            self.display_results_song(search_results)
-        elif search_type == SongSearch.Lyrics:
-            log.debug('Lyrics Search')
-            search_string = '%{text}%'.format(text=clean_string(search_keywords))
-            filter_clauses.append(Song.search_lyrics.like(search_string))
-            search_results = self.plugin.manager.get_all_objects(Song, *filter_clauses)
-            self.display_results_song(search_results)
-        elif search_type == SongSearch.Authors:
-            log.debug('Authors Search')
-            search_string = '%{text}%'.format(text=search_keywords)
-            search_results = self.plugin.manager.get_all_objects(Author, Author.display_name.like(search_string))
-            self.display_results_author(search_results, is_fav)
-        elif search_type == SongSearch.Topics:
-            log.debug('Topics Search')
-            search_string = '%{text}%'.format(text=search_keywords)
-            search_results = self.plugin.manager.get_all_objects(Topic, Topic.name.like(search_string))
-            self.display_results_topic(search_results, is_fav)
-        elif search_type == SongSearch.Books:
-            log.debug('Songbook Search')
-            search_keywords = search_keywords.rpartition(' ')
-            search_book = '{text}%'.format(text=search_keywords[0])
-            search_entry = '{text}%'.format(text=search_keywords[2])
-            filter_clauses.extend([
-                SongBook.name.like(search_book),
-                SongBookEntry.entry.like(search_entry),
-                Song.temporary.is_(False)
-            ])
-            search_results = self.plugin.manager.session.query(
-                SongBookEntry.entry,
-                SongBook.name,
-                Song.title,
-                Song.id
-            ).join(Song).join(SongBook).filter(*filter_clauses).all()
-            self.display_results_book(search_results)
-        elif search_type == SongSearch.Themes:
-            log.debug('Theme Search')
-            search_string = '%{text}%'.format(text=search_keywords)
-            filter_clauses.append(Song.theme_name.like(search_string))
-            search_results = self.plugin.manager.get_all_objects(Song, *filter_clauses)
-            self.display_results_themes(search_results)
-        elif search_type == SongSearch.Copyright:
-            log.debug('Copyright Search')
-            search_string = '%{text}%'.format(text=search_keywords)
-            filter_clauses.extend([
-                Song.copyright.like(search_string),
-                Song.copyright != ''
-            ])
-            search_results = self.plugin.manager.get_all_objects(Song, *filter_clauses)
-            self.display_results_song(search_results)
-        elif search_type == SongSearch.CCLInumber:
-            log.debug('CCLI number Search')
-            search_string = '%{text}%'.format(text=search_keywords)
-            filter_clauses.extend([
-                Song.ccli_number.like(search_string),
-                Song.ccli_number != ''
-            ])
-            search_results = self.plugin.manager.get_all_objects(Song, *filter_clauses)
-            self.display_results_cclinumber(search_results)
+        try:
+            if is_fav and search_type not in [SongSearch.Authors, SongSearch.Topics]:
+                filter_clauses.append(Song.is_favourite.is_(True))
+            if search_type == SongSearch.Entire:
+                log.debug('Entire Song Search')
+                search_results = self.search_entire(search_keywords, *filter_clauses)
+                self.display_results_song(search_results)
+            elif search_type == SongSearch.Titles:
+                log.debug('Titles Search')
+                search_string = '%{text}%'.format(text=clean_string(search_keywords))
+                filter_clauses.append(Song.search_title.like(search_string))
+                search_results = self.plugin.manager.get_all_objects(Song, *filter_clauses)
+                self.display_results_song(search_results)
+            elif search_type == SongSearch.Lyrics:
+                log.debug('Lyrics Search')
+                search_string = '%{text}%'.format(text=clean_string(search_keywords))
+                filter_clauses.append(Song.search_lyrics.like(search_string))
+                search_results = self.plugin.manager.get_all_objects(Song, *filter_clauses)
+                self.display_results_song(search_results)
+            elif search_type == SongSearch.Authors:
+                log.debug('Authors Search')
+                search_string = '%{text}%'.format(text=search_keywords)
+                search_results = self.plugin.manager.get_all_objects(Author, Author.display_name.like(search_string))
+                self.display_results_author(search_results, is_fav)
+            elif search_type == SongSearch.Topics:
+                log.debug('Topics Search')
+                search_string = '%{text}%'.format(text=search_keywords)
+                search_results = self.plugin.manager.get_all_objects(Topic, Topic.name.like(search_string))
+                self.display_results_topic(search_results, is_fav)
+            elif search_type == SongSearch.Books:
+                log.debug('Songbook Search')
+                search_keywords = search_keywords.rpartition(' ')
+                search_book = '{text}%'.format(text=search_keywords[0])
+                search_entry = '{text}%'.format(text=search_keywords[2])
+                filter_clauses.extend([
+                    SongBook.name.like(search_book),
+                    SongBookEntry.entry.like(search_entry),
+                    Song.temporary.is_(False)
+                ])
+                search_results = self.plugin.manager.session.query(
+                    SongBookEntry.entry,
+                    SongBook.name,
+                    Song.title,
+                    Song.id
+                ).join(Song).join(SongBook).filter(*filter_clauses).all()
+                self.display_results_book(search_results)
+            elif search_type == SongSearch.Themes:
+                log.debug('Theme Search')
+                search_string = '%{text}%'.format(text=search_keywords)
+                filter_clauses.append(Song.theme_name.like(search_string))
+                search_results = self.plugin.manager.get_all_objects(Song, *filter_clauses)
+                self.display_results_themes(search_results)
+            elif search_type == SongSearch.Copyright:
+                log.debug('Copyright Search')
+                search_string = '%{text}%'.format(text=search_keywords)
+                filter_clauses.extend([
+                    Song.copyright.like(search_string),
+                    Song.copyright != ''
+                ])
+                search_results = self.plugin.manager.get_all_objects(Song, *filter_clauses)
+                self.display_results_song(search_results)
+            elif search_type == SongSearch.CCLInumber:
+                log.debug('CCLI number Search')
+                search_string = '%{text}%'.format(text=search_keywords)
+                filter_clauses.extend([
+                    Song.ccli_number.like(search_string),
+                    Song.ccli_number != ''
+                ])
+                search_results = self.plugin.manager.get_all_objects(Song, *filter_clauses)
+                self.display_results_cclinumber(search_results)
+        finally:
+            self.list_view.set_loading_state(False)
 
     def search_entire(self, search_keywords: str, *filter_clauses):
         search_string = '%{text}%'.format(text=clean_string(search_keywords))
@@ -297,6 +301,7 @@ class SongMediaItem(MediaManagerItem):
         :param search_results: A list of db Song objects
         :return: None
         """
+
         def get_song_key(song):
             """Get the key to sort by"""
             return song.sort_key
@@ -324,6 +329,7 @@ class SongMediaItem(MediaManagerItem):
         :param search_results: A list of db Author objects
         :return: None
         """
+
         def get_author_key(author):
             """Get the key to sort by"""
             return get_natural_key(author.display_name)
@@ -357,6 +363,7 @@ class SongMediaItem(MediaManagerItem):
         :param search_results: A tuple containing (songbook entry, book name, song title, song id)
         :return: None
         """
+
         def get_songbook_key(text):
             """
             Get the key to sort by
@@ -381,6 +388,7 @@ class SongMediaItem(MediaManagerItem):
         :param search_results: A list of db Topic objects
         :return: None
         """
+
         def get_topic_key(topic):
             """Get the key to sort by"""
             return get_natural_key(topic.name)
@@ -410,6 +418,7 @@ class SongMediaItem(MediaManagerItem):
         :param search_results: A list of db Song objects
         :return: None
         """
+
         def get_theme_key(song):
             """Get the key to sort by"""
             return get_natural_key(song.theme_name), song.sort_key
@@ -433,6 +442,7 @@ class SongMediaItem(MediaManagerItem):
         :param search_results: A list of db Song objects
         :return: None
         """
+
         def get_cclinumber_key(song):
             """Get the key to sort by"""
             return get_natural_key(song.ccli_number), song.sort_key
@@ -468,9 +478,16 @@ class SongMediaItem(MediaManagerItem):
             elif self.search_text_edit.current_search_type() == SongSearch.Lyrics:
                 search_length = 3
             if len(text) > search_length:
-                self.on_search_text_button_clicked()
+                self.start_debounced_search(self.search_timer)
             elif not text:
+                self.search_timer.stop()
                 self.on_clear_text_button_click()
+
+    def on_search_timer_timeout(self):
+        """
+        Perform a debounced song search.
+        """
+        self.on_search_text_button_clicked()
 
     def on_import_click(self):
         if not hasattr(self, 'import_wizard'):
@@ -708,19 +725,19 @@ class SongMediaItem(MediaManagerItem):
                                             preview_line = "{preview}" + next_lines[0] + "{/preview}"
 
                                     if (
-                                        not preview_line
-                                        and i == len(force_verse) - 1
-                                        and order_pos + 1 < len(order_list)
+                                            not preview_line
+                                            and i == len(force_verse) - 1
+                                            and order_pos + 1 < len(order_list)
                                     ):
                                         # Case 2: preview first line of the next verse
                                         next_order = order_list[order_pos + 1]
                                         for next_verse in verse_list:
                                             if (
-                                                next_verse[0]['type'][0].lower() == next_order[0]
-                                                and (
+                                                    next_verse[0]['type'][0].lower() == next_order[0]
+                                                    and (
                                                     next_verse[0]['label'].lower() == next_order[1:]
                                                     or not next_order[1:]
-                                                    )
+                                            )
                                             ):
                                                 next_verse_type = next_verse[0]['type'].lower()
                                                 next_allowed = any([

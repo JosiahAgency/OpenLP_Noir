@@ -29,7 +29,6 @@ from xml.etree.ElementTree import XML, ElementTree
 
 from PySide6 import QtCore, QtWidgets
 
-from openlp.core.state import State
 from openlp.core.common import delete_file
 from openlp.core.common.applocation import AppLocation
 from openlp.core.common.i18n import UiStrings, get_locale_key, translate
@@ -42,13 +41,13 @@ from openlp.core.lib.exceptions import ValidationError
 from openlp.core.lib.theme import Theme
 from openlp.core.lib.ui import MultipleViewModeList, add_list_view_mode_items_to_toolbar, create_widget_action, \
     critical_error_message_box, set_list_view_mode_toolbar_state
+from openlp.core.state import State
 from openlp.core.ui.filerenameform import FileRenameForm
 from openlp.core.ui.icons import UiIcons
 from openlp.core.ui.themeform import ThemeForm
 from openlp.core.ui.themeprogressform import ThemeProgressForm
 from openlp.core.widgets.dialogs import FileDialog
 from openlp.core.widgets.toolbar import OpenLPToolbar
-
 
 THUMBNAIL_REBUILD_MARKER_SETTING = 'themes/theme thumbnails rebuilt'
 
@@ -57,6 +56,7 @@ class Ui_ThemeManager(object):
     """
     UI part of the Theme Manager
     """
+
     def setup_ui(self, widget):
         """
         Define the UI
@@ -194,7 +194,7 @@ class ThemeManager(QtWidgets.QWidget, RegistryBase, Ui_ThemeManager, LogMixin, R
         self.theme_form = ThemeForm(self)
         self.theme_form.path = self.theme_path
         self.file_rename_form = FileRenameForm()
-        self.upgrade_themes()  # TODO: Can be removed when upgrade path from OpenLP 2.4 no longer needed
+        self.upgrade_themes()
         self.load_themes()
         self.rebuild_theme_thumbnails_once()
 
@@ -665,7 +665,6 @@ class ThemeManager(QtWidgets.QWidget, RegistryBase, Ui_ThemeManager, LogMixin, R
             with zipfile.ZipFile(file_path) as theme_zip:
                 json_file = [name for name in theme_zip.namelist() if os.path.splitext(name)[1].lower() == '.json']
                 if len(json_file) != 1:
-                    # TODO: remove XML handling after once the upgrade path from 2.4 is no longer required
                     xml_file = [name for name in theme_zip.namelist() if os.path.splitext(name)[1].lower() == '.xml']
                     if len(xml_file) != 1:
                         self.log_error('Theme contains "{val:d}" theme files'.format(val=len(xml_file)))
@@ -695,7 +694,11 @@ class ThemeManager(QtWidgets.QWidget, RegistryBase, Ui_ThemeManager, LogMixin, R
                         continue
                     full_name = self.theme_path / zipped_file_rel_path
                     create_paths(full_name.parent)
-                    if zipped_file_rel_path.suffix.lower() == '.xml' or zipped_file_rel_path.suffix.lower() == '.json':
+                    if zipped_file_rel_path.suffix.lower() == '.xml':
+                        # Legacy theme XML is converted to JSON below, so avoid
+                        # persisting XML files on disk during import.
+                        file_xml = str(theme_zip.read(zipped_file), 'utf-8')
+                    elif zipped_file_rel_path.suffix.lower() == '.json':
                         file_xml = str(theme_zip.read(zipped_file), 'utf-8')
                         with full_name.open('w', encoding='utf-8') as out_file:
                             out_file.write(file_xml)
@@ -711,7 +714,6 @@ class ThemeManager(QtWidgets.QWidget, RegistryBase, Ui_ThemeManager, LogMixin, R
         finally:
             ret = None
             if not abort_import:
-                # TODO: remove XML handling after once the upgrade path from 2.4 is no longer required
                 # As all files are closed, upgrade theme (xml to json) if needed.
                 if file_xml and not json_theme:
                     theme_path = self.theme_path / theme_name

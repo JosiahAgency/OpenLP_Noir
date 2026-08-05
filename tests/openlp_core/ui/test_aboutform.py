@@ -67,11 +67,11 @@ def test_about_form_ncsda_attribution(mock_settings):
     about_text = about_form.about_text_edit.toPlainText()
     credits_text = about_form.credits_text_edit.toPlainText()
 
-    # THEN: Both the About and Credits tabs should identify this as the NCSDA Version by George Josiah
+    # THEN: Both the About and Credits tabs should identify this as the NCSDA Version by Josiah
     assert 'NCSDA Version' in about_text, "The About tab should state this is the NCSDA Version"
-    assert 'George Josiah' in about_text, "The About tab should credit George Josiah"
+    assert 'Josiah' in about_text, "The About tab should credit Josiah"
     assert 'NCSDA Version' in credits_text, "The Credits tab should state this is the NCSDA Version"
-    assert 'George Josiah' in credits_text, "The Credits tab should credit George Josiah"
+    assert 'Josiah' in credits_text, "The Credits tab should credit Josiah"
 
 
 def test_about_form_date(mock_settings):

@@ -45,8 +45,8 @@ from openlp.core.lib.ui import create_action
 from openlp.core.state import State
 from openlp.core.ui import DisplayControllerType, HideMode
 from openlp.core.ui.icons import UiIcons
-from openlp.core.ui.style import UiThemes, is_ui_theme
 from openlp.core.ui.media import MediaPlayItem, media_empty_song
+from openlp.core.ui.style import UiThemes, is_ui_theme
 from openlp.core.widgets.layouts import AspectRatioLayout
 from openlp.core.widgets.toolbar import MediaToolbar, OpenLPToolbar
 from openlp.core.widgets.views import ListPreviewWidget
@@ -993,7 +993,7 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         # Tidy up aspects associated with the old item
         if old_item:
             new_item_has_background_video = self.service_item.is_capable(ItemCapabilities.HasBackgroundVideo) or \
-                self.service_item.is_capable(ItemCapabilities.HasBackgroundStream)
+                                            self.service_item.is_capable(ItemCapabilities.HasBackgroundStream)
             # Media Manager cannot play background videos on preview pane yet
             is_unsupported_preview_background = not self.is_live and new_item_has_background_video
             # Close the old item if it's not to be used by the new service item
@@ -1244,9 +1244,9 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         # If "click live slide to unblank" is enabled, unblank the display. And start = Item is sent to Live.
         # Note: If this if statement is placed at the bottom of this function instead of top slide transitions are lost.
         if (not start and
-           self.is_live and
-           self._current_hide_mode and
-           self.settings.value('core/click live slide to unblank')):
+                self.is_live and
+                self._current_hide_mode and
+                self.settings.value('core/click live slide to unblank')):
             Registry().execute('slidecontroller_live_unblank')
         self.selected_row = 0
         if -1 < row < self.preview_widget.slide_count():
@@ -1263,7 +1263,8 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
             self.selected_row = row
             self.update_preview()
             self.preview_widget.change_slide(row)
-        # TODO: self.display.setFocus()
+        if self.is_live:
+            self.preview_widget.setFocus()
         # Release lock
         self.slide_selected_lock.release()
 
@@ -1287,7 +1288,7 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
             self.slide_changed_time = max(self.slide_changed_time, datetime.datetime.now())
         if self.service_item:
             if (self.is_live and self.current_hide_mode and
-               self.settings.value('core/live preview shows blank screen')):
+                    self.settings.value('core/live preview shows blank screen')):
                 # If live, hidden and setting 'live preview shows blank screen' is active
                 # blank the live preview panel.
                 self.preview_display.hide_display(self.current_hide_mode)
@@ -1353,7 +1354,7 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         self.log_debug('_capture_maindisplay {text}'.format(text=self.screens.current))
         # Wayland needs screenshot fallback even when OpenLP is running on X11/xcb mode.
         fallback_to_windowed = is_wayland_compositor() or \
-            self.settings.value('advanced/prefer windowed screen capture')
+                               self.settings.value('advanced/prefer windowed screen capture')
         if not fallback_to_windowed:
             # Check if display screen is outside real screen bounds
             # OpenLP can't take reliable screenshots when any of these conditions happens
@@ -1367,7 +1368,7 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
             display_beyond_vertical = (display_rect.top() + display_rect.height() >
                                        screen_rect.top() + screen_rect.height())
             fallback_to_windowed = display_above_horizontal or display_above_vertical \
-                or display_beyond_horizontal or display_beyond_vertical
+                                   or display_beyond_horizontal or display_beyond_vertical
         if fallback_to_windowed:
             if self.service_item and (self.service_item.is_capable(ItemCapabilities.ProvidesOwnDisplay) or
                                       self.service_item.is_media() or self.service_item.is_command()):

@@ -224,10 +224,19 @@ class GeneralTab(SettingsTab):
                                                       'Open the last used Library tab on startup'))
         self.double_click_live_check_box.setText(translate('OpenLP.AdvancedTab',
                                                            'Double-click to send items straight to Live'))
+        self.double_click_live_check_box.setToolTip(
+            translate('OpenLP.AdvancedTab',
+                      'When enabled, double-clicking a library item sends it directly to Live instead of Preview.'))
         self.single_click_preview_check_box.setText(translate('OpenLP.AdvancedTab',
                                                               'Preview items when clicked in Library'))
+        self.single_click_preview_check_box.setToolTip(
+            translate('OpenLP.AdvancedTab',
+                      'When enabled, clicking a library item immediately loads it into Preview.'))
         self.single_click_service_preview_check_box.setText(translate('OpenLP.AdvancedTab',
                                                                       'Preview items when clicked in Service'))
+        self.single_click_service_preview_check_box.setToolTip(
+            translate('OpenLP.AdvancedTab',
+                      'When enabled, selecting a service item immediately updates Preview.'))
         self.expand_service_item_check_box.setText(translate('OpenLP.AdvancedTab',
                                                              'Expand new service items on creation'))
         self.compact_slide_cards_check_box.setText(translate('OpenLP.AdvancedTab',
@@ -237,6 +246,9 @@ class GeneralTab(SettingsTab):
         self.slide_max_height_combo_box.setItemText(0, translate('OpenLP.AdvancedTab', 'Disabled'))
         self.slide_max_height_combo_box.setItemText(1, translate('OpenLP.AdvancedTab', 'Automatic'))
         self.autoscroll_label.setText(translate('OpenLP.AdvancedTab', 'When changing slides:'))
+        self.autoscroll_combo_box.setToolTip(
+            translate('OpenLP.AdvancedTab',
+                      'Controls how the slide list auto-scrolls as the current slide changes.'))
         self.autoscroll_combo_box.setItemText(0, translate('OpenLP.AdvancedTab', 'Do not auto-scroll'))
         self.autoscroll_combo_box.setItemText(1, translate('OpenLP.AdvancedTab',
                                                            'Auto-scroll the previous slide into view'))
@@ -266,6 +278,9 @@ class GeneralTab(SettingsTab):
         self.new_service_message_check_box.setText(translate('OpenLP.AdvancedTab',
                                                              'Alert if New clicked on blank service'))
         self.search_as_type_check_box.setText(translate('SongsPlugin.GeneralTab', 'Enable search as you type'))
+        self.search_as_type_check_box.setToolTip(
+            translate('SongsPlugin.GeneralTab',
+                      'Runs searches automatically while you type in supported library tabs.'))
         self.ui_theme_style_label.setText(translate('OpenLP.AdvancedTab', 'Interface Theme (needs restart):'))
         self.ui_theme_style_combo_box.setItemText(0, translate('OpenLP.AdvancedTab', 'Use system theme'))
         self.ui_theme_style_combo_box.setItemText(1, translate('OpenLP.AdvancedTab', 'Default Light'))

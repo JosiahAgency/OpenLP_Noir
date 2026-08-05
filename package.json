@@ -4,7 +4,7 @@
   "description": "OpenLP is free church worship presentation software",
   "homepage": "https://openlp.org/",
   "license": "GPL-3.0-or-later",
-  "author": "OpenLP Developers",
+  "author": "Josiah",
   "repository": {
     "type": "git",
     "url": "https://gitlab.com/openlp/openlp.git"
@@ -17,7 +17,7 @@
     "lint": "eslint openlp/core/display/html/display*.js"
   },
   "dependencies": {
-    "@eslint/js": "^10.0.1",   
+    "@eslint/js": "^10.0.1",
     "eslint": "^10.2.0",
     "jasmine-core": "~2.99.0",
     "karma": "^6.4.4",

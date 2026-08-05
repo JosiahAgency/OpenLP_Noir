@@ -23,9 +23,10 @@ The :mod:`~openlp.core.ui.dark` module looks for and loads a dark theme
 """
 import logging
 import tempfile
+from enum import Enum
 from pathlib import Path
 from subprocess import Popen, PIPE
-from enum import Enum
+
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from openlp.core.common.platform import is_macosx, is_win
@@ -33,6 +34,7 @@ from openlp.core.common.registry import Registry
 
 try:
     import qdarkstyle
+
     HAS_DARK_THEME = True
 except ImportError:
     HAS_DARK_THEME = False
@@ -157,7 +159,6 @@ NOIR_FONT_FAMILIES = ['Lato', 'Segoe UI Variable Text', 'Segoe UI', 'Inter', 'Ro
 NOIR_TYPE_BODY_PT = 10.0
 NOIR_TYPE_CAPTION = '8pt'
 NOIR_TYPE_SECTION = '11pt'
-NOIR_TYPE_TITLE = '13pt'
 
 NOIR_STYLESHEET = """
 /* ------------------------------ Window chrome ------------------------------ */
@@ -507,7 +508,7 @@ QHeaderView::section {{
 
 QListView, QListWidget, QTreeView, QTreeWidget, QTableView, QTableWidget {{
     background: {ink0};
-    alternate-background-color: {ink0};
+    alternate-background-color: {ink1};
     border: 1px solid {line};
     border-radius: 8px;
     padding: 2px;
@@ -535,16 +536,43 @@ QListView::item:hover, QListWidget::item:hover, QTreeView::item:hover, QTreeWidg
 QListView::item:selected, QListWidget::item:selected, QTreeView::item:selected,
 QTreeWidget::item:selected {{
     background: {cue_dim};
+    border-left: 2px solid {cue};
+    padding: 6px 8px 6px 6px;
     color: {text_hi};
 }}
 
 QListView::item:selected:!active, QListWidget::item:selected:!active,
 QTreeView::item:selected:!active, QTreeWidget::item:selected:!active {{
     background: {ink3};
+    border-left: 2px solid {line_soft};
+    padding: 6px 8px 6px 6px;
+}}
+
+QListView::item:pressed, QListWidget::item:pressed, QTreeView::item:pressed, QTreeWidget::item:pressed,
+QTableView::item:pressed, QTableWidget::item:pressed {{
+    background: {ink4};
 }}
 
 QTableView::item, QTableWidget::item {{
     padding: 4px 6px;
+    border-radius: 6px;
+    margin: 1px 2px;
+}}
+
+QTableView::item:hover, QTableWidget::item:hover {{
+    background: {ink2};
+}}
+
+QTableView::item:selected, QTableWidget::item:selected {{
+    background: {cue_dim};
+    border-left: 2px solid {cue};
+    padding: 4px 6px 4px 4px;
+}}
+
+QTableView::item:selected:!active, QTableWidget::item:selected:!active {{
+    background: {ink3};
+    border-left: 2px solid {line_soft};
+    padding: 4px 6px 4px 4px;
 }}
 
 QTreeView::branch {{
@@ -1170,9 +1198,9 @@ def get_application_stylesheet():
             stylesheet += NOIR_STYLESHEET
             stylesheet += get_noir_asset_stylesheet()
     stylesheet += 'QWidget#slide_controller_toolbar QToolButton::checked {' \
-        '  background-color: palette(highlight);' \
-        '  color: palette(highlighted-text);' \
-        '}'
+                  '  background-color: palette(highlight);' \
+                  '  color: palette(highlighted-text);' \
+                  '}'
     return stylesheet
 
 

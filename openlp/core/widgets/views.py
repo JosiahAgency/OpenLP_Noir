@@ -36,7 +36,6 @@ from openlp.core.ui.style import NOIR_CUE, NOIR_INK_0, NOIR_INK_1, NOIR_INK_2, N
     NOIR_TEXT_ON_ACCENT, NOIR_VERSE_TAG_COLORS, UiThemes, is_ui_theme
 from openlp.core.widgets.layouts import AspectRatioLayout
 
-
 SCROLL_HINT = {
     0: QtWidgets.QAbstractItemView.ScrollHint.EnsureVisible,
     1: QtWidgets.QAbstractItemView.ScrollHint.PositionAtTop,
@@ -699,6 +698,7 @@ class ListWidgetWithDnD(QtWidgets.QListWidget):
     """
     Provide a list widget to store objects and handle drag and drop events
     """
+
     def __init__(self, parent=None, name=''):
         """
         Initialise the list widget
@@ -711,6 +711,7 @@ class ListWidgetWithDnD(QtWidgets.QListWidget):
         self.setAlternatingRowColors(True)
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self._needs_initial_layout = True
+        self._is_loading = False
 
     def showEvent(self, event):
         """
@@ -738,11 +739,26 @@ class ListWidgetWithDnD(QtWidgets.QListWidget):
         :param search_while_typing: True if we want to display the customised message
         :return: None
         """
-        if search_while_typing:
-            self.no_results_text = UiStrings().ShortResults
+        if not self._is_loading:
+            if search_while_typing:
+                self.no_results_text = UiStrings().ShortResults
+            else:
+                self.no_results_text = UiStrings().NoResults
+        super().clear()
+
+    def set_loading_state(self, is_loading, message=None):
+        """
+        Set a loading state shown when the list is empty.
+
+        :param bool is_loading: ``True`` while a search/load is in progress.
+        :param str | None message: Optional custom loading message.
+        """
+        self._is_loading = bool(is_loading)
+        if self._is_loading:
+            self.no_results_text = message or translate('OpenLP.ListWidgetWithDnD', 'Searching...')
         else:
             self.no_results_text = UiStrings().NoResults
-        super().clear()
+        self.viewport().update()
 
     def mouseMoveEvent(self, event):
         """
@@ -867,6 +883,7 @@ class TreeWidgetWithDnD(QtWidgets.QTreeWidget):
     """
     Provide a tree widget to store objects and handle drag and drop events
     """
+
     def __init__(self, parent=None, name=''):
         """
         Initialise the tree widget

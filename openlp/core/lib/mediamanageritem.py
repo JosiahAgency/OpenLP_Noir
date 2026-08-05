@@ -39,7 +39,6 @@ from openlp.core.widgets.edits import SearchEdit
 from openlp.core.widgets.toolbar import OpenLPToolbar
 from openlp.core.widgets.views import ListWidgetWithDnD
 
-
 _library_actions = {}
 
 
@@ -363,6 +362,41 @@ class MediaManagerItem(QtWidgets.QWidget, RegistryProperties, LogMixin):
         self.search_text_button.clicked.connect(self.on_search_text_button_clicked)
         self.search_text_edit.textChanged.connect(self.on_search_text_edit_changed)
 
+    def create_debounce_timer(self, timeout_handler, interval_ms=200):
+        """
+        Create a single-shot timer for search-as-you-type debounce.
+
+        :param timeout_handler: Callable to invoke when the timer fires.
+        :param int interval_ms: Debounce interval in milliseconds.
+        :return: Configured timer.
+        :rtype: QtCore.QTimer
+        """
+        timer = QtCore.QTimer(self)
+        timer.setInterval(interval_ms)
+        timer.setSingleShot(True)
+        timer.timeout.connect(timeout_handler)
+        return timer
+
+    @staticmethod
+    def start_debounced_search(timer):
+        """
+        Start a debounce timer if it is not already running.
+
+        :param QtCore.QTimer timer: The timer to start.
+        """
+        if not timer.isActive():
+            timer.start()
+
+    def show_library_hint(self, message, timeout=4500):
+        """
+        Show non-blocking guidance in the status bar and keep keyboard focus in the list.
+
+        :param str message: The message to display.
+        :param int timeout: Timeout in milliseconds.
+        """
+        self.main_window.show_status_message(message, timeout)
+        self.list_view.setFocus()
+
     def add_custom_context_actions(self):
         """
         Implement this method in your descendant media manager item to add any context menu items.
@@ -605,9 +639,8 @@ class MediaManagerItem(QtWidgets.QWidget, RegistryProperties, LogMixin):
         :param keep_focus: Do we keep focus (False)
         """
         if not self.list_view.selectedIndexes() and not self.remote_triggered:
-            QtWidgets.QMessageBox.information(self, UiStrings().NISp,
-                                              translate('OpenLP.MediaManagerItem',
-                                                        'You must select one or more items to preview.'))
+            self.show_library_hint(translate('OpenLP.MediaManagerItem',
+                                             'Select one or more items to preview.'))
         else:
             self.log_debug('{plug} Preview requested'.format(plug=self.plugin.name))
             Registry().set_flag('has doubleclick added item to service', False)
@@ -623,9 +656,8 @@ class MediaManagerItem(QtWidgets.QWidget, RegistryProperties, LogMixin):
         Send an item live by building a service item then adding that service item to the live slide controller.
         """
         if not self.list_view.selectedIndexes():
-            QtWidgets.QMessageBox.information(self, UiStrings().NISp,
-                                              translate('OpenLP.MediaManagerItem',
-                                                        'You must select one or more items to send live.'))
+            self.show_library_hint(translate('OpenLP.MediaManagerItem',
+                                             'Select one or more items to send live.'))
         else:
             self.go_live()
 
@@ -672,9 +704,8 @@ class MediaManagerItem(QtWidgets.QWidget, RegistryProperties, LogMixin):
         Add a selected item to the current service
         """
         if not self.list_view.selectedIndexes():
-            QtWidgets.QMessageBox.information(self, UiStrings().NISp,
-                                              translate('OpenLP.MediaManagerItem',
-                                                        'You must select one or more items to add.'))
+            self.show_library_hint(translate('OpenLP.MediaManagerItem',
+                                             'Select one or more items to add.'))
         else:
             if self.single_service_item:
                 self.log_debug('{plugin} Add requested'.format(plugin=self.plugin.name))
@@ -714,26 +745,22 @@ class MediaManagerItem(QtWidgets.QWidget, RegistryProperties, LogMixin):
         Add a selected item to an existing item in the current service.
         """
         if not self.list_view.selectedIndexes() and not self.remote_triggered:
-            QtWidgets.QMessageBox.information(self, UiStrings().NISp,
-                                              translate('OpenLP.MediaManagerItem',
-                                                        'You must select one or more items.'))
+            self.show_library_hint(translate('OpenLP.MediaManagerItem',
+                                             'Select one or more items.'))
         else:
             self.log_debug('{plugin} Add requested'.format(plugin=self.plugin.name))
             item = self.service_manager.find_service_item()[0]
             service_item = self.service_manager.get_service_item()
             if not service_item:
-                QtWidgets.QMessageBox.information(self, UiStrings().NISs,
-                                                  translate('OpenLP.MediaManagerItem',
-                                                            'You must select an existing service item to add to.'))
+                self.show_library_hint(translate('OpenLP.MediaManagerItem',
+                                                 'Select an existing service item to add to.'))
             elif self.plugin.name == service_item.name:
                 self.generate_slide_data(service_item)
                 self.service_manager.add_service_item(service_item, replace=item)
             else:
-                # Turn off the remote edit update message indicator
-                QtWidgets.QMessageBox.information(self, translate('OpenLP.MediaManagerItem', 'Invalid Service Item'),
-                                                  translate('OpenLP.MediaManagerItem',
-                                                            'You must select a {title} '
-                                                            'service item.').format(title=self.title))
+                self.show_library_hint(
+                    translate('OpenLP.MediaManagerItem',
+                              'Select a {title} service item.').format(title=self.title))
 
     def build_service_item(self, item=None, remote=False, context=ServiceItemContext.Live):
         """

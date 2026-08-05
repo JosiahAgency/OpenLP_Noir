@@ -57,14 +57,10 @@ class EGWLibraryMediaItem(MediaManagerItem):
         log.debug('EGWLibraryMediaItem __init__')
         self.icon_path = 'egwlibrary/egwlibrary'
         self.manager = plugin.manager
-        # Debounce timer for search-as-you-type
-        self.search_timer = QtCore.QTimer()
-        self.search_timer.setInterval(200)
-        self.search_timer.setSingleShot(True)
         self.is_search_as_you_type_enabled = False
         self.search_is_interactive = True
         super().__init__(parent, plugin)
-        self.search_timer.timeout.connect(self.on_search_timer_timeout)
+        self.search_timer = self.create_debounce_timer(self.on_search_timer_timeout)
         log.debug('EGWLibraryMediaItem __init__ complete')
 
     def setup_item(self):
@@ -131,14 +127,14 @@ class EGWLibraryMediaItem(MediaManagerItem):
         log.debug('initialise')
         self.search_text_edit.set_search_types([
             (EGWSearch.Smart, UiIcons().search_comb,
-                translate('EGWLibraryPlugin.MediaItem', 'Text or Reference'),
-                translate('EGWLibraryPlugin.MediaItem', 'Text or Reference...')),
+             translate('EGWLibraryPlugin.MediaItem', 'Text or Reference'),
+             translate('EGWLibraryPlugin.MediaItem', 'Text or Reference...')),
             (EGWSearch.Reference, UiIcons().search_ref,
-                translate('EGWLibraryPlugin.MediaItem', 'Reference'),
-                translate('EGWLibraryPlugin.MediaItem', 'Search Reference (e.g. DA 83.2)...')),
+             translate('EGWLibraryPlugin.MediaItem', 'Reference'),
+             translate('EGWLibraryPlugin.MediaItem', 'Search Reference (e.g. DA 83.2)...')),
             (EGWSearch.Text, UiIcons().text,
-                translate('EGWLibraryPlugin.MediaItem', 'Text Search'),
-                translate('EGWLibraryPlugin.MediaItem', 'Search Text...'))
+             translate('EGWLibraryPlugin.MediaItem', 'Text Search'),
+             translate('EGWLibraryPlugin.MediaItem', 'Search Text...'))
         ])
         self.populate_book_combo_box()
         self.all_books_check_box.setChecked(self.settings.value('egwlibrary/search all books'))
@@ -300,8 +296,9 @@ class EGWLibraryMediaItem(MediaManagerItem):
             return
         if len(text) > 2:
             self.search_is_interactive = False
-            self.search_timer.start()
+            self.start_debounced_search(self.search_timer)
         elif not text:
+            self.search_timer.stop()
             self.list_view.clear()
 
     def on_search_timer_timeout(self):
@@ -340,36 +337,40 @@ class EGWLibraryMediaItem(MediaManagerItem):
                     translate('EGWLibraryPlugin.MediaItem',
                               'There are no books in the EGW library yet. Use the import button to add books.'))
             return
+        self.list_view.set_loading_state(True)
         self.application.set_busy_cursor()
-        search_type = self.search_text_edit.current_search_type()
-        results = []
-        select_results = False
-        reference = parse_reference(search_text)
-        book = self.manager.get_book_by_alias(reference['book']) if reference else None
-        if search_type in [EGWSearch.Smart, EGWSearch.Reference] and book:
-            results = self.reference_search(book, reference)
-            # Pre-select reference results, like Bible verses, so they can be sent
-            # live right away. Chapter rows are for browsing, so leave them unselected.
-            select_results = bool(results) and results[0]['type'] == 'paragraph'
-        elif search_type == EGWSearch.Reference:
-            log.debug('do_search: no book matched reference in "{text}"'.format(text=search_text))
-            if self.search_is_interactive:
-                critical_error_message_box(
-                    translate('EGWLibraryPlugin.MediaItem', 'Book not found'),
-                    translate('EGWLibraryPlugin.MediaItem',
-                              'No book matching "{book}" was found in the library. References look like '
-                              '"DA 83.2" (book, page and paragraph) or "DA ch 5" (book and chapter).'
-                              ).format(book=reference['book'] if reference else search_text))
-        else:
-            results = self.do_text_search(search_text)
-        self.list_view.clear()
-        for data in results:
-            list_item = QtWidgets.QListWidgetItem(data['item_title'])
-            list_item.setData(QtCore.Qt.ItemDataRole.UserRole, data)
-            self.list_view.addItem(list_item)
-        if select_results:
-            self.list_view.selectAll()
-        self.application.set_normal_cursor()
+        try:
+            search_type = self.search_text_edit.current_search_type()
+            results = []
+            select_results = False
+            reference = parse_reference(search_text)
+            book = self.manager.get_book_by_alias(reference['book']) if reference else None
+            if search_type in [EGWSearch.Smart, EGWSearch.Reference] and book:
+                results = self.reference_search(book, reference)
+                # Pre-select reference results, like Bible verses, so they can be sent
+                # live right away. Chapter rows are for browsing, so leave them unselected.
+                select_results = bool(results) and results[0]['type'] == 'paragraph'
+            elif search_type == EGWSearch.Reference:
+                log.debug('do_search: no book matched reference in "{text}"'.format(text=search_text))
+                if self.search_is_interactive:
+                    critical_error_message_box(
+                        translate('EGWLibraryPlugin.MediaItem', 'Book not found'),
+                        translate('EGWLibraryPlugin.MediaItem',
+                                  'No book matching "{book}" was found in the library. References look like '
+                                  '"DA 83.2" (book, page and paragraph) or "DA ch 5" (book and chapter).'
+                                  ).format(book=reference['book'] if reference else search_text))
+            else:
+                results = self.do_text_search(search_text)
+            self.list_view.clear()
+            for data in results:
+                list_item = QtWidgets.QListWidgetItem(data['item_title'])
+                list_item.setData(QtCore.Qt.ItemDataRole.UserRole, data)
+                self.list_view.addItem(list_item)
+            if select_results:
+                self.list_view.selectAll()
+        finally:
+            self.application.set_normal_cursor()
+            self.list_view.set_loading_state(False)
         log.debug('do_search complete: {count} result(s)'.format(count=len(results)))
 
     def reference_search(self, book, reference):

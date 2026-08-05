@@ -21,8 +21,8 @@
 """
 The About dialog.
 """
-import webbrowser
 import datetime
+import webbrowser
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
@@ -127,7 +127,7 @@ class AboutForm(QtWidgets.QDialog):
                       '<p><b>NCSDA Version</b> - This is a customised edition of OpenLP and is <b>not</b> the '
                       'standard OpenLP release. It adds features such as the EGW Library plugin with direct PDF '
                       'import and a redesigned interface. These customisations are developed and maintained by '
-                      '<b>George Josiah</b>. Please report issues with this edition to its developer rather than '
+                      '<b>Josiah</b>. Please report issues with this edition to its developer rather than '
                       'the OpenLP project.</p>'
                       '<p>Find out more about OpenLP: <a href="https://openlp.org/">https://openlp.org/</a></p>'
                       '<p>This program is free software: you can redistribute it and/or modify it under the terms of '
@@ -143,7 +143,7 @@ class AboutForm(QtWidgets.QDialog):
         ncsda_credit = translate('OpenLP.AboutForm',
                                  '<h3>NCSDA Version</h3>'
                                  '<p>The NCSDA Version of OpenLP is developed and maintained by '
-                                 '<b>George Josiah</b>, building on the work of the OpenLP project. '
+                                 '<b>Josiah</b>, building on the work of the OpenLP project. '
                                  'The customisations in this edition, including the EGW Library plugin '
                                  'and the redesigned interface, are his work and are not part of '
                                  'standard OpenLP.</p>'
@@ -153,7 +153,7 @@ class AboutForm(QtWidgets.QDialog):
                                'time. If you would like to see this project succeed, please consider contributing to '
                                'it by clicking the "contribute" button below.')
         built_with = translate('OpenLP.AboutForm', 'OpenLP would not be possible without the following software '
-                               'libraries:')
+                                                   'libraries:')
         build_tech = ('<ul>'
                       '<li><a href="https://www.python.org/">Python</a> (PSFL)</li>'
                       '<li><a href="https://www.qt.io">Qt6</a> (GPL3/LGPL3)</li>'
@@ -180,12 +180,12 @@ class AboutForm(QtWidgets.QDialog):
                       '<li><a href="https://github.com/lincolnloop/python-qrcode/">qrcode</a> (MIT)</li>'
                       '</ul>')
         final_credit = translate('OpenLP.AboutForm', '<h3>Final credit:</h3>'
-                                 '<blockquote><p>For God so loved the world that He gave His one and only Son, so that '
-                                 'whoever believes in Him will not perish but inherit eternal life.</p><p>John 3:16</p>'
-                                 '</blockquote>'
-                                 '<p>And last but not least, final credit goes to God our Father, for sending His Son '
-                                 'to die on the cross, setting us free from sin. We bring this software to you for '
-                                 'free because He has set us free.</p>')
+                                                     '<blockquote><p>For God so loved the world that He gave His one and only Son, so that '
+                                                     'whoever believes in Him will not perish but inherit eternal life.</p><p>John 3:16</p>'
+                                                     '</blockquote>'
+                                                     '<p>And last but not least, final credit goes to God our Father, for sending His Son '
+                                                     'to die on the cross, setting us free from sin. We bring this software to you for '
+                                                     'free because He has set us free.</p>')
         self.credits_text_edit.setHtml(
             '{ncsda_credit}<p>{developers}</p><p>{built_with}</p>{build_tech}<p>{final_credit}</p>'.format(
                 ncsda_credit=ncsda_credit, developers=developers, built_with=built_with, build_tech=build_tech,

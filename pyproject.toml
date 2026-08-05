@@ -10,7 +10,7 @@ readme = "README.rst"
 license = "GPL-3.0-or-later"
 requires-python = ">=3.10"
 authors = [
-    { name = "OpenLP Developers", email = "info@openlp.org" },
+    { name = "Josiah", email = "mwandajosiah@gmail.com" },
 ]
 keywords = [
     "bible",

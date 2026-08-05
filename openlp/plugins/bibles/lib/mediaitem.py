@@ -44,7 +44,6 @@ from openlp.plugins.bibles.lib.versereferencelist import VerseReferenceList
 
 log = logging.getLogger(__name__)
 
-
 VALID_TEXT_SEARCH = re.compile(r'\w\w\w')
 
 
@@ -107,12 +106,8 @@ class BibleMediaItem(MediaManagerItem):
         self.saved_results = []
         self.current_results = []
         self.search_status = SearchStatus.SearchButton
-        # TODO: Make more central and clean up after!
-        self.search_timer = QtCore.QTimer()
-        self.search_timer.setInterval(200)
-        self.search_timer.setSingleShot(True)
-        self.search_timer.timeout.connect(self.on_search_timer_timeout)
         super().__init__(*args, **kwargs)
+        self.search_timer = self.create_debounce_timer(self.on_search_timer_timeout)
         Registry().register_function('populate_bible_combo_boxes', self.populate_bible_combo_boxes)
         log.debug('BibleMediaItem __init__ complete')
 
@@ -320,14 +315,14 @@ class BibleMediaItem(MediaManagerItem):
         self.populate_bible_combo_boxes()
         self.search_edit.set_search_types([
             (BibleSearch.Combined, UiIcons().search_comb,
-                translate('BiblesPlugin.MediaItem', 'Text or Reference'),
-                translate('BiblesPlugin.MediaItem', 'Text or Reference...')),
+             translate('BiblesPlugin.MediaItem', 'Text or Reference'),
+             translate('BiblesPlugin.MediaItem', 'Text or Reference...')),
             (BibleSearch.Reference, UiIcons().search_ref,
-                translate('BiblesPlugin.MediaItem', 'Scripture Reference'),
-                translate('BiblesPlugin.MediaItem', 'Search Scripture Reference...')),
+             translate('BiblesPlugin.MediaItem', 'Scripture Reference'),
+             translate('BiblesPlugin.MediaItem', 'Search Scripture Reference...')),
             (BibleSearch.Text, UiIcons().text,
-                translate('BiblesPlugin.MediaItem', 'Text Search'),
-                translate('BiblesPlugin.MediaItem', 'Search Text...'))
+             translate('BiblesPlugin.MediaItem', 'Text Search'),
+             translate('BiblesPlugin.MediaItem', 'Search Text...'))
         ])
         if self.settings.value('bibles/reset to combined quick search'):
             self.search_edit.set_current_search_type(BibleSearch.Combined)
@@ -470,10 +465,10 @@ class BibleMediaItem(MediaManagerItem):
         log.debug('on_delete_click')
         if self.bible:
             if QtWidgets.QMessageBox.question(
-                self, UiStrings().ConfirmDelete,
-                translate('BiblesPlugin.MediaItem',
-                          'Are you sure you want to completely delete "{bible}" Bible from OpenLP?\n\n'
-                          'You will need to re-import this Bible to use it again.').format(bible=self.bible.name),
+                    self, UiStrings().ConfirmDelete,
+                    translate('BiblesPlugin.MediaItem',
+                              'Are you sure you want to completely delete "{bible}" Bible from OpenLP?\n\n'
+                              'You will need to re-import this Bible to use it again.').format(bible=self.bible.name),
                     defaultButton=QtWidgets.QMessageBox.StandardButton.No) == QtWidgets.QMessageBox.StandardButton.No:
                 log.debug('on_delete_click: user cancelled deleting {bible}'.format(bible=self.bible.name))
                 return
@@ -602,9 +597,9 @@ class BibleMediaItem(MediaManagerItem):
             # dual bible mode
             if (new_selection is None) ^ (self.second_bible is None):
                 if critical_error_message_box(
-                    message=translate('BiblesPlugin.MediaItem',
-                                      'OpenLP cannot combine single and dual Bible verse search results. '
-                                      'Do you want to clear your saved results?'),
+                        message=translate('BiblesPlugin.MediaItem',
+                                          'OpenLP cannot combine single and dual Bible verse search results. '
+                                          'Do you want to clear your saved results?'),
                         parent=self, question=True) == QtWidgets.QMessageBox.StandardButton.Yes:
                     self.saved_results = []
                     self.on_results_view_tab_total_update(ResultsTab.Saved)
@@ -724,16 +719,20 @@ class BibleMediaItem(MediaManagerItem):
             log.debug('on_search_button_clicked: no bible selected')
             self.main_window.information_message(UiStrings().BibleNoBiblesTitle, UiStrings().BibleNoBibles)
             return
+        self.list_view.set_loading_state(True)
         self.search_button.setEnabled(False)
         self.application.set_busy_cursor()
         self.application.process_events()
-        if self.search_tab.isVisible():
-            self.text_search()
-        elif self.select_tab.isVisible():
-            self.select_search()
-        self.search_button.setEnabled(True)
-        self.results_view_tab.setCurrentIndex(ResultsTab.Search)
-        self.application.set_normal_cursor()
+        try:
+            if self.search_tab.isVisible():
+                self.text_search()
+            elif self.select_tab.isVisible():
+                self.select_search()
+            self.results_view_tab.setCurrentIndex(ResultsTab.Search)
+        finally:
+            self.search_button.setEnabled(True)
+            self.application.set_normal_cursor()
+            self.list_view.set_loading_state(False)
 
     def select_search(self):
         """
@@ -847,8 +846,7 @@ class BibleMediaItem(MediaManagerItem):
                 not self.bible or self.bible.is_web_bible or \
                 (self.second_bible and self.bible.is_web_bible):
             return
-        if not self.search_timer.isActive():
-            self.search_timer.start()
+        self.start_debounced_search(self.search_timer)
 
     def on_search_timer_timeout(self):
         """
@@ -857,9 +855,13 @@ class BibleMediaItem(MediaManagerItem):
 
         :return: None
         """
-        self.search_status = SearchStatus.SearchAsYouType
-        self.text_search()
-        self.results_view_tab.setCurrentIndex(ResultsTab.Search)
+        self.list_view.set_loading_state(True)
+        try:
+            self.search_status = SearchStatus.SearchAsYouType
+            self.text_search()
+            self.results_view_tab.setCurrentIndex(ResultsTab.Search)
+        finally:
+            self.list_view.set_loading_state(False)
 
     def display_results(self):
         """
@@ -973,8 +975,9 @@ class BibleMediaItem(MediaManagerItem):
             if data['second_bible']:
                 second_text = self.format_verse(old_chapter, data['chapter'], data['verse'])
                 bible_text = '{first_version}{data[text]}{reference}\n\n{second_version}{data[second_text]}' \
-                    '{reference}'.format(first_version=verse_text, second_version=second_text, reference=reference,
-                                         data=data)
+                             '{reference}'.format(first_version=verse_text, second_version=second_text,
+                                                  reference=reference,
+                                                  data=data)
                 raw_slides.append(bible_text.rstrip())
                 bible_text = ''
             # If we are 'Verse Per Slide' then create a new slide.

@@ -37,7 +37,6 @@ from openlp.plugins.custom.forms.editcustomform import EditCustomForm
 from openlp.plugins.custom.lib.customxmlhandler import CustomXML
 from openlp.plugins.custom.lib.db import CustomSlide
 
-
 log = logging.getLogger(__name__)
 
 
@@ -63,6 +62,7 @@ class CustomMediaItem(MediaManagerItem):
         self.single_service_item = False
         self.quick_preview_allowed = True
         self.has_search = True
+        self.search_timer = self.create_debounce_timer(self.on_search_timer_timeout)
         # Holds information about whether the edit is remotely triggered and
         # which Custom is required.
         self.remote_custom = -1
@@ -266,21 +266,25 @@ class CustomMediaItem(MediaManagerItem):
         """
         Search the plugin database
         """
+        self.list_view.set_loading_state(True)
         # Reload the list considering the new search type.
-        search_type = self.search_text_edit.current_search_type()
-        search_keywords = '%{search}%'.format(search=self.whitespace.sub(' ', self.search_text_edit.displayText()))
-        if search_type == CustomSearch.Titles:
-            log.debug('Titles Search')
-            search_results = self.plugin.db_manager.get_all_objects(CustomSlide,
-                                                                    CustomSlide.title.like(search_keywords),
-                                                                    order_by_ref=CustomSlide.title)
-            self.load_list(search_results)
-        elif search_type == CustomSearch.Themes:
-            log.debug('Theme Search')
-            search_results = self.plugin.db_manager.get_all_objects(CustomSlide,
-                                                                    CustomSlide.theme_name.like(search_keywords),
-                                                                    order_by_ref=CustomSlide.title)
-            self.load_list(search_results)
+        try:
+            search_type = self.search_text_edit.current_search_type()
+            search_keywords = '%{search}%'.format(search=self.whitespace.sub(' ', self.search_text_edit.displayText()))
+            if search_type == CustomSearch.Titles:
+                log.debug('Titles Search')
+                search_results = self.plugin.db_manager.get_all_objects(CustomSlide,
+                                                                        CustomSlide.title.like(search_keywords),
+                                                                        order_by_ref=CustomSlide.title)
+                self.load_list(search_results)
+            elif search_type == CustomSearch.Themes:
+                log.debug('Theme Search')
+                search_results = self.plugin.db_manager.get_all_objects(CustomSlide,
+                                                                        CustomSlide.theme_name.like(search_keywords),
+                                                                        order_by_ref=CustomSlide.title)
+                self.load_list(search_results)
+        finally:
+            self.list_view.set_loading_state(False)
 
     def on_search_text_edit_changed(self, text):
         """
@@ -292,9 +296,16 @@ class CustomMediaItem(MediaManagerItem):
         if self.is_search_as_you_type_enabled:
             search_length = 2
             if len(text) > search_length:
-                self.on_search_text_button_clicked()
+                self.start_debounced_search(self.search_timer)
             elif not text:
+                self.search_timer.stop()
                 self.on_clear_text_button_click()
+
+    def on_search_timer_timeout(self):
+        """
+        Perform a debounced custom-item search.
+        """
+        self.on_search_text_button_clicked()
 
     def service_load(self, item):
         """
@@ -307,13 +318,15 @@ class CustomMediaItem(MediaManagerItem):
             return
         if item.theme:
             custom = self.plugin.db_manager.get_object_filtered(CustomSlide, and_(CustomSlide.title == item.title,
-                                                                CustomSlide.theme_name == item.theme,
-                                                                CustomSlide.credits ==
-                                                                item.raw_footer[0][len(item.title) + 1:]))
+                                                                                  CustomSlide.theme_name == item.theme,
+                                                                                  CustomSlide.credits ==
+                                                                                  item.raw_footer[0][
+                                                                                      len(item.title) + 1:]))
         else:
             custom = self.plugin.db_manager.get_object_filtered(CustomSlide, and_(CustomSlide.title == item.title,
-                                                                CustomSlide.credits ==
-                                                                item.raw_footer[0][len(item.title) + 1:]))
+                                                                                  CustomSlide.credits ==
+                                                                                  item.raw_footer[0][
+                                                                                      len(item.title) + 1:]))
         if custom:
             item.edit_id = custom.id
             return item
