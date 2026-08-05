@@ -24,7 +24,7 @@ The splash screen
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from openlp.core.ui.style import NOIR_INK_0, UiThemes, is_ui_theme
+from openlp.core.ui.style import UiThemes, is_ui_theme
 
 
 class SplashScreen(QtWidgets.QSplashScreen):
@@ -40,13 +40,13 @@ class SplashScreen(QtWidgets.QSplashScreen):
 
     def _apply_noir_background(self, splash_image):
         """
-        Bake the Noir ink background into the pixmap. The splash is shown
+        Keep a transparent splash canvas in Noir mode. The splash is shown
         before set_default_theme() runs, so the app-wide Noir palette isn't
         applied yet and can't be relied on here.
         """
         canvas = QtGui.QPixmap(370, 370)
         canvas.setDevicePixelRatio(self.devicePixelRatioF())
-        canvas.fill(QtGui.QColor(NOIR_INK_0))
+        canvas.fill(QtGui.QColor())
         painter = QtGui.QPainter(canvas)
         painter.setRenderHint(QtGui.QPainter.RenderHint.SmoothPixmapTransform)
         painter.drawPixmap(QtCore.QRect(0, 0, 370, 370), splash_image)
@@ -59,6 +59,7 @@ class SplashScreen(QtWidgets.QSplashScreen):
         """
         self.setObjectName('splashScreen')
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.PreventContextMenu)
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_TranslucentBackground, True)
         source_image = QtGui.QPixmap(':/graphics/openlp-splash-screen.png')
         source_image.setDevicePixelRatio(self.devicePixelRatioF())
         splash_image = source_image.scaled(370, 370, mode=QtCore.Qt.TransformationMode.SmoothTransformation)

@@ -624,7 +624,7 @@ class ThemePreviewRenderer(DisplayWindow, LogMixin):
             wait_for(lambda: False, timeout=1)
             self.force_page = False
             if generate_screenshot:
-                return self.grab()
+                return self.save_screenshot()
         self.force_page = False
         return None
 

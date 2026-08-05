@@ -553,6 +553,7 @@ class Settings(QtCore.QSettings):
         "themes/theme level": ThemeLevel.Global,
         "themes/item transitions": False,
         "themes/hot reload": False,
+        "themes/theme thumbnails rebuilt": False,
         "user interface/is preset layout": False,
         "user interface/live panel": True,
         "user interface/live splitter geometry": QtCore.QByteArray(),

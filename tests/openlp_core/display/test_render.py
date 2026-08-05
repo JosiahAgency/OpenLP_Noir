@@ -297,3 +297,51 @@ def test_format_slide_word_split_capability(settings):
     # THEN: The paragraph should be split over multiple slides without losing any words
     assert len(formatted_slides) > 1, 'The long paragraph should be split into multiple slides'
     assert ' '.join(formatted_slides).split() == paragraph.split(), 'No words should be lost or duplicated'
+
+
+@patch('openlp.core.display.render.wait_for')
+def test_generate_preview_uses_safe_screenshot(mocked_wait_for, settings):
+    """
+    Test that generate_preview() uses the renderer screenshot path.
+    """
+    # GIVEN: A preview renderer with mocked dependencies
+    with patch('openlp.core.display.render.ThemePreviewRenderer.__init__') as init_fn:
+        init_fn.return_value = None
+        preview_renderer = ThemePreviewRenderer()
+    preview_renderer.set_theme = MagicMock()
+    preview_renderer.format_slide = MagicMock(return_value=['slide one'])
+    preview_renderer.generate_footer = MagicMock(return_value='footer')
+    preview_renderer.load_verses = MagicMock()
+    preview_renderer.save_screenshot = MagicMock(return_value='screenshot')
+    preview_renderer.force_page = False
+
+    # WHEN: generate_preview() is called with screenshots enabled
+    result = preview_renderer.generate_preview(MagicMock(), force_page=False, generate_screenshot=True)
+
+    # THEN: The screenshot should come from save_screenshot(), not a raw widget grab
+    assert result == 'screenshot'
+    preview_renderer.save_screenshot.assert_called_once_with()
+
+
+@patch('openlp.core.display.render.wait_for')
+def test_generate_preview_without_screenshot_returns_none(mocked_wait_for, settings):
+    """
+    Test that generate_preview() returns None when screenshots are disabled.
+    """
+    # GIVEN: A preview renderer with mocked dependencies
+    with patch('openlp.core.display.render.ThemePreviewRenderer.__init__') as init_fn:
+        init_fn.return_value = None
+        preview_renderer = ThemePreviewRenderer()
+    preview_renderer.set_theme = MagicMock()
+    preview_renderer.format_slide = MagicMock(return_value=['slide one'])
+    preview_renderer.generate_footer = MagicMock(return_value='footer')
+    preview_renderer.load_verses = MagicMock()
+    preview_renderer.save_screenshot = MagicMock()
+    preview_renderer.force_page = False
+
+    # WHEN: generate_preview() is called with screenshots disabled
+    result = preview_renderer.generate_preview(MagicMock(), force_page=False, generate_screenshot=False)
+
+    # THEN: no screenshot is taken and None is returned
+    assert result is None
+    preview_renderer.save_screenshot.assert_not_called()

@@ -33,7 +33,7 @@ from PySide6 import QtWidgets
 from openlp.core.common.registry import Registry
 from openlp.core.common.settings import Settings
 from openlp.core.lib.theme import Theme
-from openlp.core.ui.thememanager import ThemeManager
+from openlp.core.ui.thememanager import ThemeManager, THUMBNAIL_REBUILD_MARKER_SETTING
 from tests.utils.constants import RESOURCE_PATH
 
 
@@ -417,6 +417,40 @@ def test_update_preview_images(theme_manager: ThemeManager):
     assert theme_manager.save_preview.call_args_list == [call('Default', 'preview'), call('Test', 'preview')]
     theme_manager.progress_form.close.assert_called_once_with()
     theme_manager.load_themes.assert_called_once_with()
+
+
+def test_rebuild_theme_thumbnails_once(theme_manager: ThemeManager):
+    """
+    Test that thumbnails are rebuilt once when marker setting is not set.
+    """
+    # GIVEN: A ThemeManager with existing theme names and marker not set
+    Settings().setValue(THUMBNAIL_REBUILD_MARKER_SETTING, False)
+    theme_manager.get_theme_names = MagicMock(return_value=['Default', 'Test'])
+    theme_manager.update_preview_images = MagicMock()
+
+    # WHEN: rebuild is requested
+    theme_manager.rebuild_theme_thumbnails_once()
+
+    # THEN: previews should be rebuilt and marker should be persisted
+    theme_manager.update_preview_images.assert_called_once_with(['Default', 'Test'])
+    assert Settings().value(THUMBNAIL_REBUILD_MARKER_SETTING) is True
+
+
+def test_rebuild_theme_thumbnails_once_skips_when_done(theme_manager: ThemeManager):
+    """
+    Test that thumbnails are not rebuilt again when marker setting is already set.
+    """
+    # GIVEN: A ThemeManager with marker already set
+    Settings().setValue(THUMBNAIL_REBUILD_MARKER_SETTING, True)
+    theme_manager.update_preview_images = MagicMock()
+    theme_manager.get_theme_names = MagicMock(return_value=['Default'])
+
+    # WHEN: rebuild is requested
+    theme_manager.rebuild_theme_thumbnails_once()
+
+    # THEN: no rebuild should happen
+    theme_manager.update_preview_images.assert_not_called()
+    assert Settings().value(THUMBNAIL_REBUILD_MARKER_SETTING) is True
 
 
 def test_theme_manager_initialise(theme_manager):

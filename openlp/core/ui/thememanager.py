@@ -50,6 +50,9 @@ from openlp.core.widgets.dialogs import FileDialog
 from openlp.core.widgets.toolbar import OpenLPToolbar
 
 
+THUMBNAIL_REBUILD_MARKER_SETTING = 'themes/theme thumbnails rebuilt'
+
+
 class Ui_ThemeManager(object):
     """
     UI part of the Theme Manager
@@ -193,6 +196,19 @@ class ThemeManager(QtWidgets.QWidget, RegistryBase, Ui_ThemeManager, LogMixin, R
         self.file_rename_form = FileRenameForm()
         self.upgrade_themes()  # TODO: Can be removed when upgrade path from OpenLP 2.4 no longer needed
         self.load_themes()
+        self.rebuild_theme_thumbnails_once()
+
+    def rebuild_theme_thumbnails_once(self):
+        """
+        Rebuild cached theme thumbnails once after startup so existing broken previews are repaired.
+        """
+        if self.settings.value(THUMBNAIL_REBUILD_MARKER_SETTING):
+            return
+        theme_names = self.get_theme_names()
+        if theme_names:
+            self.log_info('Rebuilding theme thumbnails once')
+            self.update_preview_images(theme_names)
+        self.settings.setValue(THUMBNAIL_REBUILD_MARKER_SETTING, True)
 
     def load_settings(self):
         view_mode_value = None
