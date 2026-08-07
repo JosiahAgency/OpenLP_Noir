@@ -32,6 +32,7 @@ class EditTimerForm(QtWidgets.QDialog):
     """
     Timer preset editor.
     """
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(translate('TimerPlugin.EditTimerForm', 'Edit Timer'))
@@ -106,4 +107,3 @@ class EditTimerForm(QtWidgets.QDialog):
             'duration_seconds': (self.minutes_spin_box.value() * 60) + self.seconds_spin_box.value(),
             'theme_name': self.theme_combo_box.currentText().strip()
         }
-

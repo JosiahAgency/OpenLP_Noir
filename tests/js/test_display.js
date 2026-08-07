@@ -1,14 +1,14 @@
 function _createDiv(attrs, inElement) {
-    var div = document.createElement("div");
-    for (key in attrs) {
-        div.setAttribute(key, attrs[key]);
-    }
-    if (inElement) {
-      inElement.appendChild(div);
-    } else {
-      document.body.appendChild(div);
-    }
-    return div;
+  var div = document.createElement("div");
+  for (key in attrs) {
+    div.setAttribute(key, attrs[key]);
+  }
+  if (inElement) {
+    inElement.appendChild(div);
+  } else {
+    document.body.appendChild(div);
+  }
+  return div;
 }
 
 describe("The enumeration object", function () {
@@ -32,11 +32,11 @@ describe("The enumeration object", function () {
     expect(AudioState).toBeDefined();
   });
 
-  it("TransitionState should exist", function(){
+  it("TransitionState should exist", function () {
     expect(TransitionState).toBeDefined();
   });
 
-  it("AnimationState should exist", function(){
+  it("AnimationState should exist", function () {
     expect(AnimationState).toBeDefined();
   });
 });
@@ -60,62 +60,62 @@ describe("The function", function () {
   it("_buildTextOutline should return an array of text-shadow values", function () {
     let shadows = _buildTextOutline(2, "#fff");
     expect(shadows).toEqual([
-      "#fff -2pt -2pt 0pt",
-      "#fff -2pt -1pt 0pt",
-      "#fff -2pt 0pt 0pt",
-      "#fff -2pt 1pt 0pt",
-      "#fff -2pt 2pt 0pt",
-      "#fff -1pt -2pt 0pt",
-      "#fff -1pt -1pt 0pt",
-      "#fff -1pt 0pt 0pt",
-      "#fff -1pt 1pt 0pt",
-      "#fff -1pt 2pt 0pt",
-      "#fff 0pt -2pt 0pt",
-      "#fff 0pt -1pt 0pt",
-      "#fff 0pt 0pt 0pt",
-      "#fff 0pt 1pt 0pt",
-      "#fff 0pt 2pt 0pt",
-      "#fff 1pt -2pt 0pt",
-      "#fff 1pt -1pt 0pt",
-      "#fff 1pt 0pt 0pt",
-      "#fff 1pt 1pt 0pt",
-      "#fff 1pt 2pt 0pt",
-      "#fff 2pt -2pt 0pt",
-      "#fff 2pt -1pt 0pt",
-      "#fff 2pt 0pt 0pt",
-      "#fff 2pt 1pt 0pt",
-      "#fff 2pt 2pt 0pt"
+      "#fff -2.6666666666666665px -2.6666666666666665px 0px",
+      "#fff -2.6666666666666665px -1.3333333333333333px 0px",
+      "#fff -2.6666666666666665px 0px 0px",
+      "#fff -2.6666666666666665px 1.3333333333333333px 0px",
+      "#fff -2.6666666666666665px 2.6666666666666665px 0px",
+      "#fff -1.3333333333333333px -2.6666666666666665px 0px",
+      "#fff -1.3333333333333333px -1.3333333333333333px 0px",
+      "#fff -1.3333333333333333px 0px 0px",
+      "#fff -1.3333333333333333px 1.3333333333333333px 0px",
+      "#fff -1.3333333333333333px 2.6666666666666665px 0px",
+      "#fff 0px -2.6666666666666665px 0px",
+      "#fff 0px -1.3333333333333333px 0px",
+      "#fff 0px 0px 0px",
+      "#fff 0px 1.3333333333333333px 0px",
+      "#fff 0px 2.6666666666666665px 0px",
+      "#fff 1.3333333333333333px -2.6666666666666665px 0px",
+      "#fff 1.3333333333333333px -1.3333333333333333px 0px",
+      "#fff 1.3333333333333333px 0px 0px",
+      "#fff 1.3333333333333333px 1.3333333333333333px 0px",
+      "#fff 1.3333333333333333px 2.6666666666666665px 0px",
+      "#fff 2.6666666666666665px -2.6666666666666665px 0px",
+      "#fff 2.6666666666666665px -1.3333333333333333px 0px",
+      "#fff 2.6666666666666665px 0px 0px",
+      "#fff 2.6666666666666665px 1.3333333333333333px 0px",
+      "#fff 2.6666666666666665px 2.6666666666666665px 0px"
     ]);
   });
 
   it("_buildTextShadow should return an array of text-shadow values", function () {
     let shadow = _buildTextShadow(2, 2, "#acf");
     expect(shadow).toEqual([
-      "#acf 0pt 0pt 0pt",
-      "#acf 0pt 1pt 0pt",
-      "#acf 0pt 2pt 0pt",
-      "#acf 0pt 3pt 0pt",
-      "#acf 0pt 4pt 0pt",
-      "#acf 1pt 0pt 0pt",
-      "#acf 1pt 1pt 0pt",
-      "#acf 1pt 2pt 0pt",
-      "#acf 1pt 3pt 0pt",
-      "#acf 1pt 4pt 0pt",
-      "#acf 2pt 0pt 0pt",
-      "#acf 2pt 1pt 0pt",
-      "#acf 2pt 2pt 0pt",
-      "#acf 2pt 3pt 0pt",
-      "#acf 2pt 4pt 0pt",
-      "#acf 3pt 0pt 0pt",
-      "#acf 3pt 1pt 0pt",
-      "#acf 3pt 2pt 0pt",
-      "#acf 3pt 3pt 0pt",
-      "#acf 3pt 4pt 0pt",
-      "#acf 4pt 0pt 0pt",
-      "#acf 4pt 1pt 0pt",
-      "#acf 4pt 2pt 0pt",
-      "#acf 4pt 3pt 0pt",
-      "#acf 4pt 4pt 0pt"
+      "#acf 0px 0px 0px",
+      "#acf 0px 1.3333333333333333px 0px",
+      "#acf 0px 2.6666666666666665px 0px",
+      "#acf 0px 4px 0px",
+      "#acf 0px 5.333333333333333px 0px",
+      "#acf 1.3333333333333333px 0px 0px",
+      "#acf 1.3333333333333333px 1.3333333333333333px 0px",
+      "#acf 1.3333333333333333px 2.6666666666666665px 0px",
+      "#acf 1.3333333333333333px 4px 0px",
+      "#acf 1.3333333333333333px 5.333333333333333px 0px",
+      "#acf 2.6666666666666665px 0px 0px",
+      "#acf 2.6666666666666665px 1.3333333333333333px 0px",
+      "#acf 2.6666666666666665px 2.6666666666666665px 0px",
+      "#acf 2.6666666666666665px 4px 0px",
+      "#acf 2.6666666666666665px 5.333333333333333px 0px",
+      "#acf 4px 0px 0px",
+      "#acf 4px 1.3333333333333333px 0px",
+      "#acf 4px 2.6666666666666665px 0px",
+      "#acf 4px 4px 0px",
+      "#acf 4px 5.333333333333333px 0px",
+      "#acf 5.333333333333333px 0px 0px",
+      "#acf 5.333333333333333px 1.3333333333333333px 0px",
+      "#acf 5.333333333333333px 2.6666666666666665px 0px",
+      "#acf 5.333333333333333px 4px 0px",
+      "#acf 5.333333333333333px 5.333333333333333px 0px"
     ]);
   });
 
@@ -252,13 +252,13 @@ describe("The Display object", function () {
 });
 
 describe("Transitions", function () {
-  beforeEach(function() {
+  beforeEach(function () {
     document.body.innerHTML = "";
     _createDiv({"class": "slides"});
     _createDiv({"class": "footer"});
     Display._slides = {};
   });
-  afterEach(function() {
+  afterEach(function () {
     // Reset theme
     Display._theme = null;
   });
@@ -667,7 +667,7 @@ describe("_alertIconSvg", function () {
 });
 
 describe("Display.setTextSlide", function () {
-  beforeEach(function() {
+  beforeEach(function () {
     document.body.innerHTML = "";
     var slides_container = _createDiv({"class": "slides"});
     var footer_container = _createDiv({"class": "footer"});
@@ -715,7 +715,7 @@ describe("Display.setTextSlide", function () {
 describe("Display.setTextSlides", function () {
   var textSlides;
 
-  beforeEach(function() {
+  beforeEach(function () {
     document.body.innerHTML = "";
     var revealContainer = Display._revealContainer = _createDiv({"class": "reveal"})
     var slides_container = _createDiv({"class": "slides"}, revealContainer);
@@ -727,13 +727,13 @@ describe("Display.setTextSlides", function () {
       {
         "verse": "v1",
         "text": "Amazing grace, how sweet the sound\nThat saved a wretch like me\n" +
-                "I once was lost, but now I'm found\nWas blind but now I see",
+          "I once was lost, but now I'm found\nWas blind but now I see",
         "footer": "Public Domain"
       },
       {
         "verse": "v2",
         "text": "'twas Grace that taught, my heart to fear\nAnd grace, my fears relieved.\n" +
-                "How precious did that grace appear,\nthe hour I first believed.",
+          "How precious did that grace appear,\nthe hour I first believed.",
         "footer": "Public Domain"
       }
     ];
@@ -769,7 +769,10 @@ describe("Display.setTextSlides", function () {
     Display.setTextSlides(slides);
 
     const slidesDiv = $(".text-slides")[0];
-    expect(slidesDiv.style['text-shadow']).toEqual(_buildTextOutline(42, 'red').join(', '));
+    const expectedShadow = _buildTextOutline(42, 'red').join(', ');
+    const shadowProbe = document.createElement("div");
+    shadowProbe.style.setProperty("text-shadow", expectedShadow);
+    expect(slidesDiv.style['text-shadow']).toEqual(shadowProbe.style['text-shadow']);
   })
 
   it("should correctly set text alignment,\
@@ -886,7 +889,7 @@ describe("Display.setTextSlides", function () {
 });
 
 describe("Display.setImageSlides", function () {
-  beforeEach(function() {
+  beforeEach(function () {
     document.body.innerHTML = "";
     var slides_container = _createDiv({"class": "slides"});
     var footer_container = _createDiv({"class": "footer"});
@@ -915,7 +918,7 @@ describe("Display.setImageSlides", function () {
 });
 
 describe("Display.setFullscreenImage", function () {
-  beforeEach(function() {
+  beforeEach(function () {
     document.body.innerHTML = "";
     var slides_container = _createDiv({"class": "slides"});
     var footer_container = _createDiv({"class": "footer"});
@@ -939,7 +942,7 @@ describe("Display.setFullscreenImage", function () {
 });
 
 describe("Display.setBackgroundImage and Display.resetTheme", function () {
-  beforeEach(function() {
+  beforeEach(function () {
     document.body.innerHTML = "";
     var slides_container = _createDiv({"class": "slides"});
     Display._slidesContainer = slides_container;
@@ -974,7 +977,7 @@ describe("Display.setBackgroundImage and Display.resetTheme", function () {
 });
 
 describe("Display.setVideo", function () {
-  beforeEach(function() {
+  beforeEach(function () {
     document.body.innerHTML = "";
     var slides_container = _createDiv({"class": "slides"});
     Display._slidesContainer = slides_container;
@@ -997,11 +1000,11 @@ describe("Display.setVideo", function () {
 
 describe("Display.playVideo", function () {
   var playCalled = false,
-      mockVideo = {
-        play: function () {
-          playCalled = true;
-        }
-      };
+    mockVideo = {
+      play: function () {
+        playCalled = true;
+      }
+    };
 
   beforeEach(function () {
     spyOn(window, "$").and.returnValue([mockVideo]);
@@ -1015,11 +1018,11 @@ describe("Display.playVideo", function () {
 
 describe("Display.pauseVideo", function () {
   var pauseCalled = false,
-      mockVideo = {
-        pause: function () {
-          pauseCalled = true;
-        }
-      };
+    mockVideo = {
+      pause: function () {
+        pauseCalled = true;
+      }
+    };
 
   beforeEach(function () {
     spyOn(window, "$").and.returnValue([mockVideo]);
@@ -1033,12 +1036,12 @@ describe("Display.pauseVideo", function () {
 
 describe("Display.stopVideo", function () {
   var pauseCalled = false,
-      mockVideo = {
-        pause: function () {
-          pauseCalled = true;
-        },
-        currentTime: 10.0
-      };
+    mockVideo = {
+      pause: function () {
+        pauseCalled = true;
+      },
+      currentTime: 10.0
+    };
 
   beforeEach(function () {
     spyOn(window, "$").and.returnValue([mockVideo]);
@@ -1053,8 +1056,8 @@ describe("Display.stopVideo", function () {
 
 describe("Display.seekVideo", function () {
   var mockVideo = {
-        currentTime: 1.0
-      };
+    currentTime: 1.0
+  };
 
   beforeEach(function () {
     spyOn(window, "$").and.returnValue([mockVideo]);
@@ -1068,8 +1071,8 @@ describe("Display.seekVideo", function () {
 
 describe("Display.setPlaybackRate", function () {
   var mockVideo = {
-        playbackRate: 1.0
-      };
+    playbackRate: 1.0
+  };
 
   beforeEach(function () {
     spyOn(window, "$").and.returnValue([mockVideo]);
@@ -1084,8 +1087,8 @@ describe("Display.setPlaybackRate", function () {
 
 describe("Display.setVideoVolume", function () {
   var mockVideo = {
-        volume: 1.0
-      };
+    volume: 1.0
+  };
 
   beforeEach(function () {
     spyOn(window, "$").and.returnValue([mockVideo]);
@@ -1100,8 +1103,8 @@ describe("Display.setVideoVolume", function () {
 
 describe("Display.toggleVideoMute", function () {
   var mockVideo = {
-        muted: false
-      };
+    muted: false
+  };
 
   beforeEach(function () {
     spyOn(window, "$").and.returnValue([mockVideo]);
@@ -1120,8 +1123,8 @@ describe("Display.toggleVideoMute", function () {
   });
 });
 
-describe("localFile", function() {
-  it('should translate file:// protocol to openlp-library://local-file/ scheme', function() {
+describe("localFile", function () {
+  it('should translate file:// protocol to openlp-library://local-file/ scheme', function () {
     const fileUrl = 'file:///home/path/to/image.png';
     const resultFile = Display._getFileUrl(fileUrl);
     expect(resultFile).toEqual('openlp-library://local-file//home/path/to/image.png');
@@ -1134,13 +1137,13 @@ describe("Reveal slidechanged event", function () {
       {
         "verse": "v1",
         "text": "Amazing grace, how sweet the sound\nThat saved a wretch like me\n" +
-                "I once was lost, but now I'm found\nWas blind but now I see",
+          "I once was lost, but now I'm found\nWas blind but now I see",
         "footer": "Public Domain"
       },
       {
         "verse": "v2",
         "text": "'twas Grace that taught, my heart to fear\nAnd grace, my fears relieved.\n" +
-                "How precious did that grace appear,\nthe hour I first believed.",
+          "How precious did that grace appear,\nthe hour I first believed.",
         "footer": "Public Domain, Second Test"
       }
     ];
@@ -1155,8 +1158,8 @@ describe("Reveal slidechanged event", function () {
     Display._footerContainer = footerDiv;
 
     Display.init({isDisplay: false, doItemTransitions: false});
-    var oldDisplaySlideChanged = Display._onSlideChanged; 
-    Display._onSlideChanged = function(event) {
+    var oldDisplaySlideChanged = Display._onSlideChanged;
+    Display._onSlideChanged = function (event) {
       oldDisplaySlideChanged(event);
       expect(document.querySelector(".footer > .footer-item.active").getAttribute('data-slide')).toEqual('1');
       done();

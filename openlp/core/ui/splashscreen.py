@@ -31,6 +31,7 @@ class SplashScreen(QtWidgets.QSplashScreen):
     """
     The splash screen
     """
+
     def __init__(self):
         """
         Constructor

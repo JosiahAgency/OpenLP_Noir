@@ -164,6 +164,7 @@ if is_win():
             for i in itertools.count():
                 yield winreg.EnumKey(k, i)
 
+
     def _wingreg_subvalues(path):
         """
         Helper function to loop through windows registry subvalues
