@@ -62,4 +62,3 @@ def init_schema(url):
     session, metadata = init_db(url, base=Base)
     metadata.create_all(bind=metadata.bind, checkfirst=True)
     return session
-

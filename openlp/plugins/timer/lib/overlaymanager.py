@@ -26,6 +26,7 @@ from PySide6 import QtCore
 from openlp.core.common.mixins import RegistryProperties
 from openlp.plugins.timer.lib import TimerMode, format_seconds
 
+
 class TimerOverlayManager(QtCore.QObject, RegistryProperties):
     """
     Owns countdown/count-up state and pushes text updates to the live timer slide.

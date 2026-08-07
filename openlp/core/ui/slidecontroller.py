@@ -1353,8 +1353,10 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         """
         self.log_debug('_capture_maindisplay {text}'.format(text=self.screens.current))
         # Wayland needs screenshot fallback even when OpenLP is running on X11/xcb mode.
-        fallback_to_windowed = is_wayland_compositor() or \
-                               self.settings.value('advanced/prefer windowed screen capture')
+        fallback_to_windowed = (
+            is_wayland_compositor() or
+            self.settings.value('advanced/prefer windowed screen capture')
+        )
         if not fallback_to_windowed:
             # Check if display screen is outside real screen bounds
             # OpenLP can't take reliable screenshots when any of these conditions happens
@@ -1367,8 +1369,12 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
                                          screen_rect.left() + screen_rect.width())
             display_beyond_vertical = (display_rect.top() + display_rect.height() >
                                        screen_rect.top() + screen_rect.height())
-            fallback_to_windowed = display_above_horizontal or display_above_vertical \
-                                   or display_beyond_horizontal or display_beyond_vertical
+            fallback_to_windowed = (
+                display_above_horizontal
+                or display_above_vertical
+                or display_beyond_horizontal
+                or display_beyond_vertical
+            )
         if fallback_to_windowed:
             if self.service_item and (self.service_item.is_capable(ItemCapabilities.ProvidesOwnDisplay) or
                                       self.service_item.is_media() or self.service_item.is_command()):

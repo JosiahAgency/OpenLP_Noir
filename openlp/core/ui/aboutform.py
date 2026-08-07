@@ -179,13 +179,16 @@ class AboutForm(QtWidgets.QDialog):
                       '<li><a href="http://initd.org/psycopg/">psycopg2</a> (LGPL3+)</li>'
                       '<li><a href="https://github.com/lincolnloop/python-qrcode/">qrcode</a> (MIT)</li>'
                       '</ul>')
-        final_credit = translate('OpenLP.AboutForm', '<h3>Final credit:</h3>'
-                                                     '<blockquote><p>For God so loved the world that He gave His one and only Son, so that '
-                                                     'whoever believes in Him will not perish but inherit eternal life.</p><p>John 3:16</p>'
-                                                     '</blockquote>'
-                                                     '<p>And last but not least, final credit goes to God our Father, for sending His Son '
-                                                     'to die on the cross, setting us free from sin. We bring this software to you for '
-                                                     'free because He has set us free.</p>')
+        final_credit = translate(
+            'OpenLP.AboutForm',
+            '<h3>Final credit:</h3>'
+            '<blockquote><p>For God so loved the world that He gave His one and only Son, '
+            'so that whoever believes in Him will not perish but inherit eternal life.</p>'
+            '<p>John 3:16</p></blockquote>'
+            '<p>And last but not least, final credit goes to God our Father, for sending '
+            'His Son to die on the cross, setting us free from sin. We bring this software '
+            'to you for free because He has set us free.</p>'
+        )
         self.credits_text_edit.setHtml(
             '{ncsda_credit}<p>{developers}</p><p>{built_with}</p>{build_tech}<p>{final_credit}</p>'.format(
                 ncsda_credit=ncsda_credit, developers=developers, built_with=built_with, build_tech=build_tech,

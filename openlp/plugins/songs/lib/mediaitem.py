@@ -733,11 +733,11 @@ class SongMediaItem(MediaManagerItem):
                                         next_order = order_list[order_pos + 1]
                                         for next_verse in verse_list:
                                             if (
-                                                    next_verse[0]['type'][0].lower() == next_order[0]
-                                                    and (
+                                                next_verse[0]['type'][0].lower() == next_order[0]
+                                                and (
                                                     next_verse[0]['label'].lower() == next_order[1:]
                                                     or not next_order[1:]
-                                            )
+                                                )
                                             ):
                                                 next_verse_type = next_verse[0]['type'].lower()
                                                 next_allowed = any([

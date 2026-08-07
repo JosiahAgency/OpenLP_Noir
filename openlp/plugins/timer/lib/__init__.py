@@ -40,4 +40,3 @@ def format_seconds(total_seconds):
     if hours:
         return f'{hours:02d}:{minutes:02d}:{seconds:02d}'
     return f'{minutes:02d}:{seconds:02d}'
-

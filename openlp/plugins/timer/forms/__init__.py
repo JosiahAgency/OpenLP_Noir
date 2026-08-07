@@ -21,4 +21,3 @@
 """
 Timer plugin forms.
 """
-

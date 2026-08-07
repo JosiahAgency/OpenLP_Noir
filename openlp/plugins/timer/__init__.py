@@ -21,4 +21,3 @@
 """
 The :mod:`timer` module provides the Timer plugin.
 """
-

@@ -104,4 +104,3 @@ def test_uses_theme_and_rename_theme(settings):
     assert plugin.settings_tab.timer_theme == 'Renamed Theme'
     plugin.settings_tab.save.assert_called_once()
     assert timer_item.theme_name == 'Renamed Theme'
-

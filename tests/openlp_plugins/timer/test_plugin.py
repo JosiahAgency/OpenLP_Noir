@@ -30,4 +30,3 @@ def test_plugin_about():
         '<strong>Timer Plugin</strong><br />The timer plugin provides countdown and count-up timer '
         'presets for the service and ad-hoc timer overlays for live display.'
     )
-

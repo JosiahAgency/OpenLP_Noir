@@ -120,4 +120,3 @@ class OverlayTimerForm(QtWidgets.QDialog):
 
     def on_timer_updated(self, _):
         self.update_status_text()
-
