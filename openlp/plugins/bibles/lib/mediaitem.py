@@ -106,8 +106,8 @@ class BibleMediaItem(MediaManagerItem):
         self.saved_results = []
         self.current_results = []
         self.search_status = SearchStatus.SearchButton
+        self.search_timer = None
         super().__init__(*args, **kwargs)
-        self.search_timer = self.create_debounce_timer(self.on_search_timer_timeout)
         Registry().register_function('populate_bible_combo_boxes', self.populate_bible_combo_boxes)
         log.debug('BibleMediaItem __init__ complete')
 
@@ -126,6 +126,7 @@ class BibleMediaItem(MediaManagerItem):
         self.has_search = True
         self.search_results = []
         self.second_search_results = []
+        self.search_timer = self.create_debounce_timer(self.on_search_timer_timeout)
         Registry().register_function('bibles_load_list', self.reload_bibles)
 
     def required_icons(self):
@@ -713,13 +714,15 @@ class BibleMediaItem(MediaManagerItem):
         :return: None
         """
         log.debug('on_search_button_clicked')
-        self.search_timer.stop()
+        if self.search_timer is not None:
+            self.search_timer.stop()
         self.search_status = SearchStatus.SearchButton
         if not self.bible:
             log.debug('on_search_button_clicked: no bible selected')
             self.main_window.information_message(UiStrings().BibleNoBiblesTitle, UiStrings().BibleNoBibles)
             return
-        self.list_view.set_loading_state(True)
+        if hasattr(self, 'list_view'):
+            self.list_view.set_loading_state(True)
         self.search_button.setEnabled(False)
         self.application.set_busy_cursor()
         self.application.process_events()
@@ -732,7 +735,8 @@ class BibleMediaItem(MediaManagerItem):
         finally:
             self.search_button.setEnabled(True)
             self.application.set_normal_cursor()
-            self.list_view.set_loading_state(False)
+            if hasattr(self, 'list_view'):
+                self.list_view.set_loading_state(False)
 
     def select_search(self):
         """
@@ -855,13 +859,15 @@ class BibleMediaItem(MediaManagerItem):
 
         :return: None
         """
-        self.list_view.set_loading_state(True)
+        if hasattr(self, 'list_view'):
+            self.list_view.set_loading_state(True)
         try:
             self.search_status = SearchStatus.SearchAsYouType
             self.text_search()
             self.results_view_tab.setCurrentIndex(ResultsTab.Search)
         finally:
-            self.list_view.set_loading_state(False)
+            if hasattr(self, 'list_view'):
+                self.list_view.set_loading_state(False)
 
     def display_results(self):
         """

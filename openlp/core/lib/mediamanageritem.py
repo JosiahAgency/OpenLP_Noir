@@ -371,7 +371,7 @@ class MediaManagerItem(QtWidgets.QWidget, RegistryProperties, LogMixin):
         :return: Configured timer.
         :rtype: QtCore.QTimer
         """
-        timer = QtCore.QTimer(self)
+        timer = QtCore.QTimer()
         timer.setInterval(interval_ms)
         timer.setSingleShot(True)
         timer.timeout.connect(timeout_handler)
@@ -384,6 +384,8 @@ class MediaManagerItem(QtWidgets.QWidget, RegistryProperties, LogMixin):
 
         :param QtCore.QTimer timer: The timer to start.
         """
+        if timer is None:
+            return
         if not timer.isActive():
             timer.start()
 
