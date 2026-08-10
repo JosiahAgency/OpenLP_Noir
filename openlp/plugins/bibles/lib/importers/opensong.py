@@ -19,6 +19,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>. #
 ##########################################################################
 
+from openlp.core.common.i18n import translate
 from openlp.plugins.bibles.lib.bibleimport import BibleImport
 
 
@@ -132,10 +133,28 @@ class OpenSongBible(BibleImport):
         :param bible_name: The name of the bible being imported
         :return: True if import completed, False if import was unsuccessful
         """
+        self.clear_import_failure()
         self.log_debug('Starting OpenSong import from "{name}"'.format(name=self.file_path))
         self.validate_xml_file(self.file_path, 'bible')
         bible = self.parse_xml(self.file_path, use_objectify=True)
         if bible is None:
+            self.set_import_failure(
+                code='opensong-parse-failed',
+                summary=translate('BiblesPlugin.OpenSongImport', 'OpenSong Bible could not be parsed.'),
+                actions=(
+                    translate('BiblesPlugin.OpenSongImport', 'Verify the file is a valid OpenSong Bible XML file.'),
+                )
+            )
+            return False
+        if not hasattr(bible, 'b') or len(bible.b) == 0:
+            self.set_import_failure(
+                code='opensong-missing-books',
+                summary=translate('BiblesPlugin.OpenSongImport', 'No books were found in this OpenSong Bible file.'),
+                actions=(
+                    translate('BiblesPlugin.OpenSongImport',
+                              'Re-export the Bible as OpenSong XML and try importing again.'),
+                )
+            )
             return False
         # No language info in the opensong format, so ask the user
         self.language_id = self.get_language_id(bible_name=str(self.file_path))

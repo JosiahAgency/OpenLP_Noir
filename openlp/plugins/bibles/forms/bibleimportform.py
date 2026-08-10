@@ -777,6 +777,8 @@ class BibleImportForm(OpenLPWizard):
                                                      sword_path=self.field('sword_zip_path'),
                                                      sword_key=self.sword_zipbible_combo_box.itemData(
                                                          self.sword_zipbible_combo_box.currentIndex()))
+        import_failed = True
+        exception = None
         try:
             if importer.do_import(license_version) and not importer.stop_import_flag:
                 self.manager.save_meta_data(license_version, license_version,
@@ -789,15 +791,63 @@ class BibleImportForm(OpenLPWizard):
                 else:
                     self.progress_label.setText(WizardStrings.FinishedImport)
                 return
-        except (AttributeError, ValidationError, etree.XMLSyntaxError):
+        except (AttributeError, ValidationError, etree.XMLSyntaxError) as import_exception:
             log.exception('Importing bible failed')
             trace_error_handler(log)
+            exception = import_exception
+        if import_failed:
+            failure = getattr(importer, 'import_failure', None)
+            log.error('Bible import failed (type=%s, importer=%s, file=%s, failure_code=%s)',
+                      bible_type, importer.__class__.__name__,
+                      getattr(importer, 'file_path', None),
+                      failure.code if failure else None)
+            self.progress_label.setText(self.get_failure_feedback(importer, exception))
+            self.cleanup_failed_import(importer)
 
-        self.progress_label.setText(translate('BiblesPlugin.ImportWizardForm', 'Your Bible import failed.'))
-        del self.manager.db_cache[importer.name]
-        # Don't delete the db if it wasen't created
-        if hasattr(importer, 'file'):
-            delete_database(self.plugin.settings_section, importer.file)
+    def get_failure_feedback(self, importer, exception):
+        """
+        Build a user-facing failure summary with direct next steps.
+        """
+        failure = getattr(importer, 'import_failure', None)
+        default_title = translate('BiblesPlugin.ImportWizardForm', 'Your Bible import failed.')
+        if importer.stop_import_flag:
+            return translate('BiblesPlugin.ImportWizardForm', 'Bible import was cancelled.')
+        if not failure:
+            if exception:
+                return default_title + '\n' + translate(
+                    'BiblesPlugin.ImportWizardForm',
+                    'OpenLP could not complete this import because of an unexpected error.'
+                )
+            return default_title
+        lines = []
+        if failure.is_user_cancelled:
+            lines.append(translate('BiblesPlugin.ImportWizardForm', 'Bible import was cancelled.'))
+        else:
+            lines.append(default_title)
+        lines.append(failure.summary)
+        if failure.details:
+            lines.append(failure.details)
+        if failure.actions:
+            action_lines = '\n'.join(['- {action}'.format(action=action) for action in failure.actions])
+            lines.append(translate('BiblesPlugin.ImportWizardForm', 'Try this:') + '\n' + action_lines)
+        if exception:
+            lines.append(translate('BiblesPlugin.ImportWizardForm', 'Technical error: {error}').format(
+                error=exception.__class__.__name__))
+        return '\n'.join(lines)
+
+    def cleanup_failed_import(self, importer):
+        """
+        Remove partially-created import state when an import fails.
+        """
+        if importer is None:
+            return
+        self.manager.db_cache.pop(importer.name, None)
+        if hasattr(importer, 'session') and importer.session:
+            importer.session.rollback()
+            importer.session.close()
+            importer.session = None
+        if hasattr(importer, 'file_path') and importer.file_path:
+            delete_database(self.plugin.settings_section, importer.file_path)
 
     def provide_help(self):
         """

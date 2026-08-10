@@ -22,6 +22,7 @@
 from zipfile import is_zipfile
 
 from lxml import etree, objectify
+from dataclasses import dataclass
 
 from openlp.core.common.i18n import get_language, translate
 from openlp.core.common.mixins import LogMixin, RegistryProperties
@@ -29,6 +30,18 @@ from openlp.core.common.registry import Registry
 from openlp.core.lib.exceptions import ValidationError
 from openlp.core.lib.ui import critical_error_message_box
 from openlp.plugins.bibles.lib.db import AlternativeBookNamesDB, BibleDB, BiblesResourcesDB
+
+
+@dataclass
+class ImportFailure:
+    """
+    A normalized error payload used to communicate importer failures back to the wizard.
+    """
+    code: str
+    summary: str
+    details: str = ''
+    actions: tuple[str, ...] = ()
+    is_user_cancelled: bool = False
 
 
 class BibleImport(BibleDB, LogMixin, RegistryProperties):
@@ -40,7 +53,27 @@ class BibleImport(BibleDB, LogMixin, RegistryProperties):
         self.file_path = kwargs.get('file_path')
         self.wizard = None
         self.stop_import_flag = False
+        self.import_failure = None
         Registry().register_function('openlp_stop_wizard', self.stop_import)
+
+    def clear_import_failure(self):
+        """
+        Clear previous failure details before running an import.
+        """
+        self.import_failure = None
+
+    def set_import_failure(self, code, summary, details='', actions=(), is_user_cancelled=False):
+        """
+        Store normalized failure details for UI feedback and diagnostics.
+        """
+        self.import_failure = ImportFailure(
+            code=code,
+            summary=summary,
+            details=details,
+            actions=tuple(actions) if actions else (),
+            is_user_cancelled=is_user_cancelled
+        )
+        return False
 
     @staticmethod
     def is_compressed(file_path):
@@ -97,8 +130,26 @@ class BibleImport(BibleDB, LogMixin, RegistryProperties):
             combo_box = language_form.language_combo_box
             language_id = combo_box.itemData(combo_box.currentIndex())
         else:
+            self.set_import_failure(
+                code='language-selection-cancelled',
+                summary=translate('BiblesPlugin.BibleImport', 'Import cancelled while selecting language.'),
+                details=translate('BiblesPlugin.BibleImport',
+                                  'Language could not be detected from the file, and language selection was '
+                                  'cancelled.'),
+                actions=(
+                    translate('BiblesPlugin.BibleImport', 'Run the import again and choose the Bible language.'),
+                ),
+                is_user_cancelled=True
+            )
             return False
         if not language_id:
+            self.set_import_failure(
+                code='language-selection-missing',
+                summary=translate('BiblesPlugin.BibleImport', 'No language was selected for this Bible import.'),
+                actions=(
+                    translate('BiblesPlugin.BibleImport', 'Run the import again and select a language.'),
+                )
+            )
             return None
         self.save_meta('language_id', language_id)
         return language_id
@@ -123,6 +174,14 @@ class BibleImport(BibleDB, LogMixin, RegistryProperties):
             # User cancelled get_language dialog
             self.log_error('Language detection failed when importing from "{name}". User aborted language selection.'
                            .format(name=bible_name))
+            if self.import_failure is None:
+                self.set_import_failure(
+                    code='language-detection-failed',
+                    summary=translate('BiblesPlugin.BibleImport', 'Could not determine Bible language.'),
+                    actions=(
+                        translate('BiblesPlugin.BibleImport', 'Run the import again and select a language.'),
+                    )
+                )
             return None
         self.save_meta('language_id', language_id)
         return language_id
@@ -143,9 +202,29 @@ class BibleImport(BibleDB, LogMixin, RegistryProperties):
             self.log_debug('No book name supplied. Falling back to guess_id')
             book_ref_id = guess_id
         if not book_ref_id:
+            self.set_import_failure(
+                code='book-mapping-required',
+                summary=translate('BiblesPlugin.BibleImport', 'A book name in this Bible could not be matched.'),
+                details=translate('BiblesPlugin.BibleImport',
+                                  'One or more book names in the source file could not be mapped to OpenLP books.'),
+                actions=(
+                    translate('BiblesPlugin.BibleImport',
+                              'Run the import again and map unknown book names when prompted.'),
+                )
+            )
             raise ValidationError(msg='Could not resolve book_ref_id in "{}"'.format(self.file_path))
         book_details = BiblesResourcesDB.get_book_by_id(book_ref_id)
         if book_details is None:
+            self.set_import_failure(
+                code='book-reference-invalid',
+                summary=translate('BiblesPlugin.BibleImport', 'Book mapping failed while importing this Bible.'),
+                details=translate('BiblesPlugin.BibleImport',
+                                  'OpenLP could not resolve an internal book reference for the source file.'),
+                actions=(
+                    translate('BiblesPlugin.BibleImport',
+                              'Verify the source Bible uses standard book names or re-export the file.'),
+                )
+            )
             raise ValidationError(msg='book_ref_id: {book_ref} Could not be found in the BibleResourcesDB while '
                                       'importing {file}'.format(book_ref=book_ref_id, file=self.file_path))
         return self.create_book(name, book_ref_id, book_details['testament_id'])
@@ -179,6 +258,16 @@ class BibleImport(BibleDB, LogMixin, RegistryProperties):
                 return tree.getroot()
         except OSError as e:
             self.log_exception('Opening {file_name} failed.'.format(file_name=e.filename))
+            self.set_import_failure(
+                code='file-open-failed',
+                summary=translate('BiblesPlugin.BibleImport', 'OpenLP could not read the selected Bible file.'),
+                details=translate('BiblesPlugin.BibleImport',
+                                  'The selected file could not be opened: {error}').format(error=e.strerror),
+                actions=(
+                    translate('BiblesPlugin.BibleImport', 'Verify the file path and file permissions.'),
+                    translate('BiblesPlugin.BibleImport', 'Close other applications that might lock the file.'),
+                )
+            )
             critical_error_message_box(
                 title='An Error Occured When Opening A File',
                 message='The following error occurred when trying to open\n{file_name}:\n\n{error}'
@@ -216,9 +305,24 @@ class BibleImport(BibleDB, LogMixin, RegistryProperties):
         :return: True if valid. ValidationError is raised otherwise.
         """
         if BibleImport.is_compressed(file_path):
+            self.set_import_failure(
+                code='compressed-file',
+                summary=translate('BiblesPlugin.BibleImport', 'The selected Bible file is compressed.'),
+                actions=(
+                    translate('BiblesPlugin.BibleImport', 'Extract the archive and import the XML/CSV file inside.'),
+                )
+            )
             raise ValidationError(msg='Compressed file')
         bible = self.parse_xml(file_path, use_objectify=True)
         if bible is None:
+            if self.import_failure is None:
+                self.set_import_failure(
+                    code='xml-open-failed',
+                    summary=translate('BiblesPlugin.BibleImport', 'OpenLP could not open this Bible file.'),
+                    actions=(
+                        translate('BiblesPlugin.BibleImport', 'Verify the file path and try again.'),
+                    )
+                )
             raise ValidationError(msg='Error when opening file')
         root_tag = bible.tag.lower()
         bible_type = translate('BiblesPlugin.BibleImport', 'unknown type of',
@@ -235,4 +339,13 @@ class BibleImport(BibleDB, LogMixin, RegistryProperties):
             message=translate('BiblesPlugin.BibleImport',
                               'Incorrect Bible file type supplied. This looks like an {bible_type} XML bible.'
                               .format(bible_type=bible_type)))
+        self.set_import_failure(
+            code='invalid-xml-root',
+            summary=translate('BiblesPlugin.BibleImport', 'Incorrect Bible file type supplied.'),
+            details=translate('BiblesPlugin.BibleImport',
+                              'Expected a different root type for this import format.'),
+            actions=(
+                translate('BiblesPlugin.BibleImport', 'Select the matching import format and try again.'),
+            )
+        )
         raise ValidationError(msg='Invalid xml.')

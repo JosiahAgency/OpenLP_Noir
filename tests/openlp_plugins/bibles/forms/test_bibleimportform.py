@@ -29,6 +29,7 @@ from PySide6 import QtWidgets, QtTest, QtCore
 from openlp.core.common.registry import Registry
 from openlp.core.common.settings import Settings
 from openlp.plugins.bibles.forms.bibleimportform import BibleImportForm, PYSWORD_AVAILABLE
+from openlp.plugins.bibles.lib.bibleimport import ImportFailure
 
 
 @pytest.fixture
@@ -89,3 +90,62 @@ def test_help(import_form: BibleImportForm):
 
     # THEN: The Help function should be called
     mocked_help.assert_called_once()
+
+
+def test_get_failure_feedback_with_actions(import_form: BibleImportForm):
+    """
+    Test that detailed failure feedback includes summary and action items.
+    """
+    importer = MagicMock()
+    importer.stop_import_flag = False
+    importer.import_failure = ImportFailure(
+        code='csv-parse-failed',
+        summary='Books CSV file could not be parsed.',
+        details='Invalid delimiter detected.',
+        actions=('Check CSV delimiter.', 'Re-export the source file.')
+    )
+
+    result = import_form.get_failure_feedback(importer, None)
+
+    assert 'Your Bible import failed.' in result
+    assert 'Books CSV file could not be parsed.' in result
+    assert '- Check CSV delimiter.' in result
+    assert '- Re-export the source file.' in result
+
+
+def test_get_failure_feedback_for_cancelled_import(import_form: BibleImportForm):
+    """
+    Test that cancelled imports are reported as cancelled instead of failed.
+    """
+    importer = MagicMock()
+    importer.stop_import_flag = False
+    importer.import_failure = ImportFailure(
+        code='language-selection-cancelled',
+        summary='Import cancelled while selecting language.',
+        is_user_cancelled=True
+    )
+
+    result = import_form.get_failure_feedback(importer, None)
+
+    assert 'Bible import was cancelled.' in result
+    assert 'Your Bible import failed.' not in result
+
+
+@patch('openlp.plugins.bibles.forms.bibleimportform.delete_database')
+def test_cleanup_failed_import_uses_file_path(mocked_delete_database: MagicMock, import_form: BibleImportForm):
+    """
+    Test that failed import cleanup removes cache entry and deletes DB using importer.file_path.
+    """
+    importer = MagicMock()
+    importer.name = 'TestBible'
+    importer.file_path = 'test-bible.sqlite'
+    mocked_session = MagicMock()
+    importer.session = mocked_session
+    import_form.manager.db_cache = {'TestBible': importer}
+
+    import_form.cleanup_failed_import(importer)
+
+    assert 'TestBible' not in import_form.manager.db_cache
+    mocked_session.rollback.assert_called_once()
+    mocked_session.close.assert_called_once()
+    mocked_delete_database.assert_called_once_with(import_form.plugin.settings_section, importer.file_path)

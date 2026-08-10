@@ -381,9 +381,10 @@ def test_do_import_completes(manager, mock_settings):
     # GIVEN: An instance of OpenSongBible
     with patch.object(OpenSongBible, 'log_debug'), \
             patch.object(OpenSongBible, 'validate_xml_file'), \
-            patch.object(OpenSongBible, 'parse_xml'), \
+            patch.object(OpenSongBible, 'parse_xml') as mocked_parse_xml, \
             patch.object(OpenSongBible, 'get_language_id', return_value=10), \
             patch.object(OpenSongBible, 'process_books'):
+        mocked_parse_xml.return_value = MagicMock(b=[MagicMock()])
         importer = OpenSongBible(MagicMock(), path='.', name='.', file_path=None)
 
         # WHEN: Calling do_import

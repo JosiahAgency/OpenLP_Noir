@@ -57,6 +57,14 @@ class WordProjectBible(BibleImport):
                 zip_file.extractall(self.tmp.name)
         except BadZipFile:
             self.log_exception('Extracting {file} failed.'.format(file=self.file_path))
+            self.set_import_failure(
+                code='wordproject-not-zip',
+                summary=translate('BiblesPlugin.WordProjectBible', 'WordProject import requires a ZIP file.'),
+                actions=(
+                    translate('BiblesPlugin.WordProjectBible',
+                              'Select the original WordProject ZIP package and try again.'),
+                )
+            )
             critical_error_message_box(message=translate('BiblesPlugin.WordProjectBible',
                                                          'Incorrect Bible file type, not a Zip file.'))
             return False
@@ -72,6 +80,15 @@ class WordProjectBible(BibleImport):
         """
         idx_file = (self.base_path / 'index.htm')
         if not idx_file.exists():
+            self.set_import_failure(
+                code='wordproject-missing-index',
+                summary=translate('BiblesPlugin.WordProjectBible', 'WordProject package is missing required files.'),
+                details=translate('BiblesPlugin.WordProjectBible', 'Missing required file: index.htm'),
+                actions=(
+                    translate('BiblesPlugin.WordProjectBible',
+                              'Re-download or re-export the WordProject package and import again.'),
+                )
+            )
             critical_error_message_box(message=translate('BiblesPlugin.WordProjectBible',
                                                          'Incorrect Bible file type, files are missing.'))
             return False
@@ -188,6 +205,7 @@ class WordProjectBible(BibleImport):
         """
         Loads a Bible from file.
         """
+        self.clear_import_failure()
         self.log_debug('Starting WordProject import from "{name}"'.format(name=self.file_path))
         if not self._unzip_file():
             return False

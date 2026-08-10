@@ -21,6 +21,7 @@
 
 from lxml import etree
 
+from openlp.core.common.i18n import translate
 from openlp.plugins.bibles.lib.bibleimport import BibleImport
 
 
@@ -159,10 +160,27 @@ class OSISBible(BibleImport):
         """
         Loads a Bible from file.
         """
+        self.clear_import_failure()
         self.log_debug('Starting OSIS import from "{name}"'.format(name=self.file_path))
         self.validate_xml_file(self.file_path, '{http://www.bibletechnologies.net/2003/osis/namespace}osis')
         bible = self.parse_xml(self.file_path, elements=REMOVABLE_ELEMENTS, tags=REMOVABLE_TAGS)
         if bible is None:
+            self.set_import_failure(
+                code='osis-parse-failed',
+                summary=translate('BiblesPlugin.OsisImport', 'OSIS Bible could not be parsed.'),
+                actions=(
+                    translate('BiblesPlugin.OsisImport', 'Verify the file is valid OSIS XML and try again.'),
+                )
+            )
+            return False
+        if len(bible.xpath("//ns:div[@type='book']", namespaces=NS)) == 0:
+            self.set_import_failure(
+                code='osis-missing-books',
+                summary=translate('BiblesPlugin.OsisImport', 'No books were found in this OSIS file.'),
+                actions=(
+                    translate('BiblesPlugin.OsisImport', 'Re-export the file as OSIS XML and import again.'),
+                )
+            )
             return False
         # Find bible language
         language = bible.xpath("//ns:osisText/@xml:lang", namespaces=NS)

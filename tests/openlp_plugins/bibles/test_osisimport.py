@@ -24,6 +24,7 @@ This module contains tests for the OSIS Bible importer.
 from unittest.mock import MagicMock, call, patch
 
 import pytest
+from lxml import etree
 
 from openlp.core.common.registry import Registry
 from openlp.core.common.settings import Settings
@@ -385,9 +386,13 @@ def test_do_import_completes(importer: OSISBible):
     # GIVEN: An instance of OpenSongBible
     with patch.object(importer, 'log_debug'), \
             patch.object(importer, 'validate_xml_file'), \
-            patch.object(importer, 'parse_xml'), \
+            patch.object(importer, 'parse_xml') as mocked_parse_xml, \
             patch.object(importer, 'get_language_id', **{'return_value': 10}), \
             patch.object(importer, 'process_books'):
+        mocked_parse_xml.return_value = etree.fromstring(
+            '<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace">'
+            '<osisText><div type="book"/></osisText></osis>'
+        )
 
         # WHEN: Calling do_import
         result = importer.do_import()

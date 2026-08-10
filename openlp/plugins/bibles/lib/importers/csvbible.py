@@ -199,15 +199,64 @@ class CSVBible(BibleImport):
         :param bible_name: Optional name of the bible being imported. Str or None
         :return: True if the import was successful, False if it failed or was cancelled
         """
+        self.clear_import_failure()
         self.language_id = self.get_language(bible_name)
         if not self.language_id:
             return False
-        books: list[Book] = self.parse_csv_file(self.books_path, Book, CSVBibleFileType.Book)
+        try:
+            books: list[Book] = self.parse_csv_file(self.books_path, Book, CSVBibleFileType.Book)
+        except ValidationError:
+            self.set_import_failure(
+                code='csv-books-parse-failed',
+                summary=translate('BiblesPlugin.CSVBible', 'Books CSV file could not be parsed.'),
+                details=translate('BiblesPlugin.CSVBible',
+                                  'OpenLP could not parse the selected books file: {file}').format(
+                    file=self.books_path
+                ),
+                actions=(
+                    translate('BiblesPlugin.CSVBible',
+                              'Ensure the books file is a valid CSV file using comma-separated columns.'),
+                )
+            )
+            return False
+        if not books:
+            self.set_import_failure(
+                code='csv-books-empty',
+                summary=translate('BiblesPlugin.CSVBible', 'Books CSV file has no importable rows.'),
+                actions=(
+                    translate('BiblesPlugin.CSVBible', 'Verify the books file contains Bible book rows.'),
+                )
+            )
+            return False
         self.wizard.progress_bar.setValue(0)
         self.wizard.progress_bar.setMinimum(0)
         self.wizard.progress_bar.setMaximum(len(books))
         book_list = self.process_books(books)
-        verses: list[Verse] = self.parse_csv_file(self.verses_path, Verse, CSVBibleFileType.Verse)
+        try:
+            verses: list[Verse] = self.parse_csv_file(self.verses_path, Verse, CSVBibleFileType.Verse)
+        except ValidationError:
+            self.set_import_failure(
+                code='csv-verses-parse-failed',
+                summary=translate('BiblesPlugin.CSVBible', 'Verses CSV file could not be parsed.'),
+                details=translate('BiblesPlugin.CSVBible',
+                                  'OpenLP could not parse the selected verses file: {file}').format(
+                    file=self.verses_path
+                ),
+                actions=(
+                    translate('BiblesPlugin.CSVBible',
+                              'Ensure the verses file is valid CSV with book, chapter, verse, and text columns.'),
+                )
+            )
+            return False
+        if not verses:
+            self.set_import_failure(
+                code='csv-verses-empty',
+                summary=translate('BiblesPlugin.CSVBible', 'Verses CSV file has no importable rows.'),
+                actions=(
+                    translate('BiblesPlugin.CSVBible', 'Verify the verses file contains verse data rows.'),
+                )
+            )
+            return False
         self.wizard.progress_bar.setValue(0)
         self.wizard.progress_bar.setMaximum(len(books) + 1)
         self.process_verses(verses, book_list)

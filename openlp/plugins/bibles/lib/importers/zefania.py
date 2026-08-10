@@ -45,9 +45,20 @@ class ZefaniaBible(BibleImport):
         Loads a Bible from file.
         """
         log.debug('Starting Zefania import from "{name}"'.format(name=self.file_path))
+        self.clear_import_failure()
         success = True
         try:
             xmlbible = self.parse_xml(self.file_path, elements=REMOVABLE_ELEMENTS, tags=REMOVABLE_TAGS)
+            if xmlbible is None:
+                self.set_import_failure(
+                    code='zefania-parse-failed',
+                    summary=translate('BiblesPlugin.ZefaniaImport', 'Zefania Bible could not be parsed.'),
+                    actions=(
+                        translate('BiblesPlugin.ZefaniaImport',
+                                  'Verify the selected file is valid Zefania XML and try again.'),
+                    )
+                )
+                return False
             # Find bible language
             language = xmlbible.xpath("/XMLBIBLE/INFORMATION/language/text()")
             language_id = self.get_language_id(language[0] if language else None, bible_name=str(self.file_path))
@@ -56,6 +67,15 @@ class ZefaniaBible(BibleImport):
             no_of_books = int(xmlbible.xpath('count(//BIBLEBOOK)'))
             no_of_chap = int(xmlbible.xpath('count(//CHAPTER)'))
             if not no_of_books or not no_of_chap:
+                self.set_import_failure(
+                    code='zefania-missing-content',
+                    summary=translate('BiblesPlugin.ZefaniaImport',
+                                      'Incorrect Bible file type. Expected data is missing.'),
+                    actions=(
+                        translate('BiblesPlugin.ZefaniaImport',
+                                  'Ensure the XML contains BIBLEBOOK and CHAPTER nodes and retry.'),
+                    )
+                )
                 critical_error_message_box(message=translate('BiblesPlugin.ZefaniaImport',
                                                              'Incorrect Bible file type. Expected data is missing.'))
                 return False
@@ -92,6 +112,17 @@ class ZefaniaBible(BibleImport):
             self.session.commit()
             self.application.process_events()
         except Exception as e:
+            self.set_import_failure(
+                code='zefania-unexpected-error',
+                summary=translate('BiblesPlugin.ZefaniaImport', 'Zefania import failed unexpectedly.'),
+                details=str(e),
+                actions=(
+                    translate('BiblesPlugin.ZefaniaImport',
+                              'If the source file is compressed, extract it first and import the XML file.'),
+                    translate('BiblesPlugin.ZefaniaImport',
+                              'If the problem persists, re-export the file and try again.'),
+                )
+            )
             critical_error_message_box(
                 message=translate('BiblesPlugin.ZefaniaImport',
                                   'Incorrect Bible file type supplied. Zefania Bibles may be '

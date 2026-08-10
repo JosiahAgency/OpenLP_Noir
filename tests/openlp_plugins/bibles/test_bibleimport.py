@@ -115,6 +115,8 @@ def test_get_language_canceled(MockedLanguageForm, mocked_setup, registry):
     MockedLanguageForm.assert_called_once_with(mocked_wizard)
     MockedLanguageForm.return_value.exec.assert_called_once_with('ESV')
     assert result is False, 'get_language() should return False if the user rejects the dialog box'
+    assert instance.import_failure is not None
+    assert instance.import_failure.code == 'language-selection-cancelled'
 
 
 @patch.object(BibleDB, 'save_meta')
@@ -538,6 +540,8 @@ def test_validate_xml_file_compressed_file(mocked_is_compressed, settings):
     with pytest.raises(ValidationError) as context:
         importer.validate_xml_file('file.name', 'xbible')
     assert context.value != ValidationError('Compressed file')
+    assert importer.import_failure is not None
+    assert importer.import_failure.code == 'compressed-file'
 
 
 @patch.object(BibleImport, 'parse_xml', return_value=None)
@@ -555,6 +559,8 @@ def test_validate_xml_file_parse_xml_fails(mocked_is_compressed, mocked_parse_xm
     with pytest.raises(ValidationError) as context:
         importer.validate_xml_file('file.name', 'xbible')
     assert context.value != ValidationError('Error when opening file')
+    assert importer.import_failure is not None
+    assert importer.import_failure.code == 'xml-open-failed'
 
 
 @patch.object(BibleImport, 'parse_xml', return_value=objectify.fromstring('<bible></bible>'))
