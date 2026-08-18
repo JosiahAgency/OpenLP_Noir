@@ -778,14 +778,24 @@ class BibleMediaItem(MediaManagerItem):
         if self.search_results is None:
             return
         if self.second_bible and self.search_results:
+            self.second_search_results = []
+            verse_references = [(verse.book.book_reference_id, verse.chapter, verse.verse, verse.verse)
+                                for verse in self.search_results]
+            second_verses = self.second_bible.get_verses(verse_references, False) or []
+            second_verse_map = {}
+            for second_verse in second_verses:
+                key = (second_verse.book.book_reference_id, second_verse.chapter, second_verse.verse)
+                if key not in second_verse_map:
+                    second_verse_map[key] = []
+                second_verse_map[key].append(second_verse)
             filtered_search_results = []
             not_found_count = 0
             for verse in self.search_results:
-                second_verse = self.second_bible.get_verses(
-                    [(verse.book.book_reference_id, verse.chapter, verse.verse, verse.verse)], False)
+                key = (verse.book.book_reference_id, verse.chapter, verse.verse)
+                second_verse = second_verse_map.get(key, [])
                 if second_verse:
                     filtered_search_results.append(verse)
-                    self.second_search_results += second_verse
+                    self.second_search_results.append(second_verse.pop(0))
                 else:
                     log.debug('Verse "{name} {chapter:d}:{verse:d}" not found in Second Bible "{bible_name}"'.format(
                         name=verse.book.name, chapter=verse.chapter,
@@ -905,11 +915,17 @@ class BibleMediaItem(MediaManagerItem):
             second_copyright = self.plugin.manager.get_meta_data(self.second_bible.name, 'copyright').value
             second_permissions = self.plugin.manager.get_meta_data(self.second_bible.name, 'permissions').value
         items = []
+        abbreviation_cache = {}
         language_selection = self.plugin.manager.get_language_selection(self.bible.name)
         for count, verse in enumerate(search_results):
+            book_ref_id = verse.book.book_reference_id
+            if book_ref_id not in abbreviation_cache:
+                book_data = BiblesResourcesDB.get_book_by_id(book_ref_id)
+                abbreviation_cache[book_ref_id] = (
+                    book_data['abbreviation'] if book_data else verse.book.get_name(language_selection))
             data = {
                 'book': verse.book.get_name(language_selection),
-                'book_abbreviation': BiblesResourcesDB.get_book_by_id(verse.book.book_reference_id)['abbreviation'],
+                'book_abbreviation': abbreviation_cache[book_ref_id],
                 'chapter': verse.chapter,
                 'verse': verse.verse,
                 'bible': self.bible.name,

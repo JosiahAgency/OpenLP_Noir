@@ -21,7 +21,7 @@
 """
 This module contains tests for the http module of the Bibles plugin.
 """
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from bs4 import BeautifulSoup
@@ -122,3 +122,65 @@ def test_get_books_from_http_content(mocked_send_error_message: MagicMock, mocke
     assert mocked_log.error.called is False, 'log.error should not have been called'
     assert mocked_send_error_message.called is False, 'send_error_message should not have been called'
     assert result == ['Genesis', 'Leviticus']
+
+
+@patch('openlp.plugins.bibles.lib.importers.http.get_soup_for_bible_ref')
+@patch('openlp.plugins.bibles.lib.importers.http.send_error_message')
+@patch.object(BSExtract, 'application', new_callable=PropertyMock)
+def test_get_bible_chapter_skips_malformed_verse_rows(mocked_application: PropertyMock,
+                                                      mocked_send_error_message: MagicMock,
+                                                      mocked_get_soup: MagicMock,
+                                                      bsextract: BSExtract):
+    """
+    Test that malformed verse rows are skipped instead of raising errors.
+    """
+    # GIVEN: A chapter response with one valid verse and malformed entries
+    test_html = (
+        '<article class="chapter">'
+        '<span class="verse"><span class="verse-number__group">1</span>'
+        '<span class="verse-content--hover">In the beginning</span></span>'
+        '<span class="verse"><span class="verse-content--hover">Missing number</span></span>'
+        '<span class="verse"><span class="verse-number__group">abc</span>'
+        '<span class="verse-content--hover">Bad number</span></span>'
+        '</article>'
+    )
+    mocked_get_soup.return_value = BeautifulSoup(test_html, 'lxml')
+    mocked_application.return_value = MagicMock()
+
+    # WHEN: Parsing the chapter
+    result = bsextract.get_bible_chapter('NIV', 'Genesis', 1)
+
+    # THEN: Only valid verses are returned, and no parse error dialog is shown
+    assert result is not None
+    assert result.verse_list == {1: 'In the beginning'}
+    assert mocked_send_error_message.called is False
+
+
+@patch('openlp.plugins.bibles.lib.importers.http.get_soup_for_bible_ref')
+@patch('openlp.plugins.bibles.lib.importers.http.send_error_message')
+@patch.object(BSExtract, 'application', new_callable=PropertyMock)
+def test_get_bible_chapter_errors_when_no_valid_verses(mocked_application: PropertyMock,
+                                                       mocked_send_error_message: MagicMock,
+                                                       mocked_get_soup: MagicMock,
+                                                       bsextract: BSExtract):
+    """
+    Test that chapter parsing reports an error when no valid verse rows remain.
+    """
+    # GIVEN: A chapter where every verse row is malformed
+    test_html = (
+        '<article class="chapter">'
+        '<span class="verse"><span class="verse-number__group">abc</span>'
+        '<span class="verse-content--hover">Bad number</span></span>'
+        '<span class="verse"><span class="verse-number__group">2</span>'
+        '<span class="verse-content--hover"></span></span>'
+        '</article>'
+    )
+    mocked_get_soup.return_value = BeautifulSoup(test_html, 'lxml')
+    mocked_application.return_value = MagicMock()
+
+    # WHEN: Parsing the chapter
+    result = bsextract.get_bible_chapter('NIV', 'Genesis', 1)
+
+    # THEN: No result is returned and parse error is reported
+    assert result is None
+    mocked_send_error_message.assert_called_once_with('parse')

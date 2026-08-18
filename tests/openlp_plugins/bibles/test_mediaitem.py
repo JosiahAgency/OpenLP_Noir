@@ -1416,16 +1416,18 @@ def test_on_text_search_all_results_in_both_books(media_item, mocked_log):
     media_item.bible = mocked_bible_1
     media_item.second_bible = mocked_bible_2
     media_item.second_search_results = []
+    media_item.second_bible.get_verses.reset_mock()
 
     # WHEN: Calling on_text_search and plugin.manager.verse_search returns a list of search results
     media_item.plugin.manager.verse_search.return_value = [mocked_verse_1, mocked_verse_2]
-    media_item.second_bible.get_verses.side_effect = [[mocked_verse_1a], [mocked_verse_2a]]
+    media_item.second_bible.get_verses.return_value = [mocked_verse_1a, mocked_verse_2a]
     with patch.object(media_item, 'display_results') as mocked_display_results:
         media_item.on_text_search('Search Text')
 
         # THEN: The search results for both bibles should be returned
         assert media_item.search_results == [mocked_verse_1, mocked_verse_2]
         assert media_item.second_search_results == [mocked_verse_1a, mocked_verse_2a]
+        media_item.second_bible.get_verses.assert_called_once_with([(1, 2, 3, 3), (4, 5, 6, 6)], False)
         not_found_calls = [call for call in mocked_log.debug.call_args_list
                            if 'not found in Second Bible' in call.args[0]]
         assert not_found_calls == []
@@ -1445,10 +1447,11 @@ def test_on_text_search_not_all_results_in_both_books(media_item, mocked_log):
     media_item.bible = mocked_bible_1
     media_item.second_bible = mocked_bible_2
     media_item.second_search_results = []
+    media_item.second_bible.get_verses.reset_mock()
 
     # WHEN: Calling on_text_search and not all results are found in the second bible
     media_item.plugin.manager.verse_search.return_value = [mocked_verse_1, mocked_verse_2, mocked_verse_3]
-    media_item.second_bible.get_verses.side_effect = [[mocked_verse_1a], [], []]
+    media_item.second_bible.get_verses.return_value = [mocked_verse_1a]
     with patch.object(media_item, 'display_results') as mocked_display_results:
         media_item.on_text_search('Search Text')
 
@@ -1456,6 +1459,7 @@ def test_on_text_search_not_all_results_in_both_books(media_item, mocked_log):
         #       the missing verses
         assert media_item.search_results == [mocked_verse_1]
         assert media_item.second_search_results == [mocked_verse_1a]
+        media_item.second_bible.get_verses.assert_called_once_with([(1, 2, 3, 3), (4, 5, 6, 6), (7, 8, 9, 9)], False)
         not_found_calls = [call for call in mocked_log.debug.call_args_list
                            if 'not found in Second Bible' in call.args[0]]
         assert len(not_found_calls) == 2

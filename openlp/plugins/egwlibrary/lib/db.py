@@ -314,9 +314,11 @@ class EGWLibraryManager(DBManager):
         filters = [Paragraph.text.like('%{token}%'.format(token=token)) for token in tokens]
         if book_id is not None:
             filters.append(Paragraph.book_id == book_id)
-        results = self.get_all_objects(Paragraph, filters,
-                                       order_by_ref=[Paragraph.book_id, Paragraph.paragraph_number])
-        return results[:limit]
+        return self.session.query(Paragraph) \
+            .filter(*filters) \
+            .order_by(Paragraph.book_id, Paragraph.paragraph_number) \
+            .limit(limit) \
+            .all()
 
     def delete_book(self, book_id):
         """

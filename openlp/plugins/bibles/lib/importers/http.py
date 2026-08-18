@@ -143,6 +143,28 @@ CROSSWALK_LANGUAGES = {
 log = logging.getLogger(__name__)
 
 
+def parse_verse_number(verse):
+    """
+    Parse a verse number from raw HTML text.
+
+    :param verse: The raw verse marker string from the source HTML.
+    :return: The verse number as int, or None if it cannot be parsed.
+    """
+    if verse is None:
+        return None
+    verse = str(verse).strip()
+    if not verse:
+        return None
+    if '-' in verse:
+        # Some translations bundle verses together, for example 17-18.
+        verse = verse.split('-', 1)[0]
+    try:
+        return int(verse)
+    except ValueError:
+        log.warning('Illegal verse number: %s', verse)
+        return None
+
+
 class BGExtract(RegistryProperties):
     """
     Extract verses from BibleGateway
@@ -239,15 +261,9 @@ class BGExtract(RegistryProperties):
                     text = text.replace(old, new)
                 text = ' '.join(text.split())
             if verse and text:
-                verse = verse.strip()
-                try:
-                    verse = int(verse)
-                except ValueError:
-                    verse_parts = verse.split('-')
-                    if len(verse_parts) > 1:
-                        verse = int(verse_parts[0])
-                except TypeError:
-                    log.warning('Illegal verse number: {verse:d}'.format(verse=verse))
+                verse = parse_verse_number(verse)
+                if verse is None:
+                    continue
                 verses.append((verse, text))
         verse_list = {}
         for verse, text in verses[::-1]:
@@ -280,7 +296,7 @@ class BGExtract(RegistryProperties):
                 if len(verse_parts) > 1:
                     clean_verse_num = int(verse_parts[0])
             except TypeError:
-                log.warning('Illegal verse number: {verse:d}'.format(verse=raw_verse_num))
+                log.warning('Illegal verse number: %s', raw_verse_num)
             if clean_verse_num:
                 verse_text = raw_verse_num.next_element
                 part = raw_verse_num.next_element.next_element
@@ -365,10 +381,18 @@ class BGExtract(RegistryProperties):
         books = []
         for book in content:
             td_element = book.find('td', {'class': 'book-name'})
-            strings = [text for text in td_element.stripped_strings]
-            book_name = strings[2].strip()
+            if not td_element:
+                continue
+            strings = [text.strip() for text in td_element.stripped_strings if text.strip()]
+            if not strings:
+                continue
+            book_name = strings[-1]
             if book_name:
                 books.append(book_name)
+        if not books:
+            log.error('No books found in the Biblegateway response.')
+            send_error_message('parse')
+            return None
         return books
 
     def get_bibles_from_http(self):
@@ -453,12 +477,22 @@ class BSExtract(RegistryProperties):
         verses = {}
         for verse in content:
             self.application.process_events()
-            versenumber = verse.find('span', 'verse-number__group').get_text().strip()
-            if '-' in versenumber:
-                # Some translations bundle verses together, see https://gitlab.com/openlp/openlp/-/issues/1104
-                versenumber = versenumber.split('-')[0]
-            versenumber = int(versenumber)
-            verses[versenumber] = verse.find('span', 'verse-content--hover').get_text().strip()
+            verse_number_tag = verse.find('span', 'verse-number__group')
+            verse_content_tag = verse.find('span', 'verse-content--hover')
+            if not verse_number_tag or not verse_content_tag:
+                log.debug('Skipping malformed verse in Bibleserver response')
+                continue
+            verse_number = parse_verse_number(verse_number_tag.get_text())
+            if verse_number is None:
+                continue
+            verse_text = verse_content_tag.get_text().strip()
+            if not verse_text:
+                continue
+            verses[verse_number] = verse_text
+        if not verses:
+            log.error('No valid verses found in the Bibleserver response.')
+            send_error_message('parse')
+            return None
         return SearchResults(book_name, chapter, verses)
 
     def get_books_from_http(self, version):
@@ -469,7 +503,10 @@ class BSExtract(RegistryProperties):
         """
         log.debug('BSExtract.get_books_from_http("{version}")'.format(version=version))
         # Parsing the book list from the website is near impossible, so we use the list from BiblesResourcesDB
-        bible = BIBLESERVER_TRANSLATIONS[version]
+        bible = BIBLESERVER_TRANSLATIONS.get(version)
+        if not bible:
+            log.error('Unknown Bibleserver translation: %s', version)
+            return []
         all_books = BiblesResourcesDB.get_books()
         books = []
         for book in all_books:
@@ -564,10 +601,19 @@ class CWExtract(RegistryProperties):
             log.error('No books found in the CrossWalk response.')
             send_error_message('parse')
             return books
-        books_json = json.loads(books_page)
+        try:
+            books_json = json.loads(books_page)
+        except ValueError:
+            log.exception('Unable to parse the CrossWalk books response.')
+            send_error_message('parse')
+            return books
         for book in books_json:
+            if not isinstance(book, dict):
+                continue
             # the link looks like this: https://www.biblestudytools.com/bla/2-corintios/
-            link = book['link']
+            link = book.get('link')
+            if not isinstance(link, str):
+                continue
             # remove trailing forward slash
             link = link.strip('/')
             # remove everything before the book name/code
