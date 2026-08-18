@@ -269,6 +269,8 @@ class FirstTimeForm(QtWidgets.QWizard, UiFirstTimeWizard, RegistryProperties):
             self.custom_check_box.setChecked(self.plugin_manager.get_plugin_by_name('custom').is_active())
             self.song_usage_check_box.setChecked(self.plugin_manager.get_plugin_by_name('songusage').is_active())
             self.alert_check_box.setChecked(self.plugin_manager.get_plugin_by_name('alerts').is_active())
+            self.egw_library_check_box.setChecked(self.plugin_manager.get_plugin_by_name('egwlibrary').is_active())
+            self.timer_check_box.setChecked(self.plugin_manager.get_plugin_by_name('timer').is_active())
             self.obs_studio_check_box.setChecked(self.plugin_manager.get_plugin_by_name('obs_studio').is_active())
             # Add any existing themes to list.
             self.theme_combo_box.insertSeparator(0)
@@ -326,6 +328,8 @@ class FirstTimeForm(QtWidgets.QWizard, UiFirstTimeWizard, RegistryProperties):
         self._set_plugin_status(self.custom_check_box, 'custom/status')
         self._set_plugin_status(self.song_usage_check_box, 'songusage/status')
         self._set_plugin_status(self.alert_check_box, 'alerts/status')
+        self._set_plugin_status(self.egw_library_check_box, 'egwlibrary/status')
+        self._set_plugin_status(self.timer_check_box, 'timer/status')
         self._set_plugin_status(self.obs_studio_check_box, 'obs_studio/status')
         self.screen_selection_widget.save()
         if self.theme_combo_box.currentIndex() != -1:

@@ -23,6 +23,8 @@ The bible import functions for OpenLP
 """
 import logging
 import urllib.error
+from csv import Error as CSVError, reader
+from pathlib import Path
 
 from lxml import etree
 from PySide6 import QtWidgets, QtGui, QtCore
@@ -124,6 +126,14 @@ class BibleImportForm(OpenLPWizard):
         """
         self.web_source_combo_box.currentIndexChanged.connect(self.on_web_source_combo_box_index_changed)
         self.web_update_button.clicked.connect(self.on_web_update_button_clicked)
+        self.osis_path_edit.pathChanged.connect(
+            lambda path: self.on_format_source_path_changed(path, BibleFormat.OSIS))
+        self.open_song_path_edit.pathChanged.connect(
+            lambda path: self.on_format_source_path_changed(path, BibleFormat.OpenSong))
+        self.zefania_path_edit.pathChanged.connect(
+            lambda path: self.on_format_source_path_changed(path, BibleFormat.Zefania))
+        self.wordproject_path_edit.pathChanged.connect(
+            lambda path: self.on_format_source_path_changed(path, BibleFormat.WordProject))
         self.sword_folder_path_edit.pathChanged.connect(self.on_sword_folder_path_edit_path_changed)
         self.sword_zipfile_path_edit.pathChanged.connect(self.on_sword_zipfile_path_edit_path_changed)
 
@@ -144,9 +154,13 @@ class BibleImportForm(OpenLPWizard):
         self.format_combo_box.addItems(['', '', '', '', '', '', ''])
         self.format_combo_box.setObjectName('FormatComboBox')
         self.format_layout.addRow(self.format_label, self.format_combo_box)
+        self.format_hint_label = QtWidgets.QLabel(self.select_page)
+        self.format_hint_label.setObjectName('FormatHintLabel')
+        self.format_hint_label.setWordWrap(True)
+        self.format_layout.addRow('', self.format_hint_label)
         self.format_spacer = QtWidgets.QSpacerItem(10, 0, QtWidgets.QSizePolicy.Policy.Fixed,
                                                    QtWidgets.QSizePolicy.Policy.Minimum)
-        self.format_layout.setItem(1, QtWidgets.QFormLayout.ItemRole.LabelRole, self.format_spacer)
+        self.format_layout.setItem(2, QtWidgets.QFormLayout.ItemRole.LabelRole, self.format_spacer)
         self.select_page_layout.addLayout(self.format_layout)
         self.select_stack = QtWidgets.QStackedLayout()
         self.select_stack.setObjectName('SelectStack')
@@ -162,6 +176,9 @@ class BibleImportForm(OpenLPWizard):
             default_path=self.settings.value('bibles/last directory import'),
             dialog_caption=WizardStrings.OpenTypeFile.format(file_type=WizardStrings.OSIS),
             show_revert=False)
+        self.osis_path_edit.filters = '{name} (*.xml *.osis *.xmm *.txt);;{all} (*)'.format(
+            name=translate('BiblesPlugin.ImportWizardForm', 'OSIS XML Files'),
+            all=UiStrings().AllFiles)
         self.osis_layout.addRow(self.osis_file_label, self.osis_path_edit)
         self.osis_spacer = QtWidgets.QSpacerItem(10, 0, QtWidgets.QSizePolicy.Policy.Fixed,
                                                  QtWidgets.QSizePolicy.Policy.Minimum)
@@ -181,7 +198,9 @@ class BibleImportForm(OpenLPWizard):
             show_revert=False,
         )
         self.csv_books_path_edit.filters = \
-            '{name} (*.csv)'.format(name=translate('BiblesPlugin.ImportWizardForm', 'CSV File'))
+            '{name} (*.csv *.txt);;{all} (*)'.format(
+                name=translate('BiblesPlugin.ImportWizardForm', 'CSV File'),
+                all=UiStrings().AllFiles)
         self.csv_layout.addRow(self.csv_books_label, self.csv_books_path_edit)
         self.csv_verses_label = QtWidgets.QLabel(self.csv_widget)
         self.csv_verses_label.setObjectName('CsvVersesLabel')
@@ -192,7 +211,9 @@ class BibleImportForm(OpenLPWizard):
             show_revert=False,
         )
         self.csv_verses_path_edit.filters = \
-            '{name} (*.csv)'.format(name=translate('BiblesPlugin.ImportWizardForm', 'CSV File'))
+            '{name} (*.csv *.txt);;{all} (*)'.format(
+                name=translate('BiblesPlugin.ImportWizardForm', 'CSV File'),
+                all=UiStrings().AllFiles)
         self.csv_layout.addRow(self.csv_books_label, self.csv_books_path_edit)
         self.csv_layout.addRow(self.csv_verses_label, self.csv_verses_path_edit)
         self.csv_spacer = QtWidgets.QSpacerItem(10, 0, QtWidgets.QSizePolicy.Policy.Fixed,
@@ -212,6 +233,9 @@ class BibleImportForm(OpenLPWizard):
             dialog_caption=WizardStrings.OpenTypeFile.format(file_type=WizardStrings.OS),
             show_revert=False,
         )
+        self.open_song_path_edit.filters = '{name} (*.xml *.xmm *.txt);;{all} (*)'.format(
+            name=translate('BiblesPlugin.ImportWizardForm', 'OpenSong XML Files'),
+            all=UiStrings().AllFiles)
         self.open_song_layout.addRow(self.open_song_file_label, self.open_song_path_edit)
         self.opensong_spacer = QtWidgets.QSpacerItem(10, 0, QtWidgets.QSizePolicy.Policy.Fixed,
                                                      QtWidgets.QSizePolicy.Policy.Minimum)
@@ -264,6 +288,9 @@ class BibleImportForm(OpenLPWizard):
             dialog_caption=WizardStrings.OpenTypeFile.format(file_type=WizardStrings.ZEF),
             show_revert=False,
         )
+        self.zefania_path_edit.filters = '{name} (*.xml *.xmm *.txt);;{all} (*)'.format(
+            name=translate('BiblesPlugin.ImportWizardForm', 'Zefania XML Files'),
+            all=UiStrings().AllFiles)
         self.zefania_layout.addRow(self.zefania_file_label, self.zefania_path_edit)
         self.zefania_spacer = QtWidgets.QSpacerItem(10, 0, QtWidgets.QSizePolicy.Policy.Fixed,
                                                     QtWidgets.QSizePolicy.Policy.Minimum)
@@ -338,6 +365,9 @@ class BibleImportForm(OpenLPWizard):
             default_path=self.settings.value('bibles/last directory import'),
             dialog_caption=WizardStrings.OpenTypeFile.format(file_type=WizardStrings.WordProject),
             show_revert=False)
+        self.wordproject_path_edit.filters = '{name} (*.zip);;{all} (*)'.format(
+            name=translate('BiblesPlugin.ImportWizardForm', 'WordProject ZIP Files'),
+            all=UiStrings().AllFiles)
         self.wordproject_layout.addRow(self.wordproject_file_label, self.wordproject_path_edit)
         self.wordproject_spacer = QtWidgets.QSpacerItem(10, 0, QtWidgets.QSizePolicy.Policy.Fixed,
                                                         QtWidgets.QSizePolicy.Policy.Minimum)
@@ -391,6 +421,9 @@ class BibleImportForm(OpenLPWizard):
         self.select_page.setTitle(WizardStrings.ImportSelect)
         self.select_page.setSubTitle(WizardStrings.ImportSelectLong)
         self.format_label.setText(WizardStrings.FormatLabel)
+        self.format_hint_label.setText(
+            translate('BiblesPlugin.ImportWizardForm',
+                      'Tip: If you are unsure, select your file first. OpenLP will try to detect a matching format.'))
         self.format_combo_box.setItemText(BibleFormat.OSIS, WizardStrings.OSIS)
         self.format_combo_box.setItemText(BibleFormat.CSV, WizardStrings.CSV)
         self.format_combo_box.setItemText(BibleFormat.OpenSong, WizardStrings.OS)
@@ -453,6 +486,108 @@ class BibleImportForm(OpenLPWizard):
                        self.zefania_spacer, self.wordproject_spacer]:
             spacer.changeSize(label_width, 0,
                               QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
+
+    def detect_bible_format_from_path(self, file_path):
+        """
+        Try to infer the Bible format from the selected source file.
+
+        :param file_path: The selected file path
+        :return: tuple[int | None, str | None]
+        """
+        path = Path(file_path)
+        suffix = path.suffix.lower()
+        if suffix == '.zip':
+            return BibleFormat.WordProject, 'WordProject ZIP'
+        if suffix == '.csv':
+            return BibleFormat.CSV, 'CSV'
+        if suffix == '.osis':
+            return BibleFormat.OSIS, 'OSIS XML'
+        detected_xml_format, detected_xml_name = self._detect_xml_root_format(path)
+        if detected_xml_format is not None:
+            return detected_xml_format, detected_xml_name
+        if self._looks_like_csv_text(path):
+            return BibleFormat.CSV, 'CSV text'
+        return None, None
+
+    def _detect_xml_root_format(self, path):
+        """
+        Detect XML-based Bible formats from root tag regardless of file extension.
+        """
+        try:
+            root_tag = etree.iterparse(str(path), events=('start',), huge_tree=False)
+            root_name = None
+            for _, element in root_tag:
+                root_name = element.tag.lower()
+                break
+            if root_name is None:
+                return None, None
+            if root_name.endswith('osis'):
+                return BibleFormat.OSIS, 'OSIS XML'
+            if root_name == 'bible':
+                return BibleFormat.OpenSong, 'OpenSong XML'
+            if root_name == 'xmlbible':
+                return BibleFormat.Zefania, 'Zefania XML'
+        except (OSError, etree.XMLSyntaxError, ValueError):
+            log.debug('Could not detect XML root for %s', path)
+        return None, None
+
+    def _looks_like_csv_text(self, path):
+        """
+        Heuristic check for CSV-like content (including .txt sources).
+        """
+        try:
+            lines = []
+            with path.open('r', encoding='utf-8', errors='ignore') as file_handle:
+                for line in file_handle:
+                    if line.strip():
+                        lines.append(line.strip())
+                    if len(lines) >= 2:
+                        break
+            if not lines:
+                return False
+            sample_rows = list(reader(lines))
+            if not sample_rows:
+                return False
+            row1 = sample_rows[0]
+            row2 = sample_rows[1] if len(sample_rows) > 1 else []
+            if len(row1) < 4:
+                return False
+            if not row2:
+                return row1.count(',') >= 3
+            if len(row2) < 4:
+                return False
+            if row1[0].isdigit() and row1[1].isdigit():
+                return True
+            if row1[1].isdigit() and row1[2].isdigit():
+                return True
+            if row2[0].isdigit() and row2[1].isdigit():
+                return True
+            if row2[1].isdigit() and row2[2].isdigit():
+                return True
+        except (OSError, UnicodeError, CSVError):
+            return False
+        return False
+
+    def on_format_source_path_changed(self, new_path, expected_format):
+        """
+        Try to auto-detect and align source format selection based on selected file.
+        """
+        if not new_path:
+            return
+        detected_format, detected_name = self.detect_bible_format_from_path(new_path)
+        if detected_format is None:
+            self.format_hint_label.setText(
+                translate('BiblesPlugin.ImportWizardForm',
+                          'Tip: OpenLP could not detect this file format automatically.'))
+            return
+        if detected_format != expected_format:
+            self.format_combo_box.setCurrentIndex(detected_format)
+            self.format_hint_label.setText(
+                translate('BiblesPlugin.ImportWizardForm',
+                          'Detected {format}. Import format was switched automatically.').format(format=detected_name))
+        else:
+            self.format_hint_label.setText(
+                translate('BiblesPlugin.ImportWizardForm', 'Detected {format}.').format(format=detected_name))
 
     def validateCurrentPage(self):
         """

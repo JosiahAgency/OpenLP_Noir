@@ -233,6 +233,14 @@ class UiFirstTimeWizard(object):
         self.alert_check_box.setChecked(True)
         self.alert_check_box.setObjectName('alert_check_box')
         self.plugin_layout.addWidget(self.alert_check_box)
+        self.egw_library_check_box = QtWidgets.QCheckBox(self.plugin_page)
+        self.egw_library_check_box.setChecked(True)
+        self.egw_library_check_box.setObjectName('egw_library_check_box')
+        self.plugin_layout.addWidget(self.egw_library_check_box)
+        self.timer_check_box = QtWidgets.QCheckBox(self.plugin_page)
+        self.timer_check_box.setChecked(True)
+        self.timer_check_box.setObjectName('timer_check_box')
+        self.plugin_layout.addWidget(self.timer_check_box)
         self.obs_studio_check_box = QtWidgets.QCheckBox(self.plugin_page)
         self.obs_studio_check_box.setChecked(False)
         self.obs_studio_check_box.setObjectName('obs_studio_check_box')
@@ -348,6 +356,12 @@ class UiFirstTimeWizard(object):
         self.song_usage_check_box.setText(translate('OpenLP.FirstTimeWizard', 'Song Usage Monitor'))
         self.alert_check_box.setText(translate('OpenLP.FirstTimeWizard',
                                                'Alerts – Display informative messages while showing other slides'))
+        self.egw_library_check_box.setText(
+            translate('OpenLP.FirstTimeWizard', 'EGW Library - Search and display EGW writings')
+        )
+        self.timer_check_box.setText(
+            translate('OpenLP.FirstTimeWizard', 'Clock (Timer) - Countdown and count-up timer overlays')
+        )
         self.obs_studio_check_box.setText(
             translate('OpenLP.FirstTimeWizard', 'OBS Studio - Control scenes directly from OpenLP')
         )

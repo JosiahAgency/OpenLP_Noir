@@ -19,7 +19,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>. #
 ##########################################################################
 import chardet
-import codecs
 import logging
 import re
 
@@ -66,13 +65,12 @@ class CCLIFileImport(SongImport):
                         details = {'confidence': 1, 'encoding': 'utf-8'}
                     except UnicodeDecodeError:
                         details = chardet.detect(detect_content)
-                in_file = codecs.open(file_path, 'r', details['encoding'])
                 try:
-                    if not in_file.read(1) == '\ufeff':
-                        # not UTF or no BOM was found
-                        in_file.seek(0)
-                    lines = in_file.readlines()
-                    in_file.close()
+                    with file_path.open('r', encoding=details['encoding']) as in_file:
+                        if not in_file.read(1) == '\ufeff':
+                            # not UTF or no BOM was found
+                            in_file.seek(0)
+                        lines = in_file.readlines()
                 except UnicodeDecodeError:
                     self.log_error(file_path, translate('SongsPlugin.CCLIFileImport',
                                                         'The file contains unreadable characters.'))

@@ -51,7 +51,7 @@ from openlp.core.ui.media import get_supported_media_suffix
 from openlp.core.ui.serviceitemeditform import ServiceItemEditForm
 from openlp.core.ui.servicenoteform import ServiceNoteForm
 from openlp.core.ui.starttimeform import StartTimeForm
-from openlp.core.ui.style import UiThemes, is_ui_theme
+from openlp.core.ui.style import is_ui_theme_noir_family
 from openlp.core.widgets.dialogs import FileDialog
 from openlp.core.widgets.toolbar import OpenLPToolbar
 from openlp.core.widgets.views import NoirServiceDelegate, SERVICE_LIVE_ROLE, SERVICE_META_ROLE, \
@@ -178,7 +178,7 @@ class Ui_ServiceManager(object):
         self.service_manager_list.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.service_manager_list.customContextMenuRequested.connect(self.context_menu)
         self.service_manager_list.setObjectName('service_manager_list')
-        if is_ui_theme(UiThemes.Noir):
+        if is_ui_theme_noir_family():
             # The Noir theme paints service items as run-sheet cards with an
             # on-air marker; the delegate needs mouse tracking for hover states
             self.service_manager_list.setItemDelegate(NoirServiceDelegate(self.service_manager_list))

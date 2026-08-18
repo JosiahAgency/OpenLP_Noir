@@ -179,9 +179,9 @@ class GeneralTab(SettingsTab):
         self.ui_theme_style_label.setObjectName('theme_style_label')
         self.ui_theme_style_combo_box = QtWidgets.QComboBox(self.ui_group_box)
         if has_ui_theme(UiThemes.QDarkStyle):
-            self.ui_theme_style_combo_box.addItems(['', '', '', '', ''])
+            self.ui_theme_style_combo_box.addItems(['', '', '', '', '', ''])
         else:
-            self.ui_theme_style_combo_box.addItems(['', '', '', ''])
+            self.ui_theme_style_combo_box.addItems(['', '', '', '', ''])
         self.ui_theme_style_combo_box.setObjectName('theme_style_combo_box')
         self.ui_layout.addRow(self.ui_theme_style_label)
         self.ui_layout.addRow(self.ui_theme_style_combo_box)
@@ -288,8 +288,10 @@ class GeneralTab(SettingsTab):
         if has_ui_theme(UiThemes.QDarkStyle):
             self.ui_theme_style_combo_box.setItemText(3, translate('OpenLP.AdvancedTab', 'QDarkStyle'))
             self.ui_theme_style_combo_box.setItemText(4, translate('OpenLP.AdvancedTab', 'Noir'))
+            self.ui_theme_style_combo_box.setItemText(5, translate('OpenLP.AdvancedTab', 'Noir Light'))
         else:
             self.ui_theme_style_combo_box.setItemText(3, translate('OpenLP.AdvancedTab', 'Noir'))
+            self.ui_theme_style_combo_box.setItemText(4, translate('OpenLP.AdvancedTab', 'Noir Light'))
         self.hide_mouse_check_box.setText(translate('OpenLP.AdvancedTab', 'Hide mouse cursor when over display window'))
 
     def load(self):
@@ -354,6 +356,8 @@ class GeneralTab(SettingsTab):
             return 3 if has_ui_theme(UiThemes.QDarkStyle) else 2
         if ui_theme == UiThemes.Noir:
             return 4 if has_ui_theme(UiThemes.QDarkStyle) else 3
+        if ui_theme == UiThemes.NoirLight:
+            return 5 if has_ui_theme(UiThemes.QDarkStyle) else 4
 
         return 0
 
@@ -374,7 +378,9 @@ class GeneralTab(SettingsTab):
         if index == 3:
             return UiThemes.QDarkStyle if has_ui_theme(UiThemes.QDarkStyle) else UiThemes.Noir
         if index == 4:
-            return UiThemes.Noir
+            return UiThemes.Noir if has_ui_theme(UiThemes.QDarkStyle) else UiThemes.NoirLight
+        if index == 5:
+            return UiThemes.NoirLight
 
         return UiThemes.Automatic
 

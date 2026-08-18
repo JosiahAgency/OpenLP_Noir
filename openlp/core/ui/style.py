@@ -111,6 +111,27 @@ NOIR_WARNING = '#D9A23C'
 # grip hover, and the text color painted on top of the on-air red.
 NOIR_LINE_HOVER = '#3A4250'
 NOIR_TEXT_ON_ACCENT = '#FFFFFF'
+# Noir Light token ramp. Keeps Noir's spacing/interaction language but with a
+# high-luminance surface stack for bright environments.
+NOIR_LIGHT_INK_0 = '#F7F9FC'
+NOIR_LIGHT_INK_1 = '#F2F5FA'
+NOIR_LIGHT_INK_2 = '#ECF1F8'
+NOIR_LIGHT_INK_3 = '#E3EAF4'
+NOIR_LIGHT_INK_4 = '#D5DFEC'
+NOIR_LIGHT_LINE = '#CBD6E5'
+NOIR_LIGHT_LINE_SOFT = '#B9C7DB'
+NOIR_LIGHT_TEXT_HI = '#1B2432'
+NOIR_LIGHT_TEXT_BODY = '#2A3444'
+NOIR_LIGHT_TEXT_MID = '#4B5A70'
+NOIR_LIGHT_TEXT_LOW = '#7A8799'
+NOIR_LIGHT_CUE = '#2A75E6'
+NOIR_LIGHT_CUE_HOVER = '#4A8EF0'
+NOIR_LIGHT_CUE_DIM = 'rgba(42, 117, 230, 0.14)'
+NOIR_LIGHT_CUE_LINE = 'rgba(42, 117, 230, 0.45)'
+NOIR_LIGHT_ON_AIR = '#B5362F'
+NOIR_LIGHT_WARNING = '#B8862A'
+NOIR_LIGHT_LINE_HOVER = '#C2CFE2'
+NOIR_LIGHT_TEXT_ON_ACCENT = '#FFFFFF'
 # Per-plugin identity accents, used for icon tint and service-list chip tint.
 # Muted (lower saturation) vs NOIR_CUE/NOIR_ON_AIR so plugin colour never
 # competes with selection/live-state signalling.
@@ -843,6 +864,42 @@ NOIR_MEDIA_MANAGER_STYLE = """
 """.format(ink2=NOIR_INK_2, ink3=NOIR_INK_3, text_hi=NOIR_TEXT_HI, text_mid=NOIR_TEXT_MID,
            cue_dim=NOIR_CUE_DIM)
 
+
+def _derive_noir_variant_stylesheet(base_stylesheet):
+    """
+    Derive a light Noir stylesheet from the dark Noir stylesheet by replacing
+    the shared token values.
+    """
+    replacements = (
+        (NOIR_INK_0, NOIR_LIGHT_INK_0),
+        (NOIR_INK_1, NOIR_LIGHT_INK_1),
+        (NOIR_INK_2, NOIR_LIGHT_INK_2),
+        (NOIR_INK_3, NOIR_LIGHT_INK_3),
+        (NOIR_INK_4, NOIR_LIGHT_INK_4),
+        (NOIR_LINE_SOFT, NOIR_LIGHT_LINE_SOFT),
+        (NOIR_LINE_HOVER, NOIR_LIGHT_LINE_HOVER),
+        (NOIR_LINE, NOIR_LIGHT_LINE),
+        (NOIR_TEXT_HI, NOIR_LIGHT_TEXT_HI),
+        (NOIR_TEXT_BODY, NOIR_LIGHT_TEXT_BODY),
+        (NOIR_TEXT_MID, NOIR_LIGHT_TEXT_MID),
+        (NOIR_TEXT_LOW, NOIR_LIGHT_TEXT_LOW),
+        (NOIR_CUE_HOVER, NOIR_LIGHT_CUE_HOVER),
+        (NOIR_CUE_DIM, NOIR_LIGHT_CUE_DIM),
+        (NOIR_CUE_LINE, NOIR_LIGHT_CUE_LINE),
+        (NOIR_CUE, NOIR_LIGHT_CUE),
+        (NOIR_ON_AIR, NOIR_LIGHT_ON_AIR),
+        (NOIR_WARNING, NOIR_LIGHT_WARNING),
+        (NOIR_TEXT_ON_ACCENT, NOIR_LIGHT_TEXT_ON_ACCENT),
+    )
+    derived = base_stylesheet
+    for source, target in replacements:
+        derived = derived.replace(source, target)
+    return derived
+
+
+NOIR_LIGHT_STYLESHEET = _derive_noir_variant_stylesheet(NOIR_STYLESHEET)
+NOIR_LIGHT_MEDIA_MANAGER_STYLE = _derive_noir_variant_stylesheet(NOIR_MEDIA_MANAGER_STYLE)
+
 # Tiny SVG glyphs for stylesheet subcontrols (combo box arrows, check marks and
 # tree branch carets). Qt stylesheets can only load images from files, so these
 # are written to a temp directory at runtime; see get_noir_asset_stylesheet().
@@ -956,6 +1013,7 @@ class UiThemes(Enum):
     DefaultDark = 'dark:default'
     QDarkStyle = 'dark:qdarkstyle'
     Noir = 'dark:noir'
+    NoirLight = 'light:noir'
 
 
 def is_ui_theme_dark():
@@ -980,6 +1038,58 @@ def has_ui_theme(ui_theme: UiThemes):
     if ui_theme == UiThemes.QDarkStyle:
         return HAS_DARK_THEME
     return True
+
+
+def is_ui_theme_noir_family():
+    """
+    True when either Noir variant is selected.
+    """
+    return is_ui_theme(UiThemes.Noir) or is_ui_theme(UiThemes.NoirLight)
+
+
+def get_noir_theme_tokens():
+    """
+    Return the active Noir token set for rendering code that paints manually.
+    """
+    try:
+        is_noir_light = is_ui_theme(UiThemes.NoirLight)
+    except (AttributeError, KeyError):
+        # Some isolated unit tests instantiate delegates/widgets without a full
+        # Registry settings service; default to the original dark Noir tokens.
+        is_noir_light = False
+    if is_noir_light:
+        return {
+            'ink0': NOIR_LIGHT_INK_0,
+            'ink1': NOIR_LIGHT_INK_1,
+            'ink2': NOIR_LIGHT_INK_2,
+            'ink3': NOIR_LIGHT_INK_3,
+            'ink4': NOIR_LIGHT_INK_4,
+            'text_hi': NOIR_LIGHT_TEXT_HI,
+            'text_body': NOIR_LIGHT_TEXT_BODY,
+            'text_mid': NOIR_LIGHT_TEXT_MID,
+            'text_low': NOIR_LIGHT_TEXT_LOW,
+            'cue': NOIR_LIGHT_CUE,
+            'on_air': NOIR_LIGHT_ON_AIR,
+            'text_on_accent': NOIR_LIGHT_TEXT_ON_ACCENT,
+            'plugin_colors': NOIR_PLUGIN_COLORS,
+            'verse_colors': NOIR_VERSE_TAG_COLORS,
+        }
+    return {
+        'ink0': NOIR_INK_0,
+        'ink1': NOIR_INK_1,
+        'ink2': NOIR_INK_2,
+        'ink3': NOIR_INK_3,
+        'ink4': NOIR_INK_4,
+        'text_hi': NOIR_TEXT_HI,
+        'text_body': NOIR_TEXT_BODY,
+        'text_mid': NOIR_TEXT_MID,
+        'text_low': NOIR_TEXT_LOW,
+        'cue': NOIR_CUE,
+        'on_air': NOIR_ON_AIR,
+        'text_on_accent': NOIR_TEXT_ON_ACCENT,
+        'plugin_colors': NOIR_PLUGIN_COLORS,
+        'verse_colors': NOIR_VERSE_TAG_COLORS,
+    }
 
 
 IS_SYSTEM_DARKMODE = None
@@ -1068,6 +1178,8 @@ def set_default_theme(app):
     register_bundled_fonts()
     if is_ui_theme(UiThemes.Noir):
         set_noir_palette(app)
+    elif is_ui_theme(UiThemes.NoirLight):
+        set_noir_light_palette(app)
     elif is_ui_theme(UiThemes.DefaultDark) or (is_ui_theme(UiThemes.Automatic) and is_ui_theme_dark()):
         set_default_darkmode(app)
     elif is_ui_theme(UiThemes.DefaultLight):
@@ -1173,6 +1285,49 @@ def set_noir_palette(app):
     app.setFont(font)
 
 
+def set_noir_light_palette(app):
+    """
+    Setup the Noir Light palette on the application.
+    """
+    app.setStyle('Fusion')
+    window = QtGui.QColor(NOIR_LIGHT_INK_1)
+    base = QtGui.QColor(NOIR_LIGHT_INK_0)
+    panel = QtGui.QColor(NOIR_LIGHT_INK_2)
+    raised = QtGui.QColor(NOIR_LIGHT_INK_3)
+    hover = QtGui.QColor(NOIR_LIGHT_INK_4)
+    text_hi = QtGui.QColor(NOIR_LIGHT_TEXT_HI)
+    disabled = QtGui.QColor(NOIR_LIGHT_TEXT_LOW)
+    cue = QtGui.QColor(NOIR_LIGHT_CUE)
+    noir_palette = QtGui.QPalette()
+    noir_palette.setColor(QtGui.QPalette.ColorRole.Window, window)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.WindowText, text_hi)
+    noir_palette.setColor(QtGui.QPalette.ColorGroup.Disabled, QtGui.QPalette.ColorRole.WindowText, disabled)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.Base, base)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.AlternateBase, panel)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.ToolTipBase, panel)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.ToolTipText, text_hi)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.Text, text_hi)
+    noir_palette.setColor(QtGui.QPalette.ColorGroup.Disabled, QtGui.QPalette.ColorRole.Text, disabled)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.PlaceholderText, disabled)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.Button, raised)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.ButtonText, text_hi)
+    noir_palette.setColor(QtGui.QPalette.ColorGroup.Disabled, QtGui.QPalette.ColorRole.ButtonText, disabled)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.BrightText, QtGui.QColor(NOIR_LIGHT_ON_AIR))
+    noir_palette.setColor(QtGui.QPalette.ColorRole.Link, cue)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.Highlight, cue)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.HighlightedText, QtGui.QColor(NOIR_LIGHT_INK_0))
+    noir_palette.setColor(QtGui.QPalette.ColorGroup.Disabled, QtGui.QPalette.ColorRole.HighlightedText, disabled)
+    noir_palette.setColor(QtGui.QPalette.ColorGroup.Disabled,
+                          QtGui.QPalette.ColorRole.Light,
+                          QtCore.Qt.GlobalColor.transparent)
+    noir_palette.setColor(QtGui.QPalette.ColorRole.Mid, hover)
+    app.setPalette(noir_palette)
+    font = QtGui.QFont()
+    font.setFamilies(NOIR_FONT_FAMILIES)
+    font.setPointSizeF(NOIR_TYPE_BODY_PT)
+    app.setFont(font)
+
+
 def get_alternate_rows_repair_stylesheet(base_color_name):
     return 'QTableWidget, QListWidget, QTreeWidget {alternate-background-color: ' + base_color_name + ';}\n'
 
@@ -1197,6 +1352,9 @@ def get_application_stylesheet():
         if is_ui_theme(UiThemes.Noir):
             stylesheet += NOIR_STYLESHEET
             stylesheet += get_noir_asset_stylesheet()
+        elif is_ui_theme(UiThemes.NoirLight):
+            stylesheet += NOIR_LIGHT_STYLESHEET
+            stylesheet += get_noir_asset_stylesheet()
     stylesheet += 'QWidget#slide_controller_toolbar QToolButton::checked {' \
                   '  background-color: palette(highlight);' \
                   '  color: palette(highlighted-text);' \
@@ -1214,5 +1372,7 @@ def get_library_stylesheet():
         return ''
     elif is_ui_theme(UiThemes.Noir):
         return NOIR_MEDIA_MANAGER_STYLE
+    elif is_ui_theme(UiThemes.NoirLight):
+        return NOIR_LIGHT_MEDIA_MANAGER_STYLE
     else:
         return MEDIA_MANAGER_STYLE

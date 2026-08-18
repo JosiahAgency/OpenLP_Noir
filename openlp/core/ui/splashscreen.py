@@ -24,7 +24,7 @@ The splash screen
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from openlp.core.ui.style import NOIR_INK_0, UiThemes, is_ui_theme
+from openlp.core.ui.style import get_noir_theme_tokens, is_ui_theme_noir_family
 
 
 class SplashScreen(QtWidgets.QSplashScreen):
@@ -47,7 +47,7 @@ class SplashScreen(QtWidgets.QSplashScreen):
         """
         canvas = QtGui.QPixmap(370, 370)
         canvas.setDevicePixelRatio(self.devicePixelRatioF())
-        canvas.fill(QtGui.QColor(NOIR_INK_0))
+        canvas.fill(QtGui.QColor(get_noir_theme_tokens()['ink0']))
         painter = QtGui.QPainter(canvas)
         painter.setRenderHint(QtGui.QPainter.RenderHint.SmoothPixmapTransform)
         painter.drawPixmap(QtCore.QRect(0, 0, 370, 370), splash_image)
@@ -65,7 +65,7 @@ class SplashScreen(QtWidgets.QSplashScreen):
         source_image.setDevicePixelRatio(self.devicePixelRatioF())
         splash_image = source_image.scaled(370, 370, mode=QtCore.Qt.TransformationMode.SmoothTransformation)
         source_image = None
-        if is_ui_theme(UiThemes.Noir):
+        if is_ui_theme_noir_family():
             splash_image = self._apply_noir_background(splash_image)
         self.setPixmap(splash_image)
         self.resize(370, 370)

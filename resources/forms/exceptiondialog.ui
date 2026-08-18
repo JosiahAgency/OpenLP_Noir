@@ -126,7 +126,7 @@
     <item>
      <widget class="QLabel" name="messageLabel">
       <property name="text">
-       <string>Oops! OpenLP hit a problem, and couldn't recover. The text in the box below contains information that might be helpful to the OpenLP developers, so please e-mail it to bugs3@openlp.org, along with a detailed description of what you were doing when the problem occurred.</string>
+       <string>Oops! OpenLP hit a problem, and couldn't recover. The text in the box below contains information that might be helpful to the OpenLP developers, so please e-mail it to mwandajosiah@gmail.com, along with a detailed description of what you were doing when the problem occurred.</string>
       </property>
       <property name="wordWrap">
        <bool>true</bool>

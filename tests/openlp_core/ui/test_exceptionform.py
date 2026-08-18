@@ -113,6 +113,7 @@ def test_on_send_report_button_clicked(mocked_addQueryItem: MagicMock, MockQUrl:
 
     # THEN: Verify strings were formatted properly
     mocked_addQueryItem.assert_called_with('body', MAIL_ITEM_TEXT)
+    MockQUrl.assert_called_with('mailto:mwandajosiah@gmail.com')
 
 
 @patch('openlp.core.ui.exceptionform.QtGui.QDesktopServices.openUrl')

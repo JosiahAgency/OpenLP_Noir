@@ -99,13 +99,15 @@ def test_get_ui_theme_name_noir_with_qdarkstyle(mocked_has_ui_theme):
     # GIVEN: QDarkStyle is available
     mocked_has_ui_theme.return_value = True
 
-    # WHEN: the theme names for indexes 3 and 4 are requested
+    # WHEN: the theme names for indexes 3, 4 and 5 are requested
     theme_at_3 = GeneralTab.get_ui_theme_name(3)
     theme_at_4 = GeneralTab.get_ui_theme_name(4)
+    theme_at_5 = GeneralTab.get_ui_theme_name(5)
 
-    # THEN: index 3 should be QDarkStyle and index 4 should be Noir
+    # THEN: index 3 should be QDarkStyle, index 4 Noir and index 5 Noir Light
     assert theme_at_3 == UiThemes.QDarkStyle
     assert theme_at_4 == UiThemes.Noir
+    assert theme_at_5 == UiThemes.NoirLight
 
 
 @patch('openlp.core.ui.generaltab.has_ui_theme')
@@ -116,11 +118,33 @@ def test_get_ui_theme_name_noir_without_qdarkstyle(mocked_has_ui_theme):
     # GIVEN: QDarkStyle is not available
     mocked_has_ui_theme.return_value = False
 
-    # WHEN: the theme name for index 3 is requested
+    # WHEN: the theme names for indexes 3 and 4 are requested
     theme = GeneralTab.get_ui_theme_name(3)
+    theme_light = GeneralTab.get_ui_theme_name(4)
 
-    # THEN: the theme should be Noir
+    # THEN: index 3 should be Noir and index 4 should be Noir Light
     assert theme == UiThemes.Noir
+    assert theme_light == UiThemes.NoirLight
+
+
+@patch('openlp.core.ui.generaltab.has_ui_theme')
+def test_get_ui_theme_index_noir_light_with_qdarkstyle(mocked_has_ui_theme):
+    """
+    Test that the Noir Light theme maps to combo box index 5 when QDarkStyle is available
+    """
+    mocked_has_ui_theme.return_value = True
+    index = GeneralTab.get_ui_theme_index(UiThemes.NoirLight)
+    assert index == 5
+
+
+@patch('openlp.core.ui.generaltab.has_ui_theme')
+def test_get_ui_theme_index_noir_light_without_qdarkstyle(mocked_has_ui_theme):
+    """
+    Test that the Noir Light theme maps to combo box index 4 when QDarkStyle is not available
+    """
+    mocked_has_ui_theme.return_value = False
+    index = GeneralTab.get_ui_theme_index(UiThemes.NoirLight)
+    assert index == 4
 
 
 def test_slide_numbers_in_footer(settings):

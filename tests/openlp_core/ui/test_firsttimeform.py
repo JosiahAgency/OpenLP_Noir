@@ -204,7 +204,8 @@ def test_accept_method(mocked_qwizard_accept):
     with patch.object(ftw, '_set_plugin_status') as mocked_set_plugin_status, \
             patch.multiple(ftw, songs_check_box=DEFAULT, bible_check_box=DEFAULT, presentation_check_box=DEFAULT,
                            image_check_box=DEFAULT, media_check_box=DEFAULT, custom_check_box=DEFAULT,
-                           song_usage_check_box=DEFAULT, alert_check_box=DEFAULT, obs_studio_check_box=DEFAULT) \
+                           song_usage_check_box=DEFAULT, alert_check_box=DEFAULT, egw_library_check_box=DEFAULT,
+                           timer_check_box=DEFAULT, obs_studio_check_box=DEFAULT) \
             as mocked_check_boxes, \
             patch.object(ftw, 'screen_selection_widget') as mocked_screen_selection_widget:
         # WHEN: Calling accept
@@ -220,6 +221,8 @@ def test_accept_method(mocked_qwizard_accept):
             call(mocked_check_boxes['custom_check_box'], 'custom/status'),
             call(mocked_check_boxes['song_usage_check_box'], 'songusage/status'),
             call(mocked_check_boxes['alert_check_box'], 'alerts/status'),
+            call(mocked_check_boxes['egw_library_check_box'], 'egwlibrary/status'),
+            call(mocked_check_boxes['timer_check_box'], 'timer/status'),
             call(mocked_check_boxes['obs_studio_check_box'], 'obs_studio/status')
         ])
         mocked_screen_selection_widget.save.assert_called_once()

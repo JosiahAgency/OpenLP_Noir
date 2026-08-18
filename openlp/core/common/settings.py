@@ -435,7 +435,7 @@ class Settings(QtCore.QSettings):
         "core/logo hide on startup": False,
         "core/songselect password": "",
         "core/songselect username": "",
-        "core/update check": True,
+        "core/update check": False,
         "core/view mode": "default",
         # The other display settings (display position and dimensions) are defined in the ScreenList class due to a
         # circular dependency.

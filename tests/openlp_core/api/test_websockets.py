@@ -179,6 +179,7 @@ def test_websocket_worker_start(mocked_asyncio: MagicMock, worker: WebSocketWork
     mocked_lock = MagicMock()
     mocked_asyncio.Lock.return_value = mocked_lock
     mocked_event_loop = MagicMock()
+    mocked_event_loop.run_until_complete.side_effect = lambda awaitable: getattr(awaitable, 'close', lambda: None)()
     mocked_asyncio.new_event_loop.return_value = mocked_event_loop
 
     # WHEN: The start function is called

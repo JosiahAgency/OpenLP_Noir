@@ -44,7 +44,7 @@ def test_splashscreen(mock_settings: MagicMock):
         'should have been QtCore.Qt.ContextMenuPolicy.PreventContextMenu or 4'
 
 
-@patch('openlp.core.ui.splashscreen.is_ui_theme', return_value=True)
+@patch('openlp.core.ui.splashscreen.is_ui_theme_noir_family', return_value=True)
 def test_splashscreen_noir_background(mocked_is_ui_theme, mock_settings: MagicMock):
     """
     Test that the Noir theme bakes a dark ink background into the splash pixmap
@@ -57,7 +57,7 @@ def test_splashscreen_noir_background(mocked_is_ui_theme, mock_settings: MagicMo
     assert corner_color == QtGui.QColor(NOIR_INK_0)
 
 
-@patch('openlp.core.ui.splashscreen.is_ui_theme', return_value=False)
+@patch('openlp.core.ui.splashscreen.is_ui_theme_noir_family', return_value=False)
 def test_splashscreen_legacy_background_unchanged(mocked_is_ui_theme, mock_settings: MagicMock):
     """
     Test that non-Noir themes keep today's pixmap untouched (no ink background baked in)

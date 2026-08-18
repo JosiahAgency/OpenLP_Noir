@@ -140,7 +140,7 @@ class ExceptionForm(QtWidgets.QDialog, Ui_ExceptionDialog, RegistryProperties):
                                                                    libs=content['libs']))
         if self.file_attachment:
             mail_urlquery.addQueryItem('attach', self.file_attachment)
-        mail_to_url = QtCore.QUrl('mailto:bugs31@openlp.org')
+        mail_to_url = QtCore.QUrl('mailto:mwandajosiah@gmail.com')
         mail_to_url.setQuery(mail_urlquery)
         QtGui.QDesktopServices.openUrl(mail_to_url)
 

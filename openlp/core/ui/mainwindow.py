@@ -60,7 +60,7 @@ from openlp.core.ui.servicemanager import ServiceManager
 from openlp.core.ui.settingsform import SettingsForm
 from openlp.core.ui.shortcutlistform import ShortcutListForm
 from openlp.core.ui import HideMode
-from openlp.core.ui.style import PROGRESSBAR_STYLE, UiThemes, get_library_stylesheet, is_ui_theme
+from openlp.core.ui.style import PROGRESSBAR_STYLE, get_library_stylesheet, is_ui_theme_noir_family
 from openlp.core.ui.thememanager import ThemeManager
 from openlp.core.version import get_version
 from openlp.core.widgets.dialogs import FileDialog
@@ -139,7 +139,7 @@ class Ui_MainWindow(object):
         self.default_theme_label = QtWidgets.QLabel(self.status_bar)
         self.default_theme_label.setObjectName('default_theme_label')
         self.status_bar.addPermanentWidget(self.default_theme_label)
-        if is_ui_theme(UiThemes.Noir):
+        if is_ui_theme_noir_family():
             # Persistent output-state segment: what the projector is showing right
             # now, readable from anywhere in the app. Driven by the live
             # controller through the 'live_output_state_changed' registry event.
@@ -154,7 +154,7 @@ class Ui_MainWindow(object):
         self.media_manager_dock.setStyleSheet(get_library_stylesheet())
         # Create the media toolbox. The Noir theme replaces the stacked QToolBox
         # tabs with an icon-rail sidebar that exposes the same API.
-        if is_ui_theme(UiThemes.Noir):
+        if is_ui_theme_noir_family():
             self.media_tool_box = LibrarySidebar(self.media_manager_dock)
         else:
             self.media_tool_box = QtWidgets.QToolBox(self.media_manager_dock)
@@ -559,7 +559,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow, LogMixin, RegistryPropert
         Registry().register_function('theme_change_global', self.default_theme_changed)
         Registry().register_function('config_screen_changed', self.screen_changed)
         Registry().register_function('bootstrap_post_set_up', self.bootstrap_post_set_up)
-        if is_ui_theme(UiThemes.Noir):
+        if is_ui_theme_noir_family():
             Registry().register_function('live_output_state_changed', self.on_live_output_state_changed)
         # Reset the cursor
         self.application.set_normal_cursor()

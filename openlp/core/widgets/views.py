@@ -31,9 +31,7 @@ from openlp.core.common.mixins import RegistryProperties
 from openlp.core.common.platform import is_win
 from openlp.core.common.registry import Registry
 from openlp.core.lib.serviceitem import ItemCapabilities, ServiceItem
-from openlp.core.ui.style import NOIR_CUE, NOIR_INK_0, NOIR_INK_1, NOIR_INK_2, NOIR_INK_3, NOIR_INK_4, \
-    NOIR_ON_AIR, NOIR_PLUGIN_COLORS, NOIR_TEXT_BODY, NOIR_TEXT_HI, NOIR_TEXT_LOW, NOIR_TEXT_MID, \
-    NOIR_TEXT_ON_ACCENT, NOIR_VERSE_TAG_COLORS, UiThemes, is_ui_theme
+from openlp.core.ui.style import get_noir_theme_tokens, is_ui_theme_noir_family
 from openlp.core.widgets.layouts import AspectRatioLayout
 
 SCROLL_HINT = {
@@ -102,7 +100,7 @@ class NoirSlideDelegate(QtWidgets.QStyledItemDelegate):
         """
         if not verse_tag:
             return None
-        return NOIR_VERSE_TAG_COLORS.get(str(verse_tag)[0].upper())
+        return get_noir_theme_tokens()['verse_colors'].get(str(verse_tag)[0].upper())
 
     def _accent_color(self):
         """
@@ -110,11 +108,13 @@ class NoirSlideDelegate(QtWidgets.QStyledItemDelegate):
         while output is showing, the cue blue otherwise.
         """
         controller = self.view.parent()
+        tokens = get_noir_theme_tokens()
         if self.is_live and getattr(controller, 'current_hide_mode', False) is None:
-            return QtGui.QColor(NOIR_ON_AIR)
-        return QtGui.QColor(NOIR_CUE)
+            return QtGui.QColor(tokens['on_air'])
+        return QtGui.QColor(tokens['cue'])
 
     def paint(self, painter, option, index):
+        tokens = get_noir_theme_tokens()
         text = index.data(QtCore.Qt.ItemDataRole.DisplayRole)
         selected = bool(option.state & QtWidgets.QStyle.StateFlag.State_Selected)
         hovered = bool(option.state & QtWidgets.QStyle.StateFlag.State_MouseOver)
@@ -132,8 +132,8 @@ class NoirSlideDelegate(QtWidgets.QStyledItemDelegate):
                     border = QtGui.QColor(accent)
                     border.setAlpha(150)
                 else:
-                    fill = QtGui.QColor(NOIR_INK_2)
-                    border = QtGui.QColor(NOIR_INK_3)
+                    fill = QtGui.QColor(tokens['ink2'])
+                    border = QtGui.QColor(tokens['ink3'])
                 painter.setPen(QtGui.QPen(border, 1.5 if selected else 1))
                 painter.setBrush(fill)
                 painter.drawRoundedRect(card, self.CARD_RADIUS, self.CARD_RADIUS)
@@ -158,7 +158,7 @@ class NoirSlideDelegate(QtWidgets.QStyledItemDelegate):
         node_width = max(float(self.NODE_HEIGHT), node_metrics.horizontalAdvance(node_label) + 12)
         node = QtCore.QRectF(rail_x - node_width / 2, node_center_y - self.NODE_HEIGHT / 2,
                              node_width, self.NODE_HEIGHT)
-        rail_pen = QtGui.QPen(QtGui.QColor(NOIR_INK_3), 2)
+        rail_pen = QtGui.QPen(QtGui.QColor(tokens['ink3']), 2)
         painter.setPen(rail_pen)
         if row > 0:
             painter.drawLine(QtCore.QPointF(rail_x, rect.top()), QtCore.QPointF(rail_x, node.top() - 3))
@@ -173,11 +173,11 @@ class NoirSlideDelegate(QtWidgets.QStyledItemDelegate):
             border = QtGui.QColor(accent)
             border.setAlpha(120)
         elif hovered:
-            fill = QtGui.QColor(NOIR_INK_3)
-            border = QtGui.QColor(NOIR_INK_4)
+            fill = QtGui.QColor(tokens['ink3'])
+            border = QtGui.QColor(tokens['ink4'])
         else:
-            fill = QtGui.QColor(NOIR_INK_2)
-            border = QtGui.QColor(NOIR_INK_3)
+            fill = QtGui.QColor(tokens['ink2'])
+            border = QtGui.QColor(tokens['ink3'])
         painter.setPen(QtGui.QPen(border, 1))
         painter.setBrush(fill)
         painter.drawRoundedRect(card, self.CARD_RADIUS, self.CARD_RADIUS)
@@ -185,7 +185,7 @@ class NoirSlideDelegate(QtWidgets.QStyledItemDelegate):
         if selected:
             painter.setPen(QtCore.Qt.PenStyle.NoPen)
             painter.setBrush(accent)
-            node_text = QtGui.QColor(NOIR_TEXT_ON_ACCENT) if self.is_live else QtGui.QColor(NOIR_INK_0)
+            node_text = QtGui.QColor(tokens['text_on_accent']) if self.is_live else QtGui.QColor(tokens['ink0'])
         else:
             tag_color = None if is_past else self._verse_tag_color(index.data(VERSE_TAG_ROLE))
             if tag_color:
@@ -194,11 +194,11 @@ class NoirSlideDelegate(QtWidgets.QStyledItemDelegate):
                 node_border = QtGui.QColor(tag_color)
                 node_border.setAlpha(150)
             else:
-                node_fill = QtGui.QColor(NOIR_INK_1 if is_past else NOIR_INK_2)
-                node_border = QtGui.QColor(NOIR_INK_4)
+                node_fill = QtGui.QColor(tokens['ink1'] if is_past else tokens['ink2'])
+                node_border = QtGui.QColor(tokens['ink4'])
             painter.setPen(QtGui.QPen(node_border, 1.5))
             painter.setBrush(node_fill)
-            node_text = QtGui.QColor(NOIR_TEXT_LOW if is_past else NOIR_TEXT_MID)
+            node_text = QtGui.QColor(tokens['text_low'] if is_past else tokens['text_mid'])
         painter.drawRoundedRect(node, self.NODE_HEIGHT / 2, self.NODE_HEIGHT / 2)
         painter.setFont(node_font)
         painter.setPen(node_text)
@@ -210,11 +210,11 @@ class NoirSlideDelegate(QtWidgets.QStyledItemDelegate):
             # paints a sliver of glyph tops
             content.setHeight(min(content.height(), self.COMPACT_LINES * body_metrics.lineSpacing()))
         if selected:
-            text_color = NOIR_TEXT_HI
+            text_color = tokens['text_hi']
         elif is_past:
-            text_color = NOIR_TEXT_MID
+            text_color = tokens['text_mid']
         else:
-            text_color = NOIR_TEXT_BODY
+            text_color = tokens['text_body']
         painter.setFont(body_font)
         painter.setPen(QtGui.QColor(text_color))
         painter.drawText(content, QtCore.Qt.TextFlag.TextWordWrap, text)
@@ -275,9 +275,10 @@ class NoirServiceDelegate(QtWidgets.QStyledItemDelegate):
         Alpha is kept below the card's own selected/on-air alphas so plugin
         colour never outranks selection or live-state signalling.
         """
-        accent = NOIR_PLUGIN_COLORS.get(plugin_name)
+        tokens = get_noir_theme_tokens()
+        accent = tokens['plugin_colors'].get(plugin_name)
         if not accent:
-            return QtGui.QColor(NOIR_INK_3), QtGui.QColor(NOIR_INK_4)
+            return QtGui.QColor(tokens['ink3']), QtGui.QColor(tokens['ink4'])
         fill = QtGui.QColor(accent)
         fill.setAlpha(40)
         border = QtGui.QColor(accent)
@@ -292,20 +293,21 @@ class NoirServiceDelegate(QtWidgets.QStyledItemDelegate):
 
     def _paint_slide_row(self, painter, option, index):
         """A slide child: a light rounded row, no card chrome"""
+        tokens = get_noir_theme_tokens()
         selected = bool(option.state & QtWidgets.QStyle.StateFlag.State_Selected)
         hovered = bool(option.state & QtWidgets.QStyle.StateFlag.State_MouseOver)
         painter.save()
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         row = QtCore.QRectF(option.rect).adjusted(2, 1, -4, -1)
         if selected:
-            fill = QtGui.QColor(NOIR_CUE)
+            fill = QtGui.QColor(tokens['cue'])
             fill.setAlpha(34)
             painter.setPen(QtCore.Qt.PenStyle.NoPen)
             painter.setBrush(fill)
             painter.drawRoundedRect(row, 6, 6)
         elif hovered:
             painter.setPen(QtCore.Qt.PenStyle.NoPen)
-            painter.setBrush(QtGui.QColor(NOIR_INK_2))
+            painter.setBrush(QtGui.QColor(tokens['ink2']))
             painter.drawRoundedRect(row, 6, 6)
         font = self.view.font()
         metrics = QtGui.QFontMetricsF(font)
@@ -313,12 +315,13 @@ class NoirServiceDelegate(QtWidgets.QStyledItemDelegate):
         text = metrics.elidedText(str(index.data(QtCore.Qt.ItemDataRole.DisplayRole) or ''),
                                   QtCore.Qt.TextElideMode.ElideRight, text_rect.width())
         painter.setFont(font)
-        painter.setPen(QtGui.QColor(NOIR_TEXT_HI if selected else NOIR_TEXT_BODY))
+        painter.setPen(QtGui.QColor(tokens['text_hi'] if selected else tokens['text_body']))
         painter.drawText(text_rect, QtCore.Qt.AlignmentFlag.AlignVCenter, text)
         painter.restore()
 
     def _paint_item_card(self, painter, option, index):
         """A top-level service item: icon chip, title, metadata, on-air marker"""
+        tokens = get_noir_theme_tokens()
         selected = bool(option.state & QtWidgets.QStyle.StateFlag.State_Selected)
         hovered = bool(option.state & QtWidgets.QStyle.StateFlag.State_MouseOver)
         is_live = bool(index.data(SERVICE_LIVE_ROLE))
@@ -329,18 +332,18 @@ class NoirServiceDelegate(QtWidgets.QStyledItemDelegate):
         # Card surface: selection fills with the cue, the live item is outlined
         # in on-air red whether or not it is selected
         if selected:
-            fill = QtGui.QColor(NOIR_CUE)
+            fill = QtGui.QColor(tokens['cue'])
             fill.setAlpha(34)
-            border = QtGui.QColor(NOIR_CUE)
+            border = QtGui.QColor(tokens['cue'])
             border.setAlpha(120)
         elif hovered:
-            fill = QtGui.QColor(NOIR_INK_3)
-            border = QtGui.QColor(NOIR_INK_4)
+            fill = QtGui.QColor(tokens['ink3'])
+            border = QtGui.QColor(tokens['ink4'])
         else:
-            fill = QtGui.QColor(NOIR_INK_2)
-            border = QtGui.QColor(NOIR_INK_3)
+            fill = QtGui.QColor(tokens['ink2'])
+            border = QtGui.QColor(tokens['ink3'])
         if is_live:
-            border = QtGui.QColor(NOIR_ON_AIR)
+            border = QtGui.QColor(tokens['on_air'])
             border.setAlpha(150)
         painter.setPen(QtGui.QPen(border, 1))
         painter.setBrush(fill)
@@ -348,7 +351,7 @@ class NoirServiceDelegate(QtWidgets.QStyledItemDelegate):
         if is_live:
             bar = QtCore.QRectF(card.left() + 1.5, card.top() + 7, self.EDGE_BAR_WIDTH, card.height() - 14)
             painter.setPen(QtCore.Qt.PenStyle.NoPen)
-            painter.setBrush(QtGui.QColor(NOIR_ON_AIR))
+            painter.setBrush(QtGui.QColor(tokens['on_air']))
             painter.drawRoundedRect(bar, self.EDGE_BAR_WIDTH / 2, self.EDGE_BAR_WIDTH / 2)
         # Plugin icon in a rounded chip
         chip = QtCore.QRectF(card.left() + self.CARD_PADDING,
@@ -375,10 +378,10 @@ class NoirServiceDelegate(QtWidgets.QStyledItemDelegate):
             badge = QtCore.QRectF(card.right() - self.CARD_PADDING - badge_width,
                                   card.center().y() - badge_height / 2, badge_width, badge_height)
             painter.setPen(QtCore.Qt.PenStyle.NoPen)
-            painter.setBrush(QtGui.QColor(NOIR_ON_AIR))
+            painter.setBrush(QtGui.QColor(tokens['on_air']))
             painter.drawRoundedRect(badge, badge_height / 2, badge_height / 2)
             painter.setFont(badge_font)
-            painter.setPen(QtGui.QColor(NOIR_TEXT_ON_ACCENT))
+            painter.setPen(QtGui.QColor(tokens['text_on_accent']))
             painter.drawText(badge, QtCore.Qt.AlignmentFlag.AlignCenter, badge_text)
             badge_space = badge_width + 8
         # Title line over a metadata caption line
@@ -392,14 +395,14 @@ class NoirServiceDelegate(QtWidgets.QStyledItemDelegate):
         title = title_metrics.elidedText(str(index.data(QtCore.Qt.ItemDataRole.DisplayRole) or ''),
                                          QtCore.Qt.TextElideMode.ElideRight, text_width)
         painter.setFont(title_font)
-        painter.setPen(QtGui.QColor(NOIR_TEXT_HI))
+        painter.setPen(QtGui.QColor(tokens['text_hi']))
         painter.drawText(QtCore.QRectF(text_left, text_top, text_width, title_metrics.height()),
                          QtCore.Qt.AlignmentFlag.AlignVCenter, title)
         caption = index.data(SERVICE_META_ROLE)
         if caption:
             caption = caption_metrics.elidedText(str(caption), QtCore.Qt.TextElideMode.ElideRight, text_width)
             painter.setFont(caption_font)
-            painter.setPen(QtGui.QColor(NOIR_TEXT_MID))
+            painter.setPen(QtGui.QColor(tokens['text_mid']))
             painter.drawText(QtCore.QRectF(text_left, text_top + title_metrics.height() + 1, text_width,
                                            caption_metrics.height()),
                              QtCore.Qt.AlignmentFlag.AlignVCenter, caption)
@@ -477,7 +480,7 @@ class ListPreviewWidget(QtWidgets.QTableWidget, RegistryProperties):
         self.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setAlternatingRowColors(True)
-        self.is_noir = is_ui_theme(UiThemes.Noir)
+        self.is_noir = is_ui_theme_noir_family()
         if self.is_noir:
             # The Noir theme paints text slides as rounded cards with their own
             # hover/selected states, so the table chrome has to go.
@@ -491,7 +494,8 @@ class ListPreviewWidget(QtWidgets.QTableWidget, RegistryProperties):
             # the cards.
             palette = self.palette()
             palette.setColor(QtGui.QPalette.ColorRole.Highlight, QtCore.Qt.GlobalColor.transparent)
-            palette.setColor(QtGui.QPalette.ColorRole.HighlightedText, QtGui.QColor(NOIR_TEXT_HI))
+            palette.setColor(QtGui.QPalette.ColorRole.HighlightedText,
+                             QtGui.QColor(get_noir_theme_tokens()['text_hi']))
             self.setPalette(palette)
             # Rows before the current slide render dimmed, so a selection move
             # must repaint the whole timeline, not just the two changed rows
@@ -826,7 +830,7 @@ class ListWidgetWithDnD(QtWidgets.QListWidget):
         widget can be built before (or without) a settings registry.
         """
         try:
-            return is_ui_theme(UiThemes.Noir)
+            return is_ui_theme_noir_family()
         except (KeyError, AttributeError):
             return False
 
@@ -845,7 +849,7 @@ class ListWidgetWithDnD(QtWidgets.QListWidget):
         UiIcons().search.paint(painter, QtCore.QRect(int(center_x - icon_size / 2),
                                                      int(base_y - icon_size - 6), icon_size, icon_size))
         painter.setOpacity(1.0)
-        painter.setPen(QtGui.QColor(NOIR_TEXT_MID))
+        painter.setPen(QtGui.QColor(get_noir_theme_tokens()['text_mid']))
         painter.drawText(QtCore.QRect(16, int(base_y + 4), max(rect.width() - 32, 0), rect.height() // 2),
                          (QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.TextFlag.TextWordWrap),
                          self.no_results_text)

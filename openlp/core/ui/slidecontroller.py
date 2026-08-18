@@ -46,7 +46,7 @@ from openlp.core.state import State
 from openlp.core.ui import DisplayControllerType, HideMode
 from openlp.core.ui.icons import UiIcons
 from openlp.core.ui.media import MediaPlayItem, media_empty_song
-from openlp.core.ui.style import UiThemes, is_ui_theme
+from openlp.core.ui.style import is_ui_theme_noir_family
 from openlp.core.widgets.layouts import AspectRatioLayout
 from openlp.core.widgets.toolbar import MediaToolbar, OpenLPToolbar
 from openlp.core.widgets.views import ListPreviewWidget
@@ -227,7 +227,7 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         self.type_label.setObjectName('slide_controller_type_label')
         self.type_label.setProperty('isLive', 'true' if self.is_live else 'false')
         self.type_label.setProperty('onAir', 'true' if self.is_live else 'false')
-        if not is_ui_theme(UiThemes.Noir):
+        if not is_ui_theme_noir_family():
             # The Noir theme styles this label from the application stylesheet, which an
             # inline widget stylesheet would override.
             self.type_label.setStyleSheet('padding: 0px 20px 0px 2px; font-weight: bold;')
@@ -238,13 +238,13 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         # Info label for the title of the current item, at the top of the slide controller
         self.info_label = InfoLabel(self.panel)
         self.info_label.setObjectName('slide_controller_info_label')
-        if not is_ui_theme(UiThemes.Noir):
+        if not is_ui_theme_noir_family():
             self.info_label.setStyleSheet('font-style: italic;')
         self.info_label.setSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Preferred)
         # Slide position indicator ("3 / 12"), only shown by the Noir theme
         self.slide_count_label = QtWidgets.QLabel(self.panel)
         self.slide_count_label.setObjectName('slide_controller_count_label')
-        if is_ui_theme(UiThemes.Noir):
+        if is_ui_theme_noir_family():
             # Tabular figures stop the counter jittering as the numbers change
             try:
                 count_font = self.slide_count_label.font()
@@ -257,7 +257,7 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         self.top_label_horizontal.addWidget(self.type_label)
         self.top_label_horizontal.addWidget(self.info_label, stretch=1)
         self.top_label_horizontal.addWidget(self.slide_count_label)
-        if is_ui_theme(UiThemes.Noir):
+        if is_ui_theme_noir_family():
             # The Live/Preview chip carries the identity, so the duplicate icon goes;
             # the panel itself gets an accent line to tell the two controllers apart.
             self.top_icon.hide()
@@ -1164,7 +1164,7 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         # Reflect the on-air state in the live indicator (red while the output is showing)
         if self.is_live:
             self.type_label.setProperty('onAir', 'false' if hide_mode else 'true')
-            if is_ui_theme(UiThemes.Noir):
+            if is_ui_theme_noir_family():
                 # Blanked output is an explicit chip state, not just the absence of red
                 if hide_mode == HideMode.Blank:
                     self.type_label.setText(translate('OpenLP.SlideController', 'Blanked'))
@@ -1318,7 +1318,7 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         Update the "current / total" slide position indicator in the panel header.
         Only the Noir theme shows this label.
         """
-        if not is_ui_theme(UiThemes.Noir):
+        if not is_ui_theme_noir_family():
             return
         try:
             total = int(self.preview_widget.slide_count())

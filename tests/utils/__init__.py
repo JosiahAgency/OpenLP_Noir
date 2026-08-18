@@ -24,7 +24,7 @@ import json
 def assert_length(expected, iterable, msg=None):
     if len(iterable) != expected:
         if not msg:
-            msg = 'Expected length {expected}, got {got}'.format(expected=expected, got=len(iterable))
+            msg = 'Expected length {expected}, ~got {got}'.format(expected=expected, got=len(iterable))
         raise AssertionError(msg)
 
 

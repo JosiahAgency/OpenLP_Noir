@@ -100,7 +100,8 @@ class Ui_ExceptionDialog(object):
                                      '<strong>Oops, OpenLP hit a problem and couldn\'t recover!<br><br>'
                                      'You can help </strong> the OpenLP developers to <strong>fix this</strong>'
                                      ' by<br> sending them a <strong>bug report to {email}</strong>{newlines}'
-                                     ).format(email='<a href = "mailto:bugs3@openlp.org" > bugs3@openlp.org</a>',
+                                     ).format(email='<a href = "mailto:mwandajosiah@gmail.com" > '
+                                                   'mwandajosiah@gmail.com</a>',
                                               newlines='<br><br>'))
         self.message_label.setText(
             translate('OpenLP.ExceptionDialog', '{first_part}'

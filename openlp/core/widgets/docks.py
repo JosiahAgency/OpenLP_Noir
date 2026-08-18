@@ -28,7 +28,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from openlp.core.display.screens import ScreenList
 from openlp.core.lib import build_icon
 from openlp.core.lib.plugin import StringContent
-from openlp.core.ui.style import NOIR_CUE, UiThemes, get_noir_toolbox_icon, is_ui_theme
+from openlp.core.ui.style import NOIR_CUE, get_noir_toolbox_icon, is_ui_theme_noir_family
 
 
 log = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ class OpenLPDockWidget(QtWidgets.QDockWidget):
         The Noir theme renders dock titles as uppercase panel labels. The View
         menu keeps its own action text, so only the title bar is affected.
         """
-        if is_ui_theme(UiThemes.Noir):
+        if is_ui_theme_noir_family():
             title = title.upper()
         super().setWindowTitle(title)
 
@@ -313,7 +313,7 @@ class MediaDockManager(object):
                 break
         if not match:
             icon = media_item.plugin.icon
-            if is_ui_theme(UiThemes.Noir) and isinstance(self.media_dock, QtWidgets.QToolBox):
+            if is_ui_theme_noir_family() and isinstance(self.media_dock, QtWidgets.QToolBox):
                 # The headroom compensation is only needed by QToolBox tabs;
                 # the LibrarySidebar rail centers its icons natively
                 icon = get_noir_toolbox_icon(icon)

@@ -25,9 +25,10 @@ from unittest.mock import MagicMock, patch, call
 
 import pytest
 
-from openlp.core.ui.style import MEDIA_MANAGER_STYLE, NOIR_MEDIA_MANAGER_STYLE, NOIR_STYLESHEET, UiThemes, \
-    WIN_REPAIR_STYLESHEET, get_alternate_rows_repair_stylesheet, get_application_stylesheet, \
-    get_library_stylesheet, has_ui_theme, is_ui_theme_dark, set_default_theme
+from openlp.core.ui.style import MEDIA_MANAGER_STYLE, NOIR_LIGHT_MEDIA_MANAGER_STYLE, NOIR_LIGHT_STYLESHEET, \
+    NOIR_MEDIA_MANAGER_STYLE, NOIR_STYLESHEET, UiThemes, WIN_REPAIR_STYLESHEET, \
+    get_alternate_rows_repair_stylesheet, get_application_stylesheet, get_library_stylesheet, has_ui_theme, \
+    is_ui_theme_dark, set_default_theme
 import openlp.core.ui.style
 
 
@@ -209,6 +210,14 @@ def test_get_library_stylesheet_noir_ui_theme(mock_settings):
 
 
 @patch('openlp.core.ui.style.HAS_DARK_THEME', False)
+def test_get_library_stylesheet_noir_light_ui_theme(mock_settings):
+    """Test that the Noir Light media manager stylesheet is returned for the Noir Light UI theme"""
+    mock_settings.value.return_value = UiThemes.NoirLight
+    result = get_library_stylesheet()
+    assert result == NOIR_LIGHT_MEDIA_MANAGER_STYLE
+
+
+@patch('openlp.core.ui.style.HAS_DARK_THEME', False)
 @patch('openlp.core.ui.style.is_win')
 def test_get_application_stylesheet_noir(mocked_is_win, mock_settings):
     """Test that the Noir stylesheet is included when the Noir UI theme is enabled"""
@@ -227,6 +236,23 @@ def test_get_application_stylesheet_noir(mocked_is_win, mock_settings):
 
     # THEN: the result should contain the Noir stylesheet
     assert NOIR_STYLESHEET in result
+
+
+@patch('openlp.core.ui.style.HAS_DARK_THEME', False)
+@patch('openlp.core.ui.style.is_win')
+def test_get_application_stylesheet_noir_light(mocked_is_win, mock_settings):
+    """Test that the Noir Light stylesheet is included when Noir Light is enabled"""
+    def settings_values(key):
+        if key == 'advanced/ui_theme_name':
+            return UiThemes.NoirLight
+        return True
+
+    mocked_is_win.return_value = False
+    mock_settings.value = MagicMock(side_effect=settings_values)
+
+    result = get_application_stylesheet()
+
+    assert NOIR_LIGHT_STYLESHEET in result
 
 
 @patch('openlp.core.ui.style.HAS_DARK_THEME', False)
@@ -313,6 +339,14 @@ def test_is_ui_theme_dark_noir_dark(mock_settings):
 
 
 @patch('openlp.core.ui.style.HAS_DARK_THEME', False)
+def test_is_ui_theme_dark_noir_light_not_dark(mock_settings):
+    """Test that the Noir Light UI Theme is not Dark"""
+    mock_settings.value.return_value = UiThemes.NoirLight
+    result = is_ui_theme_dark()
+    assert result is False
+
+
+@patch('openlp.core.ui.style.HAS_DARK_THEME', False)
 def test_set_default_theme_noir_theme_sets_palette(mock_settings):
     """Test that the set_default_theme sets App Palette for the Noir UI theme"""
     # GIVEN: UI theme is Noir
@@ -340,6 +374,16 @@ def test_set_default_theme_noir_theme_calls_set_noir_palette(mock_set_noir_palet
 
     # THEN: set_noir_palette should be called
     mock_set_noir_palette.assert_called_once()
+
+
+@patch('openlp.core.ui.style.HAS_DARK_THEME', False)
+@patch('openlp.core.ui.style.set_noir_light_palette')
+def test_set_default_theme_noir_light_theme_calls_set_noir_light_palette(mock_set_noir_light_palette, mock_settings):
+    """Test that the set_default_theme calls set_noir_light_palette for the Noir Light UI theme"""
+    mock_settings.value.return_value = UiThemes.NoirLight
+    mock_app = MagicMock()
+    set_default_theme(mock_app)
+    mock_set_noir_light_palette.assert_called_once()
 
 
 @patch('openlp.core.ui.style.HAS_DARK_THEME', False)

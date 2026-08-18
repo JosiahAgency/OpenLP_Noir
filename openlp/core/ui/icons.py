@@ -32,8 +32,8 @@ from openlp.core.common.registry import Registry
 from openlp.core.lib import build_icon
 from openlp.core.ui.style import NOIR_CUE, NOIR_ON_AIR, NOIR_PLUGIN_ALERTS, NOIR_PLUGIN_BIBLES, \
     NOIR_PLUGIN_CUSTOM, NOIR_PLUGIN_IMAGES, NOIR_PLUGIN_LIBRARY, NOIR_PLUGIN_MEDIA, \
-    NOIR_PLUGIN_PRESENTATIONS, NOIR_PLUGIN_SONGS, NOIR_SUCCESS, NOIR_TEXT_HI, NOIR_TEXT_LOW, \
-    NOIR_WARNING, UiThemes, is_ui_theme, is_ui_theme_dark
+    NOIR_PLUGIN_PRESENTATIONS, NOIR_PLUGIN_SONGS, NOIR_SUCCESS, NOIR_TEXT_LOW, \
+    NOIR_WARNING, get_noir_theme_tokens, is_ui_theme_dark, is_ui_theme_noir_family
 
 
 log = logging.getLogger(__name__)
@@ -312,7 +312,7 @@ class UiIcons(metaclass=Singleton):
             'view_grid': {'icon': 'mdi.view-grid'},
             'volunteer': {'icon': 'mdi.account-group'}
         }
-        self._icon_list = NOIR_ICON_LIST if is_ui_theme(UiThemes.Noir) else legacy_icon_list
+        self._icon_list = NOIR_ICON_LIST if is_ui_theme_noir_family() else legacy_icon_list
         self.load_icons(self._icon_list)
         self.main_icon = build_icon(':/icon/openlp-logo.svg')
 
@@ -321,7 +321,8 @@ class UiIcons(metaclass=Singleton):
         Load the list of icons to be processed
         """
         is_dark = is_ui_theme_dark()
-        is_noir = is_ui_theme(UiThemes.Noir)
+        is_noir = is_ui_theme_noir_family()
+        noir_text_hi = get_noir_theme_tokens()['text_hi']
         for key in icon_list:
             try:
                 icon = icon_list[key]['icon']
@@ -331,7 +332,7 @@ class UiIcons(metaclass=Singleton):
                 except KeyError:
                     if is_noir:
                         # Softer than pure white, matching the Noir text ramp
-                        setattr(self, key, qta.icon(icon, color=NOIR_TEXT_HI))
+                        setattr(self, key, qta.icon(icon, color=noir_text_hi))
                     elif is_dark:
                         setattr(self, key, qta.icon(icon, color='white'))
                     else:
@@ -352,8 +353,8 @@ class UiIcons(metaclass=Singleton):
         if icon_name not in self._icon_list:
             raise KeyError("Icon '{icon}' is not defined.".format(icon=icon_name))
         icon = self._icon_list[icon_name]['icon']
-        if is_ui_theme(UiThemes.Noir):
-            args = {"color": NOIR_TEXT_HI, **kwargs}
+        if is_ui_theme_noir_family():
+            args = {"color": get_noir_theme_tokens()['text_hi'], **kwargs}
         elif is_ui_theme_dark():
             args = {"color": "white", **kwargs}
         else:

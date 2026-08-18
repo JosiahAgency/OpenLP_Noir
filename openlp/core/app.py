@@ -59,7 +59,7 @@ from openlp.core.ui.firsttimelanguageform import FirstTimeLanguageForm
 from openlp.core.ui.mainwindow import MainWindow
 from openlp.core.ui.splashscreen import SplashScreen
 from openlp.core.ui.style import get_application_stylesheet, set_default_theme, is_ui_theme, is_ui_theme_dark, UiThemes
-from openlp.core.version import check_for_update, get_version
+from openlp.core.version import get_version
 
 
 __all__ = ['OpenLP', 'main']
@@ -150,8 +150,6 @@ class OpenLP(QtCore.QObject, LogMixin):
         QtWidgets.QApplication.processEvents()
         if not has_run_wizard:
             self.main_window.first_time()
-        if self.settings.value('core/update check'):
-            check_for_update(self.main_window)
         if self.settings.value('api/update check'):
             check_for_remote_update(self.main_window)
         self.main_window.is_display_blank()

@@ -112,7 +112,7 @@ def test_legacy_icon_list_has_library_key(settings: Settings, registry: Registry
     if UiIcons in Singleton._instances:
         remove_singleton()
 
-    with patch('openlp.core.ui.icons.is_ui_theme', return_value=False):
+    with patch('openlp.core.ui.icons.is_ui_theme_noir_family', return_value=False):
         # WHEN: the icons are loaded
         icons = UiIcons()
         # THEN: the library icon resolves without error

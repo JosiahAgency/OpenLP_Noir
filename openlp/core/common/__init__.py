@@ -34,7 +34,7 @@ from shutil import which
 from PySide6 import QtGui
 from PySide6.QtCore import QCryptographicHash as QHash
 from PySide6.QtNetwork import QAbstractSocket, QHostAddress, QNetworkInterface
-from chardet.universaldetector import UniversalDetector
+from chardet import UniversalDetector
 
 from openlp.core.common.platform import is_win
 

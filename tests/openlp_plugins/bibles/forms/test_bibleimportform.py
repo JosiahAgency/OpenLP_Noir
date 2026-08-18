@@ -29,6 +29,7 @@ from PySide6 import QtWidgets, QtTest, QtCore
 from openlp.core.common.registry import Registry
 from openlp.core.common.settings import Settings
 from openlp.plugins.bibles.forms.bibleimportform import BibleImportForm, PYSWORD_AVAILABLE
+from openlp.plugins.bibles.lib.manager import BibleFormat
 from openlp.plugins.bibles.lib.bibleimport import ImportFailure
 
 
@@ -149,3 +150,49 @@ def test_cleanup_failed_import_uses_file_path(mocked_delete_database: MagicMock,
     mocked_session.rollback.assert_called_once()
     mocked_session.close.assert_called_once()
     mocked_delete_database.assert_called_once_with(import_form.plugin.settings_section, importer.file_path)
+
+
+@pytest.mark.parametrize('file_name, xml_root, expected_format', [
+    ('test.xml', '<osis xmlns="http://www.bibletechnologies.net/2003/OSIS/namespace"></osis>', BibleFormat.OSIS),
+    ('test.xml', '<bible></bible>', BibleFormat.OpenSong),
+    ('test.xml', '<xmlbible></xmlbible>', BibleFormat.Zefania),
+    ('test.xmm', '<xmlbible></xmlbible>', BibleFormat.Zefania),
+])
+def test_detect_bible_format_from_path(file_name: str, xml_root: str, expected_format: int,
+                                       import_form: BibleImportForm, tmp_path):
+    """
+    Test XML format detection from root tags.
+    """
+    xml_path = tmp_path / file_name
+    xml_path.write_text(xml_root, encoding='utf-8')
+
+    detected_format, detected_name = import_form.detect_bible_format_from_path(xml_path)
+
+    assert detected_format == expected_format
+    assert detected_name is not None
+
+
+def test_detect_bible_format_from_txt_csv_content(import_form: BibleImportForm, tmp_path):
+    """
+    Test CSV detection for .txt content.
+    """
+    txt_path = tmp_path / 'bible-books.txt'
+    txt_path.write_text('1,1,Genesis,Gen\n2,1,Exodus,Exod\n', encoding='utf-8')
+
+    detected_format, detected_name = import_form.detect_bible_format_from_path(txt_path)
+
+    assert detected_format == BibleFormat.CSV
+    assert detected_name == 'CSV text'
+
+
+def test_on_format_source_path_changed_auto_switches_mismatch(import_form: BibleImportForm, tmp_path):
+    """
+    Test format auto-switch when selected source does not match expected format.
+    """
+    xml_path = tmp_path / 'test.xml'
+    xml_path.write_text('<xmlbible></xmlbible>', encoding='utf-8')
+    with patch.object(import_form, 'format_combo_box') as mocked_combo:
+        import_form.on_format_source_path_changed(xml_path, BibleFormat.OSIS)
+
+    mocked_combo.setCurrentIndex.assert_called_once_with(BibleFormat.Zefania)
+    assert 'switched automatically' in import_form.format_hint_label.text()
