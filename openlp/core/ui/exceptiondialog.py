@@ -100,16 +100,19 @@ class Ui_ExceptionDialog(object):
                                      '<strong>Oops, OpenLP hit a problem and couldn\'t recover!<br><br>'
                                      'You can help </strong> the OpenLP developers to <strong>fix this</strong>'
                                      ' by<br> sending them a <strong>bug report to {email}</strong>{newlines}'
-                                     ).format(email='<a href = "mailto:mwandajosiah@gmail.com" > '
-                                                   'mwandajosiah@gmail.com</a>',
-                                              newlines='<br><br>'))
-        self.message_label.setText(
-            translate('OpenLP.ExceptionDialog', '{first_part}'
-                      '<strong>No email app? </strong> You can <strong>save</strong> this '
-                      'information to a <strong>file</strong> and<br>'
-                      'send it from your <strong>mail on browser</strong> via an <strong>attachment.</strong><br><br>'
-                      '<strong>Thank you</strong> for being part of making OpenLP better!<br>'
-                      ).format(first_part=exception_part1))
+                                     ).format(
+                                         email='<a href = "mailto:mwandajosiah@gmail.com" > '
+                                               'mwandajosiah@gmail.com</a>',
+                                         newlines='<br><br>'
+                                     ))
+        message_text = translate(
+            'OpenLP.ExceptionDialog', '{first_part}'
+            '<strong>No email app? </strong> You can <strong>save</strong> this '
+            'information to a <strong>file</strong> and<br>'
+            'send it from your <strong>mail on browser</strong> via an <strong>attachment.</strong><br><br>'
+            '<strong>Thank you</strong> for being part of making OpenLP better!<br>'
+        ).format(first_part=exception_part1)
+        self.message_label.setText(message_text)
         self.send_report_button.setText(translate('OpenLP.ExceptionDialog', 'Send E-Mail'))
         self.save_report_button.setText(translate('OpenLP.ExceptionDialog', 'Save to File'))
         self.attach_file_button.setText(translate('OpenLP.ExceptionDialog', 'Attach File'))
