@@ -143,13 +143,15 @@ def test_cleanup_failed_import_uses_file_path(mocked_delete_database: MagicMock,
     mocked_session = MagicMock()
     importer.session = mocked_session
     import_form.manager.db_cache = {'TestBible': importer}
+    import_form.plugin = MagicMock()
+    import_form.plugin.name = 'bibles'
 
     import_form.cleanup_failed_import(importer)
 
     assert 'TestBible' not in import_form.manager.db_cache
     mocked_session.rollback.assert_called_once()
     mocked_session.close.assert_called_once()
-    mocked_delete_database.assert_called_once_with(import_form.plugin.settings_section, importer.file_path)
+    mocked_delete_database.assert_called_once_with(import_form.plugin.name, importer.file_path)
 
 
 @pytest.mark.parametrize('file_name, xml_root, expected_format', [
@@ -195,4 +197,28 @@ def test_on_format_source_path_changed_auto_switches_mismatch(import_form: Bible
         import_form.on_format_source_path_changed(xml_path, BibleFormat.OSIS)
 
     mocked_combo.setCurrentIndex.assert_called_once_with(BibleFormat.Zefania)
-    assert 'switched automatically' in import_form.format_hint_label.text()
+    assert 'switched the import format automatically' in import_form.format_hint_label.text()
+
+
+def test_select_page_shows_supported_formats_and_csv_help(import_form: BibleImportForm):
+    """
+    Test that the Select page always shows accepted formats and CSV two-file guidance.
+    """
+    assert 'Supported formats:' in import_form.supported_formats_label.text()
+    assert 'CSV: .csv/.txt (requires 2 files: Books and Verses)' in import_form.supported_formats_label.text()
+    assert 'CSV import requires two files:' in import_form.csv_help_label.text()
+    assert 'Books file' in import_form.csv_help_label.text()
+    assert 'Verses file' in import_form.csv_help_label.text()
+
+
+def test_on_format_source_path_changed_shows_guidance_when_undetected(import_form: BibleImportForm, tmp_path):
+    """
+    Test that unknown source files receive explicit supported-format guidance.
+    """
+    unsupported_path = tmp_path / 'random.bin'
+    unsupported_path.write_bytes(b'\x00\x01\x02')
+
+    import_form.on_format_source_path_changed(unsupported_path, BibleFormat.OSIS)
+
+    assert 'could not detect this file automatically' in import_form.format_hint_label.text()
+    assert 'Supported formats list' in import_form.format_hint_label.text()

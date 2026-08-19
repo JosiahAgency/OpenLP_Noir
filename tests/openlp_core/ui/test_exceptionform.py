@@ -84,8 +84,10 @@ def qtapp(registry: Registry, settings: Settings):
 @patch("openlp.core.ui.exceptionform.FileDialog")
 @patch("openlp.core.ui.exceptionform.QtCore.QUrl")
 @patch("openlp.core.ui.exceptionform.QtCore.QUrlQuery.addQueryItem")
-def test_on_send_report_button_clicked(mocked_addQueryItem: MagicMock, MockQUrl: MagicMock,
-                                       MockFileDialog: MagicMock, MockUiExceptionDialog: MagicMock,
+@patch("openlp.core.ui.exceptionform.QtGui.QGuiApplication.clipboard")
+def test_on_send_report_button_clicked(mocked_clipboard: MagicMock, mocked_addQueryItem: MagicMock,
+                                       MockQUrl: MagicMock, MockFileDialog: MagicMock,
+                                       MockUiExceptionDialog: MagicMock,
                                        mocked_platform: MagicMock, mocked_is_linux: MagicMock,
                                        mocked_get_library_versions: MagicMock, mocked_get_version: MagicMock,
                                        mocked_openUrl: MagicMock, qtapp: QtCore.QCoreApplication):
@@ -112,8 +114,38 @@ def test_on_send_report_button_clicked(mocked_addQueryItem: MagicMock, MockQUrl:
         test_form.on_send_report_button_clicked()
 
     # THEN: Verify strings were formatted properly
-    mocked_addQueryItem.assert_called_with('body', MAIL_ITEM_TEXT)
+    mocked_addQueryItem.assert_called_with(
+        'body', 'OpenLP has copied the crash report to your clipboard. Please paste it into this email.')
+    mocked_clipboard.return_value.setText.assert_called_once_with(MAIL_ITEM_TEXT)
     MockQUrl.assert_called_with('mailto:mwandajosiah@gmail.com')
+
+
+@patch('openlp.core.ui.exceptionform.QtWidgets.QMessageBox.warning')
+@patch('openlp.core.ui.exceptionform.QtGui.QDesktopServices.openUrl', return_value=False)
+@patch('openlp.core.ui.exceptionform.get_version')
+@patch('openlp.core.ui.exceptionform.get_library_versions')
+@patch('openlp.core.ui.exceptionform.is_linux')
+@patch('openlp.core.ui.exceptionform.platform.platform')
+def test_on_send_report_button_clicked_handles_missing_email_client(
+        mocked_platform: MagicMock, mocked_is_linux: MagicMock, mocked_get_library_versions: MagicMock,
+        mocked_get_version: MagicMock, mocked_open_url: MagicMock, mocked_warning: MagicMock,
+        qtapp: QtCore.QCoreApplication):
+    """
+    Test that a user-facing warning is shown when launching mailto fails.
+    """
+    mocked_platform.return_value = 'Nose Test'
+    mocked_is_linux.return_value = False
+    mocked_get_version.return_value = 'Trunk Test'
+    mocked_get_library_versions.return_value = LIBRARY_VERSIONS
+    test_form = exceptionform.ExceptionForm()
+
+    with patch.object(test_form, '_get_pyuno_version', return_value='UNO Bridge Test'), \
+            patch.object(test_form.exception_text_edit, 'toPlainText', return_value='openlp: Traceback Test'), \
+            patch.object(test_form.description_text_edit, 'toPlainText', return_value='Description Test'):
+        test_form.on_send_report_button_clicked()
+
+    mocked_open_url.assert_called_once()
+    mocked_warning.assert_called_once()
 
 
 @patch('openlp.core.ui.exceptionform.QtGui.QDesktopServices.openUrl')

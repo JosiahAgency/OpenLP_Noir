@@ -158,9 +158,13 @@ class BibleImportForm(OpenLPWizard):
         self.format_hint_label.setObjectName('FormatHintLabel')
         self.format_hint_label.setWordWrap(True)
         self.format_layout.addRow('', self.format_hint_label)
+        self.supported_formats_label = QtWidgets.QLabel(self.select_page)
+        self.supported_formats_label.setObjectName('SupportedFormatsLabel')
+        self.supported_formats_label.setWordWrap(True)
+        self.format_layout.addRow('', self.supported_formats_label)
         self.format_spacer = QtWidgets.QSpacerItem(10, 0, QtWidgets.QSizePolicy.Policy.Fixed,
                                                    QtWidgets.QSizePolicy.Policy.Minimum)
-        self.format_layout.setItem(2, QtWidgets.QFormLayout.ItemRole.LabelRole, self.format_spacer)
+        self.format_layout.setItem(3, QtWidgets.QFormLayout.ItemRole.LabelRole, self.format_spacer)
         self.select_page_layout.addLayout(self.format_layout)
         self.select_stack = QtWidgets.QStackedLayout()
         self.select_stack.setObjectName('SelectStack')
@@ -216,9 +220,13 @@ class BibleImportForm(OpenLPWizard):
                 all=UiStrings().AllFiles)
         self.csv_layout.addRow(self.csv_books_label, self.csv_books_path_edit)
         self.csv_layout.addRow(self.csv_verses_label, self.csv_verses_path_edit)
+        self.csv_help_label = QtWidgets.QLabel(self.csv_widget)
+        self.csv_help_label.setObjectName('CsvHelpLabel')
+        self.csv_help_label.setWordWrap(True)
+        self.csv_layout.addRow(self.csv_help_label)
         self.csv_spacer = QtWidgets.QSpacerItem(10, 0, QtWidgets.QSizePolicy.Policy.Fixed,
                                                 QtWidgets.QSizePolicy.Policy.Minimum)
-        self.csv_layout.setItem(3, QtWidgets.QFormLayout.ItemRole.LabelRole, self.csv_spacer)
+        self.csv_layout.setItem(4, QtWidgets.QFormLayout.ItemRole.LabelRole, self.csv_spacer)
         self.select_stack.addWidget(self.csv_widget)
         self.open_song_widget = QtWidgets.QWidget(self.select_page)
         self.open_song_widget.setObjectName('OpenSongWidget')
@@ -424,6 +432,15 @@ class BibleImportForm(OpenLPWizard):
         self.format_hint_label.setText(
             translate('BiblesPlugin.ImportWizardForm',
                       'Tip: If you are unsure, select your file first. OpenLP will try to detect a matching format.'))
+        self.supported_formats_label.setText(
+            translate('BiblesPlugin.ImportWizardForm',
+                      'Supported formats:\n'
+                      '- OSIS: .osis, .xml\n'
+                      '- CSV: .csv/.txt (requires 2 files: Books and Verses)\n'
+                      '- OpenSong: .xml\n'
+                      '- Zefania: .xml, .xmm\n'
+                      '- WordProject: .zip\n'
+                      '- SWORD: module folder or zip package'))
         self.format_combo_box.setItemText(BibleFormat.OSIS, WizardStrings.OSIS)
         self.format_combo_box.setItemText(BibleFormat.CSV, WizardStrings.CSV)
         self.format_combo_box.setItemText(BibleFormat.OpenSong, WizardStrings.OS)
@@ -435,6 +452,11 @@ class BibleImportForm(OpenLPWizard):
         self.osis_file_label.setText(translate('BiblesPlugin.ImportWizardForm', 'Bible file:'))
         self.csv_books_label.setText(translate('BiblesPlugin.ImportWizardForm', 'Books file:'))
         self.csv_verses_label.setText(translate('BiblesPlugin.ImportWizardForm', 'Verses file:'))
+        self.csv_help_label.setText(translate('BiblesPlugin.ImportWizardForm',
+                                              'CSV import requires two files:\n'
+                                              '1) Books file (book names/order)\n'
+                                              '2) Verses file (verse text)\n'
+                                              'Accepted file types: .csv or .txt'))
         self.open_song_file_label.setText(translate('BiblesPlugin.ImportWizardForm', 'Bible file:'))
         self.web_source_label.setText(translate('BiblesPlugin.ImportWizardForm', 'Location:'))
         self.zefania_file_label.setText(translate('BiblesPlugin.ImportWizardForm', 'Bible file:'))
@@ -578,13 +600,15 @@ class BibleImportForm(OpenLPWizard):
         if detected_format is None:
             self.format_hint_label.setText(
                 translate('BiblesPlugin.ImportWizardForm',
-                          'Tip: OpenLP could not detect this file format automatically.'))
+                          'OpenLP could not detect this file automatically. '
+                          'Check the Supported formats list and continue only if your file matches one of them.'))
             return
         if detected_format != expected_format:
             self.format_combo_box.setCurrentIndex(detected_format)
             self.format_hint_label.setText(
                 translate('BiblesPlugin.ImportWizardForm',
-                          'Detected {format}. Import format was switched automatically.').format(format=detected_name))
+                          'Detected {format}. OpenLP switched the import format automatically.').format(
+                              format=detected_name))
         else:
             self.format_hint_label.setText(
                 translate('BiblesPlugin.ImportWizardForm', 'Detected {format}.').format(format=detected_name))
@@ -610,15 +634,14 @@ class BibleImportForm(OpenLPWizard):
                 if not self.field('csv_booksfile'):
                     critical_error_message_box(
                         UiStrings().NFSs, translate('BiblesPlugin.ImportWizardForm',
-                                                    'You need to specify a file with books of the Bible to use in the '
-                                                    'import.'))
+                                                    'Please select the CSV/TXT Books file (required for CSV import).'))
                     self.csv_books_path_edit.setFocus()
                     return False
                 elif not self.field('csv_versefile'):
                     critical_error_message_box(
                         UiStrings().NFSs,
-                        translate('BiblesPlugin.ImportWizardForm', 'You need to specify a file of Bible verses to '
-                                                                   'import.'))
+                        translate('BiblesPlugin.ImportWizardForm',
+                                  'Please select the CSV/TXT Verses file (required for CSV import).'))
                     self.csv_verses_path_edit.setFocus()
                     return False
             elif self.field('source_format') == BibleFormat.OpenSong:
@@ -982,7 +1005,7 @@ class BibleImportForm(OpenLPWizard):
             importer.session.close()
             importer.session = None
         if hasattr(importer, 'file_path') and importer.file_path:
-            delete_database(self.plugin.settings_section, importer.file_path)
+            delete_database(self.plugin.name, importer.file_path)
 
     def provide_help(self):
         """

@@ -492,7 +492,7 @@ class EGWLibraryMediaItem(MediaManagerItem):
         if not paragraph_datas:
             log.debug('generate_slide_data: no paragraphs resolved from selection')
             return False
-        # Slides: one paragraph per slide, with the citation as a superscript marker
+        # Slides: one paragraph per slide, with the citation marker inline
         references = []
         copyrights = []
         book_titles = []
@@ -502,7 +502,7 @@ class EGWLibraryMediaItem(MediaManagerItem):
                 marker = data['reference']
             else:
                 marker = data['reference'].replace('{abbr} '.format(abbr=data['abbreviation']), '', 1)
-            slide_text = '{{su}}{marker}&nbsp;{{/su}}{text}'.format(marker=marker, text=data['text'])
+            slide_text = '{marker}&nbsp;{text}'.format(marker=marker, text=data['text'])
             service_item.add_from_text(slide_text)
             references.append(data['reference'])
             if data['book_title'] not in book_titles:

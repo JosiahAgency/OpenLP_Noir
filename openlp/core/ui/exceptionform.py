@@ -52,6 +52,7 @@ class ExceptionForm(QtWidgets.QDialog, Ui_ExceptionDialog, RegistryProperties):
                                             QtCore.Qt.WindowType.WindowTitleHint)
         self.setup_ui(self)
         self.settings_section = 'crashreport'
+        self.file_attachment = None
         self.report_text = '**OpenLP Bug Report**\n' \
             'Version: {version}\n\n' \
             '--- Details of the Exception. ---\n\n{description}\n\n ' \
@@ -123,6 +124,11 @@ class ExceptionForm(QtWidgets.QDialog, Ui_ExceptionDialog, RegistryProperties):
         Opening systems default email client and inserting exception log and system information.
         """
         content = self._create_report()
+        report_body = self.report_text.format(version=content['version'],
+                                              description=content['description'],
+                                              traceback=content['traceback'],
+                                              system=content['system'],
+                                              libs=content['libs'])
         source = ''
         exception = ''
         for line in content['traceback'].split('\n'):
@@ -131,18 +137,25 @@ class ExceptionForm(QtWidgets.QDialog, Ui_ExceptionDialog, RegistryProperties):
             if ':' in line:
                 exception = line.split('\n')[-1].split(':')[0]
         subject = 'Bug report: {error} in {source}'.format(error=exception, source=source)
+        QtGui.QGuiApplication.clipboard().setText(report_body)
         mail_urlquery = QtCore.QUrlQuery()
         mail_urlquery.addQueryItem('subject', subject)
-        mail_urlquery.addQueryItem('body', self.report_text.format(version=content['version'],
-                                                                   description=content['description'],
-                                                                   traceback=content['traceback'],
-                                                                   system=content['system'],
-                                                                   libs=content['libs']))
+        mail_urlquery.addQueryItem('body', translate('OpenLP.ExceptionForm',
+                                                     'OpenLP has copied the crash report to your clipboard. '
+                                                     'Please paste it into this email.'))
         if self.file_attachment:
             mail_urlquery.addQueryItem('attach', self.file_attachment)
         mail_to_url = QtCore.QUrl('mailto:mwandajosiah@gmail.com')
         mail_to_url.setQuery(mail_urlquery)
-        QtGui.QDesktopServices.openUrl(mail_to_url)
+        if not QtGui.QDesktopServices.openUrl(mail_to_url):
+            QtWidgets.QMessageBox.warning(
+                self,
+                translate('OpenLP.ExceptionDialog', 'Unable to Open Email Client'),
+                translate('OpenLP.ExceptionDialog',
+                          'OpenLP could not open your default email client.\n'
+                          'The crash report has been copied to your clipboard.\n\n'
+                          'Please email {email} and paste the report into the message body.').format(
+                    email='mwandajosiah@gmail.com'))
 
     def on_description_updated(self):
         """

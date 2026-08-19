@@ -26,7 +26,7 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 from PySide6 import QtCore, QtWidgets
 
-from openlp.core.common.enum import LayoutStyle, ReferencePlacement
+from openlp.core.common.enum import DisplayStyle, LayoutStyle, ReferencePlacement
 from openlp.core.common.registry import Registry
 from openlp.core.lib.mediamanageritem import MediaManagerItem
 from openlp.core.lib.serviceitem import ItemCapabilities
@@ -1842,6 +1842,8 @@ def test_generate_slide_data_reference_inline(media_item: BibleMediaItem):
     assert 'Matt' in slide_text
     assert '1:2' in slide_text
     assert 'text from matthew 1:2' in slide_text
+    assert '{su}' not in slide_text
+    assert '{/su}' not in slide_text
 
 
 @pytest.mark.parametrize('layout_style', [
@@ -1884,3 +1886,42 @@ def test_generate_slide_data_reference_inline_all_layout_styles(media_item: Bibl
     assert all_text.count('Matt') == 2
     assert '1:1' in all_text
     assert '1:2' in all_text
+    assert '{su}' not in all_text
+    assert '{/su}' not in all_text
+
+
+def test_format_verse_outputs_normal_size_text(media_item: BibleMediaItem):
+    """
+    Test that verse numbers are emitted without superscript formatting tags.
+    """
+    # GIVEN: Verse display enabled with no brackets
+    media_item.settings_tab = MagicMock(is_verse_number_visible=True, show_new_chapters=False,
+                                        display_style=DisplayStyle.NoBrackets)
+
+    # WHEN: Formatting the verse prefix
+    with patch('openlp.plugins.bibles.lib.mediaitem.get_reference_separators',
+               return_value={'verse': ':', 'range': '-', 'list': ','}):
+        verse_text = media_item.format_verse(old_chapter=1, chapter=1, verse=2)
+
+    # THEN: The output should be normal-size text plus non-breaking trailing space
+    assert verse_text == '1:2&nbsp;'
+    assert '{su}' not in verse_text
+    assert '{/su}' not in verse_text
+
+
+def test_format_verse_reference_inline_outputs_normal_size_text(media_item: BibleMediaItem):
+    """
+    Test that inline references are emitted without superscript formatting tags.
+    """
+    # GIVEN: Inline reference placement
+    media_item.settings_tab = MagicMock(reference_placement=ReferencePlacement.Inline)
+
+    # WHEN: Formatting the inline reference
+    with patch('openlp.plugins.bibles.lib.mediaitem.get_reference_separators',
+               return_value={'verse': ':', 'range': '-', 'list': ','}):
+        reference_text = media_item.format_verse_reference('Matt', 1, 2)
+
+    # THEN: The output should be normal-size text and keep non-breaking spaces
+    assert reference_text == '&nbsp;Matt&nbsp;1:2'
+    assert '{su}' not in reference_text
+    assert '{/su}' not in reference_text

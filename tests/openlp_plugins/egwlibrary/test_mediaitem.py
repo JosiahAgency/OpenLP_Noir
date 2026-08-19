@@ -68,6 +68,8 @@ def test_generate_slide_data_reference_footer_default(settings):
     slide_text = service_item.add_from_text.call_args_list[0].args[0]
     assert 'DA' not in slide_text
     assert '83.2' in slide_text
+    assert '{su}' not in slide_text
+    assert '{/su}' not in slide_text
     assert service_item.raw_footer == ['The Desire of Ages: DA 83.2']
 
 
@@ -91,6 +93,8 @@ def test_generate_slide_data_reference_inline(settings):
     assert result is True
     slide_text = service_item.add_from_text.call_args_list[0].args[0]
     assert 'DA 83.2' in slide_text
+    assert '{su}' not in slide_text
+    assert '{/su}' not in slide_text
     assert service_item.raw_footer == []
 
 
@@ -111,4 +115,6 @@ def test_generate_slide_data_reference_footer_explicit(settings):
     # THEN: The slide marker should be stripped, and the footer should carry the full reference
     slide_text = service_item.add_from_text.call_args_list[0].args[0]
     assert 'DA' not in slide_text
+    assert '{su}' not in slide_text
+    assert '{/su}' not in slide_text
     assert service_item.raw_footer == ['The Desire of Ages: DA 83.2']

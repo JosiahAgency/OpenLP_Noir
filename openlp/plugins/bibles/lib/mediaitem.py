@@ -1080,7 +1080,7 @@ class BibleMediaItem(MediaManagerItem):
         Formats and returns the text, each verse starts with, for the given chapter and verse. The text is either
         surrounded by round, square, curly brackets or no brackets at all. For example::
 
-            '{su}1:1{/su}'
+            '1:1'
 
         :param old_chapter: The previous verse's chapter number (int).
         :param chapter: The chapter number (int).
@@ -1100,14 +1100,14 @@ class BibleMediaItem(MediaManagerItem):
             DisplayStyle.Curly: ('{', '}'),
             DisplayStyle.Square: ('[', ']')
         }[self.settings_tab.display_style]
-        return '{{su}}{bracket[0]}{verse_text}{bracket[1]}&nbsp;{{/su}}'.format(verse_text=verse_text, bracket=bracket)
+        return '{bracket[0]}{verse_text}{bracket[1]}&nbsp;'.format(verse_text=verse_text, bracket=bracket)
 
     def format_verse_reference(self, book_abbreviation, chapter, verse):
         """
-        Formats and returns a short, superscript reference to be shown inline after a verse's text, when
+        Formats and returns a short reference to be shown inline after a verse's text, when
         "Reference placement" is set to Inline. For example::
 
-            '{su}&nbsp;Gen&nbsp;1:1{/su}'
+            '&nbsp;Gen&nbsp;1:1'
 
         Uses ``&nbsp;`` (not a literal space) around the marker so the word-wrap/pagination in
         core/display/render.py can never strand the reference on its own, or split it away from the verse
@@ -1116,12 +1116,12 @@ class BibleMediaItem(MediaManagerItem):
         :param book_abbreviation: The short form of the book name (e.g. 'Gen').
         :param chapter: The chapter number (int).
         :param verse: The verse number (int).
-        :return: An empty string, or a formatted, superscript reference string.
+        :return: An empty string, or a formatted reference string.
         """
         if self.settings_tab.reference_placement != ReferencePlacement.Inline:
             return ''
         verse_separator = get_reference_separators()['verse']
-        return '{{su}}&nbsp;{book}&nbsp;{chapter}{sep}{verse}{{/su}}'.format(
+        return '&nbsp;{book}&nbsp;{chapter}{sep}{verse}'.format(
             book=book_abbreviation, chapter=chapter, sep=verse_separator, verse=verse)
 
     def search_options(self, option=None):
