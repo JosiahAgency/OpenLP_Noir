@@ -66,9 +66,10 @@ class Registry(metaclass=Singleton):
 
         :param key: The service to be retrieved.
         """
-        if key in self.service_list:
-            return self.service_list[key]
-        elif self._is_suppressing:
+        service_list = getattr(self, 'service_list', {})
+        if key in service_list:
+            return service_list[key]
+        elif getattr(self, '_is_suppressing', False):
             return None
         else:
             warn(f'Service "{key}" not found in list', stacklevel=2)

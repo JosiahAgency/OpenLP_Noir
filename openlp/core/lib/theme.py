@@ -303,7 +303,9 @@ class Theme(object):
         app_dir = AppLocation.get_directory(AppLocation.AppDir)
         json_path_candidates = [app_dir / 'core' / 'lib' / 'json' / 'theme.json']
         if getattr(sys, 'frozen', False):
-            json_path_candidates.append(app_dir.parent / 'Resources' / 'openlp' / 'core' / 'lib' / 'json' / 'theme.json')
+            json_path_candidates.append(
+                app_dir.parent / 'Resources' / 'openlp' / 'core' / 'lib' / 'json' / 'theme.json'
+            )
         json_path = next((path for path in json_path_candidates if path.is_file()), json_path_candidates[0])
         jsn = get_text_file_string(json_path)
         self.load_theme(jsn)

@@ -37,7 +37,8 @@ def login_required(f):
     """
     @wraps(f)
     def decorated(*args, **kwargs):
-        if not Registry().get('settings_thread').value('api/authentication enabled'):
+        settings = Registry().get('settings_thread')
+        if settings is None or not settings.value('api/authentication enabled'):
             return f(*args, **kwargs)
         token = request.headers.get('Authorization', '')
         if token == Registry().get('authentication_token'):

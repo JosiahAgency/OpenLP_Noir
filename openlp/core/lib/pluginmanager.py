@@ -58,7 +58,11 @@ class PluginManager(RegistryBase, LogMixin, RegistryProperties):
         Scan a directory for objects inheriting from the ``Plugin`` class.
         """
         plugin_modules = sorted(
-            module_info.name for module_info in pkgutil.walk_packages(openlp.plugins.__path__, openlp.plugins.__name__ + '.')
+            module_info.name
+            for module_info in pkgutil.walk_packages(
+                openlp.plugins.__path__,
+                openlp.plugins.__name__ + '.'
+            )
             if module_info.name.endswith('plugin') and not module_info.ispkg
         )
         for module_name in plugin_modules:

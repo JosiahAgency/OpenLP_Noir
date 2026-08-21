@@ -41,15 +41,15 @@ FROZEN_APP_PATH = Path(sys.argv[0]).parent
 APP_PATH = Path(openlp.__file__).parent
 
 
-def _get_frozen_plugins_path():
+def _get_frozen_plugins_path(frozen_base_path: Path):
     """
     Return the plugin directory for frozen builds, accounting for macOS app bundles and
     PyInstaller onedir layouts.
     """
-    candidates = [FROZEN_APP_PATH / 'plugins']
+    candidates = [frozen_base_path / 'plugins']
     if is_macosx():
-        candidates.append(FROZEN_APP_PATH.parent / 'Resources' / 'openlp' / 'plugins')
-    candidates.append(FROZEN_APP_PATH / '_internal' / 'openlp' / 'plugins')
+        candidates.append(frozen_base_path.parent / 'Resources' / 'openlp' / 'plugins')
+    candidates.append(frozen_base_path / '_internal' / 'openlp' / 'plugins')
     meipass = getattr(sys, '_MEIPASS', None)
     if meipass:
         candidates.append(Path(meipass) / 'openlp' / 'plugins')
@@ -82,8 +82,9 @@ class AppLocation(object):
         if dir_type == AppLocation.AppDir or dir_type == AppLocation.VersionDir:
             path = get_frozen_path(FROZEN_APP_PATH, APP_PATH)
         elif dir_type == AppLocation.PluginsDir:
+            frozen_base_path = get_frozen_path(FROZEN_APP_PATH, APP_PATH)
             if getattr(sys, 'frozen', False) == 1:
-                path = _get_frozen_plugins_path()
+                path = _get_frozen_plugins_path(frozen_base_path)
             else:
                 path = APP_PATH / 'plugins'
         elif dir_type == AppLocation.LanguageDir:

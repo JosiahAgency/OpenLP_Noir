@@ -140,7 +140,7 @@ def get_web_page(url, headers=None, update_openlp=False, proxy=None):
         proxy = get_proxy_settings(mode=proxy)
     log.debug('Downloading URL = %s' % url)
     response = None
-    for retries in range(CONNECTION_RETRIES + 1):
+    for retries in range(CONNECTION_RETRIES):
         try:
             response = requests.get(url, headers=headers, proxies=proxy, timeout=float(CONNECTION_TIMEOUT))
             log.debug('Downloaded page {url}'.format(url=response.url))
@@ -148,7 +148,7 @@ def get_web_page(url, headers=None, update_openlp=False, proxy=None):
         except OSError:
             # For now, catch OSError. All requests errors inherit from OSError
             log.exception('Unable to connect to {url}'.format(url=url))
-            if retries >= CONNECTION_RETRIES:
+            if retries >= CONNECTION_RETRIES - 1:
                 break
         except:                                                                # noqa
             # Don't know what's happening, so reraise the original
