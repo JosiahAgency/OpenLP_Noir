@@ -190,11 +190,14 @@ class SundayPlusImport(SongImport):
         return title.replace('_', ' ')
 
     def decode(self, blob):
-        while True:
+        attempted_encodings = set()
+        while self.encoding and self.encoding not in attempted_encodings:
+            attempted_encodings.add(self.encoding)
             try:
                 return blob.decode(self.encoding)
-            except Exception:
+            except (LookupError, UnicodeDecodeError):
                 self.encoding = retrieve_windows_encoding()
+        return blob.decode('utf-8', errors='replace')
 
     def unescape(self, text):
         text = text.replace(b'^^', b'"')

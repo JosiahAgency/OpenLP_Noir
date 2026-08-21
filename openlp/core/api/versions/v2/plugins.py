@@ -187,6 +187,7 @@ def live_view(plugin):
 
 
 @plugins.route('/<plugin>/search-options', methods=['GET'])
+@login_required
 def search_options(plugin):
     """
     Gets the plugin's search options
@@ -229,6 +230,7 @@ def set_search_option(plugin):
 
 
 @plugins.route('/songs/transpose-live-item/<transpose_value>', methods=['GET'])
+@login_required
 def transpose(transpose_value):
     """
     Transposes the live song by the given value.

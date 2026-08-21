@@ -87,6 +87,7 @@ def test_login_with_invalid_credetials_returns_401(flask_client: FlaskClient, se
 
 def test_login_with_valid_credetials_returns_token(flask_client: FlaskClient, settings: Settings):
     Registry().register('authentication_token', 'foobar')
+    Registry().get('settings_thread').setValue('api/password', 'password')
     res = flask_client.post('/api/v2/core/login', json=dict(username='openlp', password='password'))
     assert res.status_code == 200
     assert res.get_json()['token'] == 'foobar'
@@ -109,6 +110,14 @@ def test_toggle_display_requires_login(flask_client: FlaskClient, settings: Sett
     settings.setValue('api/authentication enabled', True)
     Registry().register('authentication_token', 'foobar')
     res = flask_client.post('/api/v2/core/display')
+    settings.setValue('api/authentication enabled', False)
+    assert res.status_code == 401
+
+
+def test_system_information_requires_login_when_enabled(flask_client: FlaskClient, settings: Settings):
+    settings.setValue('api/authentication enabled', True)
+    Registry().register('authentication_token', 'foobar')
+    res = flask_client.get('/api/v2/core/system')
     settings.setValue('api/authentication enabled', False)
     assert res.status_code == 401
 

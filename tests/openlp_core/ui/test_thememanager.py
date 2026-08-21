@@ -554,3 +554,62 @@ def test_clone_theme_data(mock_set_default_header, mock_set_default_footer, them
                                                                                           'background.jpg'))
     theme_manager.update_preview_images.assert_called_once_with(['New Theme'])
     theme_manager.load_themes.assert_called_once_with()
+
+
+@patch('openlp.core.ui.thememanager.check_item_selected')
+def test_on_copy_theme_requires_selection(mocked_check_item_selected, theme_manager: ThemeManager):
+    """
+    Test that copy action exits early when no theme is selected.
+    """
+    # GIVEN: No selected item
+    mocked_check_item_selected.return_value = False
+    theme_manager.file_rename_form = MagicMock()
+    theme_manager.theme_list_widget = MagicMock()
+
+    # WHEN: copy is requested
+    theme_manager.on_copy_theme()
+
+    # THEN: No rename dialog should be shown
+    theme_manager.file_rename_form.exec.assert_not_called()
+
+
+@patch('openlp.core.ui.thememanager.FileDialog.getOpenFileNames')
+def test_on_import_theme_ignores_failed_imports(mocked_get_open_file_names, theme_manager: ThemeManager):
+    """
+    Test that import only rebuilds previews for successfully imported themes.
+    """
+    # GIVEN: two selected files where one fails to import
+    file_1 = Path('/tmp/invalid.otz')
+    file_2 = Path('/tmp/valid.otz')
+    mocked_get_open_file_names.return_value = ([file_1, file_2], '')
+    Registry().remove('application')
+    Registry().register('application', MagicMock())
+    theme_manager.unzip_theme = MagicMock(side_effect=[None, 'Valid Theme'])
+    theme_manager.update_preview_images = MagicMock()
+
+    # WHEN: importing themes
+    theme_manager.on_import_theme()
+
+    # THEN: only successful imports should be used
+    theme_manager.update_preview_images.assert_called_once_with(['Valid Theme'])
+    assert theme_manager.settings.value('themes/last directory import') == file_1.parent
+
+
+@patch('openlp.core.ui.thememanager.AppLocation.get_files')
+def test_load_first_time_themes_ignores_failed_imports(mocked_get_files, theme_manager: ThemeManager):
+    """
+    Test that startup import ignores failed theme archives.
+    """
+    # GIVEN: startup theme archives with one failing import
+    mocked_get_files.return_value = [Path('invalid.otz'), Path('valid.otz')]
+    Registry().remove('application')
+    Registry().register('application', MagicMock())
+    theme_manager.theme_path = Path('/tmp/themes')
+    theme_manager.unzip_theme = MagicMock(side_effect=[None, 'Valid Theme'])
+    theme_manager.update_preview_images = MagicMock()
+
+    # WHEN: first-time theme load runs
+    theme_manager.load_first_time_themes()
+
+    # THEN: only valid imported themes are passed to preview generation
+    theme_manager.update_preview_images.assert_called_once_with(['Valid Theme'])

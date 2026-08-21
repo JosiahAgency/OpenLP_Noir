@@ -110,6 +110,14 @@ def test_bibles_search_options_returns_list(flask_client, settings):
     assert res == []
 
 
+def test_plugin_search_options_requires_login_when_enabled(flask_client, settings):
+    settings.setValue('api/authentication enabled', True)
+    Registry().register('authentication_token', 'test-token')
+    res = flask_client.get('/api/v2/plugins/bibles/search-options')
+    settings.setValue('api/authentication enabled', False)
+    assert res.status_code == 401
+
+
 def test_bibles_set_search_options_sets_bible_version(flask_client, settings):
     """
     Test that a search option post request sends the correct values to the plugin,

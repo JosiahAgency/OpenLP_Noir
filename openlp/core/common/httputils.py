@@ -139,8 +139,8 @@ def get_web_page(url, headers=None, update_openlp=False, proxy=None):
     if not isinstance(proxy, dict):
         proxy = get_proxy_settings(mode=proxy)
     log.debug('Downloading URL = %s' % url)
-    retries = 0
-    while retries < CONNECTION_RETRIES:
+    response = None
+    for retries in range(CONNECTION_RETRIES + 1):
         try:
             response = requests.get(url, headers=headers, proxies=proxy, timeout=float(CONNECTION_TIMEOUT))
             log.debug('Downloaded page {url}'.format(url=response.url))
@@ -148,10 +148,8 @@ def get_web_page(url, headers=None, update_openlp=False, proxy=None):
         except OSError:
             # For now, catch OSError. All requests errors inherit from OSError
             log.exception('Unable to connect to {url}'.format(url=url))
-            response = None
             if retries >= CONNECTION_RETRIES:
-                raise ConnectionError('Unable to connect to {url}, see log for details'.format(url=url))
-            retries += 1
+                break
         except:                                                                # noqa
             # Don't know what's happening, so reraise the original
             log.exception('Unknown error when trying to connect to {url}'.format(url=url))
@@ -172,20 +170,16 @@ def get_url_file_size(url, proxy=None):
     :param dict | ProxyMode | None proxy: ProxyMode enum or a dictionary containing the proxy servers, with their types
         as the key e.g. {'http': 'http://proxyserver:port', 'https': 'https://proxyserver:port'}
     """
-    retries = 0
     if not isinstance(proxy, dict):
         proxy = get_proxy_settings(mode=proxy)
-    while True:
+    for retries in range(CONNECTION_RETRIES + 1):
         try:
             response = requests.head(url, proxies=proxy, timeout=float(CONNECTION_TIMEOUT), allow_redirects=True)
             return int(response.headers['Content-Length'])
         except OSError:
-            if retries > CONNECTION_RETRIES:
+            if retries >= CONNECTION_RETRIES:
                 raise ConnectionError('Unable to download {url}'.format(url=url))
-            else:
-                retries += 1
-                time.sleep(0.1)
-                continue
+            time.sleep(0.1)
 
 
 def download_file(update_object, url, file_path, sha256=None, proxy=None):
@@ -202,11 +196,10 @@ def download_file(update_object, url, file_path, sha256=None, proxy=None):
     """
     block_count = 0
     block_size = 4096
-    retries = 0
     if not isinstance(proxy, dict):
         proxy = get_proxy_settings(mode=proxy)
     log.debug('url_get_file: %s', url)
-    while retries < CONNECTION_RETRIES:
+    for retries in range(CONNECTION_RETRIES + 1):
         try:
             with file_path.open('wb') as saved_file:
                 response = requests.get(url, proxies=proxy, timeout=float(CONNECTION_TIMEOUT), stream=True)
@@ -232,14 +225,15 @@ def download_file(update_object, url, file_path, sha256=None, proxy=None):
             break
         except OSError:
             trace_error_handler(log)
-            if retries > CONNECTION_RETRIES:
+            if retries >= CONNECTION_RETRIES:
                 if file_path.exists():
                     file_path.unlink()
                 return False
-            else:
-                retries += 1
-                time.sleep(0.1)
-                continue
+            time.sleep(0.1)
+    else:
+        if file_path.exists():
+            file_path.unlink()
+        return False
     if hasattr(update_object, 'is_cancelled') and update_object.is_cancelled and file_path.exists():
         file_path.unlink()
     return True

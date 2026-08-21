@@ -346,7 +346,7 @@ class ThemeManager(QtWidgets.QWidget, RegistryBase, Ui_ThemeManager, LogMixin, R
                 self.theme_list_widget.item(count).setText(item.data(QtCore.Qt.ItemDataRole.UserRole))
             # Set the new name
             if count == selected_row:
-                self.global_theme = self.theme_list_widget.item(count).text()
+                self.global_theme = item.data(QtCore.Qt.ItemDataRole.UserRole)
                 name = translate('OpenLP.ThemeManager', '{text} (default)').format(text=self.global_theme)
                 self.theme_list_widget.item(count).setText(name)
                 self.settings.setValue('themes/global theme', self.global_theme)
@@ -393,6 +393,9 @@ class ThemeManager(QtWidgets.QWidget, RegistryBase, Ui_ThemeManager, LogMixin, R
         Copies an existing theme to a new name
         :param field:
         """
+        if not check_item_selected(self.theme_list_widget,
+                                   translate('OpenLP.ThemeManager', 'You must select a theme to copy.')):
+            return
         item = self.theme_list_widget.currentItem()
         old_theme_name = item.data(QtCore.Qt.ItemDataRole.UserRole)
         self.file_rename_form.file_name_edit.setText(translate('OpenLP.ThemeManager',
@@ -449,7 +452,7 @@ class ThemeManager(QtWidgets.QWidget, RegistryBase, Ui_ThemeManager, LogMixin, R
                                        translate('OpenLP.ThemeManager', 'Delete Confirmation'),
                                        translate('OpenLP.ThemeManager', 'Delete {theme_name} theme?')):
             item = self.theme_list_widget.currentItem()
-            theme = item.text()
+            theme = item.data(QtCore.Qt.ItemDataRole.UserRole)
             row = self.theme_list_widget.row(item)
             self.theme_list_widget.takeItem(row)
             self.delete_theme(theme)
@@ -546,9 +549,12 @@ class ThemeManager(QtWidgets.QWidget, RegistryBase, Ui_ThemeManager, LogMixin, R
         self.application.set_busy_cursor()
         new_themes = []
         for file_path in file_paths:
-            new_themes.append(self.unzip_theme(file_path))
-        self.settings.setValue('themes/last directory import', file_path.parent)
-        self.update_preview_images(new_themes)
+            imported_theme_name = self.unzip_theme(file_path)
+            if imported_theme_name:
+                new_themes.append(imported_theme_name)
+        self.settings.setValue('themes/last directory import', file_paths[0].parent)
+        if new_themes:
+            self.update_preview_images(new_themes)
         self.application.set_normal_cursor()
 
     def load_first_time_themes(self):
@@ -560,7 +566,9 @@ class ThemeManager(QtWidgets.QWidget, RegistryBase, Ui_ThemeManager, LogMixin, R
         new_themes = []
         for theme_path in theme_paths:
             theme_path = self.theme_path / theme_path
-            new_themes.append(self.unzip_theme(theme_path))
+            imported_theme_name = self.unzip_theme(theme_path)
+            if imported_theme_name:
+                new_themes.append(imported_theme_name)
             delete_file(theme_path)
         # No themes have been found so create one
         if not theme_paths:
@@ -853,7 +861,7 @@ class ThemeManager(QtWidgets.QWidget, RegistryBase, Ui_ThemeManager, LogMixin, R
         self.global_theme = self.settings.value('themes/global theme')
         if check_item_selected(self.theme_list_widget, select_text):
             item = self.theme_list_widget.currentItem()
-            theme = item.text()
+            theme = item.data(QtCore.Qt.ItemDataRole.UserRole)
             # confirm deletion
             if confirm:
                 answer = QtWidgets.QMessageBox.question(
@@ -862,7 +870,7 @@ class ThemeManager(QtWidgets.QWidget, RegistryBase, Ui_ThemeManager, LogMixin, R
                 if answer == QtWidgets.QMessageBox.StandardButton.No:
                     return False
             # should be the same unless default
-            if theme != item.data(QtCore.Qt.ItemDataRole.UserRole):
+            if item.text() != item.data(QtCore.Qt.ItemDataRole.UserRole):
                 critical_error_message_box(
                     message=translate('OpenLP.ThemeManager', 'You are unable to delete the default theme.'))
                 return False

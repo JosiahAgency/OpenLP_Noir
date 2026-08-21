@@ -140,7 +140,6 @@ def import_book(manager, data):
             log.warning('Alias "{name}" already belongs to another book, skipping it'.format(name=name))
             continue
         manager.session.add(Alias(book_id=book.id, key=key, display=name.strip()))
-        manager.session.flush()
         seen_keys.add(key)
     chapters = data.get('chapters')
     if chapters is None:
@@ -174,7 +173,6 @@ def import_book(manager, data):
             manager.session.add(Paragraph(book_id=book.id, chapter_id=chapter.id,
                                           paragraph_number=paragraph_number, page=current_page,
                                           para_on_page=para_on_page, text=paragraph_text))
-        manager.session.flush()
     manager.session.commit()
     manager.is_dirty = True
     return book, paragraph_count

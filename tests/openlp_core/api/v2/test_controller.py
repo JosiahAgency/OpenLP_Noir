@@ -46,6 +46,14 @@ def test_retrieve_live_items(flask_client: FlaskClient, registry: Registry, sett
     assert res == {'slides': [{'selected': True}], 'id': '42'}
 
 
+def test_retrieve_live_items_requires_login_when_enabled(flask_client: FlaskClient, settings: Settings):
+    settings.setValue('api/authentication enabled', True)
+    Registry().register('authentication_token', 'foobar')
+    res = flask_client.get('/api/v2/controller/live-items')
+    settings.setValue('api/authentication enabled', False)
+    assert res.status_code == 401
+
+
 def test_controller_set_requires_login(flask_client: FlaskClient, registry: Registry, settings: Settings):
     settings.setValue('api/authentication enabled', True)
     Registry().register('authentication_token', 'foobar')

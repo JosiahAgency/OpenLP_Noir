@@ -608,3 +608,27 @@ def test_update_theme_cannot_update(mocked_setup, settings):
 
     # THEN: The theme should be correct
     # TODO: Figure out a way to check this
+
+
+@patch('openlp.core.ui.themeform.ThemeForm._setup')
+def test_accept_strips_theme_name(mocked_setup, settings):
+    """
+    Test that accept() strips surrounding whitespace from the theme name.
+    """
+    # GIVEN: A theme with extra spaces in the entered name
+    theme_form = ThemeForm(None)
+    theme_form.theme = MagicMock(background_type='solid')
+    theme_form.theme_name_edit = MagicMock(**{'text.return_value': '  My Theme  '})
+    theme_form.path = Path('/tmp/themes')
+    theme_form.preview_box = MagicMock(**{'save_screenshot.return_value': MagicMock()})
+    mocked_theme_manager = MagicMock()
+    mocked_theme_manager.check_if_theme_exists.return_value = True
+    Registry().register('theme_manager', mocked_theme_manager)
+    theme_form.edit_mode = False
+
+    # WHEN: accept is called
+    with patch('openlp.core.ui.themeform.QtWidgets.QDialog.accept'):
+        theme_form.accept()
+
+    # THEN: Name should be stripped before saving
+    assert theme_form.theme.theme_name == 'My Theme'

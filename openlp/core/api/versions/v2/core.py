@@ -57,6 +57,7 @@ def toggle_display():
 
 
 @core.route('/plugins')
+@login_required
 def plugin_list():
     """
     Get a list of active plugins that support searching.
@@ -72,6 +73,7 @@ def plugin_list():
 
 
 @core.route('/shortcuts')
+@login_required
 def shortcuts():
     """
     Get a list of all keyboard shortcuts.
@@ -94,6 +96,7 @@ def shortcuts():
 
 
 @core.route('/system')
+@login_required
 def system_information():
     """
     Get system information.
@@ -110,6 +113,7 @@ def system_information():
 
 
 @core.route('/language')
+@login_required
 def language():
     """
     Get the current language.
@@ -143,6 +147,7 @@ def login():
 
 
 @core.route('/live-image')
+@login_required
 def main_image():
     """
     Get a base64 encoded image of the current main display.

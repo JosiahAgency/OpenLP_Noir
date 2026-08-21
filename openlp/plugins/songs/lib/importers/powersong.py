@@ -106,6 +106,7 @@ class PowerSongImport(SongImport):
                 return
             self.set_defaults()
             parse_error = False
+            found_copyright = False
             with file_path.open('rb') as song_data:
                 while True:
                     try:

@@ -33,6 +33,14 @@ def test_retrieve_service_items(flask_client, settings):
     assert len(res) == 0
 
 
+def test_retrieve_service_items_requires_login_when_enabled(flask_client, settings):
+    settings.setValue('api/authentication enabled', True)
+    Registry().register('authentication_token', 'test-token')
+    res = flask_client.get('/api/v2/service/items')
+    settings.setValue('api/authentication enabled', False)
+    assert res.status_code == 401
+
+
 def test_service_set_requires_login(flask_client, settings):
     settings.setValue('api/authentication enabled', True)
     Registry().register('authentication_token', 'test-token')
@@ -50,6 +58,14 @@ def test_service_set_calls_service_manager(flask_client, settings):
     fake_service_manager = MagicMock()
     Registry().register('service_manager', fake_service_manager)
     res = flask_client.post('/api/v2/service/show', json=dict(id=400))
+    assert res.status_code == 204
+    fake_service_manager.servicemanager_set_item.emit.assert_called_once_with(400)
+
+
+def test_service_set_with_path_item_id_and_no_json(flask_client, settings):
+    fake_service_manager = MagicMock()
+    Registry().register('service_manager', fake_service_manager)
+    res = flask_client.post('/api/v2/service/show/400')
     assert res.status_code == 204
     fake_service_manager.servicemanager_set_item.emit.assert_called_once_with(400)
 

@@ -53,12 +53,15 @@ class PdfBookDetailsDialog(QtWidgets.QDialog):
         chapters = book_data['chapters']
         paragraph_count = sum(len(chapter['paragraphs']) for chapter in chapters)
         pages = [paragraph['page'] for chapter in chapters for paragraph in chapter['paragraphs']]
+        if pages:
+            page_range = '{first}-{last}'.format(first=min(pages), last=max(pages))
+        else:
+            page_range = translate('EGWLibraryPlugin.PdfImportDialog', 'n/a')
         summary_label = QtWidgets.QLabel(
             translate('EGWLibraryPlugin.PdfImportDialog',
-                      'Converted {chapters} chapter(s), {paragraphs} paragraph(s), pages {first}-{last}.\n'
+                      'Converted {chapters} chapter(s), {paragraphs} paragraph(s), pages {page_range}.\n'
                       'Check the book details below; the abbreviation is used in citations (e.g. "DA 83.2").'
-                      ).format(chapters=len(chapters), paragraphs=paragraph_count,
-                               first=min(pages), last=max(pages)), self)
+                      ).format(chapters=len(chapters), paragraphs=paragraph_count, page_range=page_range), self)
         summary_label.setWordWrap(True)
         layout.addWidget(summary_label)
         if warnings:

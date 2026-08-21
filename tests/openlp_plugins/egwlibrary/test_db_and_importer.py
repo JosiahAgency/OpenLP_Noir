@@ -159,6 +159,28 @@ def test_like_fallback_search(manager):
     assert results[0].page == 20
 
 
+def test_like_fallback_search_orders_by_citation(manager):
+    """
+    Test that the LIKE fallback keeps results in page/paragraph order.
+    """
+    book, _ = import_book(manager, {
+        'title': 'Ordered Book',
+        'abbreviation': 'OB',
+        'chapters': [
+            {'number': 1, 'title': 'One', 'paragraphs': [
+                {'page': 10, 'text': 'match'},
+                {'page': 11, 'text': 'match'}
+            ]},
+            {'number': 2, 'title': 'Two', 'paragraphs': [
+                {'page': 12, 'text': 'match'}
+            ]}
+        ]
+    })
+    manager._has_fts = False
+    results = manager.text_search('match', book_id=book.id)
+    assert [(p.page, p.para_on_page) for p in results] == [(10, 1), (11, 1), (12, 1)]
+
+
 def test_chapterless_book(manager):
     """
     Test that a book without chapters gets a single implicit chapter with number 0.

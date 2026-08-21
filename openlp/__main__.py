@@ -41,7 +41,6 @@ def tear_down_fault_handling():
     """
     When Python exits, close the file we were using for the faulthandler
     """
-    global error_log_file  # noqa: F824
     error_log_file.close()
 
 

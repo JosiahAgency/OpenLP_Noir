@@ -436,7 +436,7 @@ class ThemeForm(QtWidgets.QWizard, Ui_ThemeWizard, RegistryProperties):
         Lets save the theme as Finish has been triggered
         """
         # Save the theme name
-        self.theme.theme_name = self.theme_name_edit.text()
+        self.theme.theme_name = self.theme_name_edit.text().strip()
         if not self.theme.theme_name:
             critical_error_message_box(
                 translate('OpenLP.ThemeWizard', 'Theme Name Missing'),

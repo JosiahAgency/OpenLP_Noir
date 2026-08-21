@@ -353,7 +353,7 @@ class Settings(QtCore.QSettings):
         "api/port": 4316,
         "api/websocket port": 4317,
         "api/user id": "openlp",
-        "api/password": "password",
+        "api/password": "",
         "api/authentication enabled": False,
         "api/ip address": "0.0.0.0",
         "api/thumbnails": True,

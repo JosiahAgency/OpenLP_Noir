@@ -32,6 +32,7 @@ log = logging.getLogger(__name__)
 
 
 @service_views.route('/items')
+@login_required
 def service_items():
     log.debug('service/v2/items')
     live_controller = Registry().get('live_controller')
@@ -63,7 +64,7 @@ def service_items():
 @login_required
 def service_set(item_id=None):
     log.debug('service/v2/show')
-    data = request.json
+    data = request.get_json(silent=True) or {}
     item_id = item_id or data.get('id') or data.get('uid')
     if not item_id:
         log.error('Missing item id')

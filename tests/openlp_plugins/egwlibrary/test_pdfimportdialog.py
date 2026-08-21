@@ -58,3 +58,13 @@ def test_pdf_book_details_dialog(qapp):
     assert result['copyright'] == 'Public domain.'
     assert result['aliases'] == ['Desire of Ages', 'desire']
     assert result['chapters'] is book_data['chapters']
+
+
+def test_pdf_book_details_dialog_handles_empty_pages(qapp):
+    """
+    Test that the details dialog can render when converted chapters contain no paragraphs.
+    """
+    book_data = {'title': 'The Desire of Ages', 'abbreviation': 'DA', 'copyright': '', 'language': 'en',
+                 'aliases': [], 'chapters': [{'number': 1, 'title': 'God With Us', 'paragraphs': []}]}
+    dialog = PdfBookDetailsDialog(None, 'en_DA.pdf', book_data, [])
+    assert 'pages n/a.' in dialog.findChildren(QtWidgets.QLabel)[0].text().lower()

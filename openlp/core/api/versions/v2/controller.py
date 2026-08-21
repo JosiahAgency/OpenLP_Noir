@@ -37,6 +37,7 @@ log = logging.getLogger(__name__)
 
 
 @controller_views.route('/live-items')
+@login_required
 def controller_live_items():
     """
     This endpoint returns the current live service item with all slides,
@@ -58,6 +59,7 @@ def controller_live_items():
 
 
 @controller_views.route('/live-item')
+@login_required
 def controller_live_item():
     """
     This endpoint returns the current live service item with the currently
@@ -172,6 +174,7 @@ def set_theme_level():
 
 
 @controller_views.route('/themes', methods=['GET'])
+@login_required
 def get_themes():
     """
     Gets a list of all existing themes.
@@ -209,6 +212,7 @@ def get_themes():
 
 
 @controller_views.route('/themes/<theme_name>', methods=['GET'])
+@login_required
 def get_theme_data(theme_name):
     """
     Get a theme's data.
@@ -228,6 +232,7 @@ def get_theme_data(theme_name):
 
 
 @controller_views.route('/live-theme', methods=['GET'])
+@login_required
 def get_live_theme_data():
     """
     Get the live theme's data.
@@ -246,6 +251,7 @@ def get_live_theme_data():
 
 
 @controller_views.route('/theme', methods=['GET'])
+@login_required
 def get_theme():
     """
     Get the current theme name.

@@ -132,6 +132,7 @@ class ApiTab(SettingsTab):
         self.password_label.setObjectName('password_label')
         self.password = QtWidgets.QLineEdit(self.user_login_group_box)
         self.password.setObjectName('password')
+        self.password.setEchoMode(QtWidgets.QLineEdit.EchoMode.Password)
         self.user_login_layout.addRow(self.password_label, self.password)
         self.left_layout.addWidget(self.user_login_group_box)
         self.web_remote_group_box = QtWidgets.QGroupBox(self.left_column)

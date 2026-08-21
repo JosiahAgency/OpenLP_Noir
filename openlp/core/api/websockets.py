@@ -25,7 +25,6 @@ changes from within OpenLP. It uses JSON to communicate with the remotes.
 import asyncio
 import json
 import logging
-import time
 import uuid
 from dataclasses import asdict, dataclass
 
@@ -77,7 +76,6 @@ class WebSocketWorker(ThreadWorker, RegistryProperties, LogMixin):
         """
         self.state_queues = set()
         self.message_queues = set()
-        self.stop_lock = asyncio.Lock()
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
         try:
@@ -96,7 +94,7 @@ class WebSocketWorker(ThreadWorker, RegistryProperties, LogMixin):
         port = settings.value('api/websocket port')
         self.loop = asyncio.get_running_loop()
         self._stop_future = self.loop.create_future()
-        for retry in range(3):
+        for _ in range(3):
             try:
                 server = await serve(self.handle_websocket, address, port)
                 log.debug(f'WebSocket server listening on {address}:{port}')
@@ -107,7 +105,7 @@ class WebSocketWorker(ThreadWorker, RegistryProperties, LogMixin):
                 break
             except Exception:
                 log.exception(f'Failed to start WebSocket server on {address}:{port}')
-                time.sleep(0.2)
+                await asyncio.sleep(0.2)
         else:
             log.error(f'Giving up starting WebSocket server on {address}:{port}')
 
@@ -191,11 +189,11 @@ class WebSocketWorker(ThreadWorker, RegistryProperties, LogMixin):
         :return:
         """
         log.debug(f'(client_id={client_id}) WebSocket handler unregister')
-        USERS.remove(websocket)
+        USERS.discard(websocket)
         if is_state_queue:
-            self.state_queues.remove(queue)
+            self.state_queues.discard(queue)
         else:
-            self.message_queues.remove(queue)
+            self.message_queues.discard(queue)
         log.debug('WebSocket clients count: {client_count}'.format(client_count=len(USERS)))
 
     async def send_reply(self, websocket: ServerConnection, client_id: str, reply: dict):

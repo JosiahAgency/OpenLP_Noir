@@ -31,7 +31,7 @@ import re
 
 from sqlalchemy import Column, ForeignKey, text
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import declarative_base, joinedload, relationship
 from sqlalchemy.sql import and_, or_
 from sqlalchemy.types import Integer, Unicode, UnicodeText
 
@@ -242,8 +242,10 @@ class EGWLibraryManager(DBManager):
         """
         Return all paragraphs of a chapter, in order.
         """
-        return self.get_all_objects(Paragraph, Paragraph.chapter_id == chapter_id,
-                                    order_by_ref=Paragraph.paragraph_number)
+        return self._fetch_paragraphs(
+            filters=[Paragraph.chapter_id == chapter_id],
+            order_by=[Paragraph.paragraph_number]
+        )
 
     def get_paragraphs_for_pages(self, book_id, from_page, to_page=None):
         """
@@ -251,9 +253,10 @@ class EGWLibraryManager(DBManager):
         """
         if to_page is None or to_page < from_page:
             to_page = from_page
-        return self.get_all_objects(
-            Paragraph, [Paragraph.book_id == book_id, Paragraph.page >= from_page, Paragraph.page <= to_page],
-            order_by_ref=[Paragraph.page, Paragraph.para_on_page])
+        return self._fetch_paragraphs(
+            filters=[Paragraph.book_id == book_id, Paragraph.page >= from_page, Paragraph.page <= to_page],
+            order_by=[Paragraph.page, Paragraph.para_on_page]
+        )
 
     def get_paragraphs_for_reference(self, book_id, from_page, from_para, to_page=None, to_para=None):
         """
@@ -268,8 +271,10 @@ class EGWLibraryManager(DBManager):
                           and_(Paragraph.page == from_page, Paragraph.para_on_page >= from_para))
         before_end = or_(Paragraph.page < to_page,
                          and_(Paragraph.page == to_page, Paragraph.para_on_page <= to_para))
-        return self.get_all_objects(Paragraph, [Paragraph.book_id == book_id, after_start, before_end],
-                                    order_by_ref=[Paragraph.page, Paragraph.para_on_page])
+        return self._fetch_paragraphs(
+            filters=[Paragraph.book_id == book_id, after_start, before_end],
+            order_by=[Paragraph.page, Paragraph.para_on_page]
+        )
 
     def text_search(self, search_text, book_id=None, limit=100):
         """
@@ -302,8 +307,10 @@ class EGWLibraryManager(DBManager):
                 log.exception('FTS search failed, falling back to a LIKE search')
                 self.session.rollback()
                 return self._like_search(tokens, book_id, limit)
+            if not paragraph_ids:
+                return []
             paragraphs = {paragraph.id: paragraph
-                          for paragraph in self.get_all_objects(Paragraph, Paragraph.id.in_(paragraph_ids))}
+                          for paragraph in self._fetch_paragraphs(filters=[Paragraph.id.in_(paragraph_ids)])}
             return [paragraphs[paragraph_id] for paragraph_id in paragraph_ids if paragraph_id in paragraphs]
         return self._like_search(tokens, book_id, limit)
 
@@ -315,10 +322,23 @@ class EGWLibraryManager(DBManager):
         if book_id is not None:
             filters.append(Paragraph.book_id == book_id)
         return self.session.query(Paragraph) \
+            .options(joinedload(Paragraph.book), joinedload(Paragraph.chapter)) \
             .filter(*filters) \
-            .order_by(Paragraph.book_id, Paragraph.paragraph_number) \
+            .order_by(Paragraph.book_id, Paragraph.page, Paragraph.para_on_page,
+                      Paragraph.chapter_id, Paragraph.paragraph_number) \
             .limit(limit) \
             .all()
+
+    def _fetch_paragraphs(self, *, filters=None, order_by=None):
+        """
+        Return paragraphs with related book/chapter preloaded to avoid per-row lookups.
+        """
+        query = self.session.query(Paragraph).options(joinedload(Paragraph.book), joinedload(Paragraph.chapter))
+        for db_filter in filters or []:
+            query = query.filter(db_filter)
+        if order_by:
+            query = query.order_by(*order_by)
+        return query.all()
 
     def delete_book(self, book_id):
         """

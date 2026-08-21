@@ -247,6 +247,28 @@ def test_socket_timeout(mocked_requests, temp_file):
     assert os.path.exists(temp_file) is False, 'temp_file should have been deleted'
 
 
+@patch('openlp.core.common.httputils.requests')
+def test_download_file_returns_false_after_retries(mocked_requests, temp_file):
+    """
+    Test that download_file() returns False when every retry fails.
+    """
+    mocked_requests.get.side_effect = OSError
+    result = download_file(MagicMock(), url='http://localhost/test', file_path=Path(temp_file))
+    assert result is False
+
+
+@patch('openlp.core.common.httputils.requests')
+@patch('openlp.core.common.httputils.get_random_user_agent')
+def test_get_web_page_returns_none_after_retries(mocked_get_random_user_agent, mocked_requests, settings):
+    """
+    Test that get_web_page() returns None when all retries fail.
+    """
+    mocked_get_random_user_agent.return_value = 'user_agent'
+    mocked_requests.get.side_effect = OSError
+    returned_page = get_web_page('http://localhost/fail')
+    assert returned_page is None
+
+
 def test_no_proxy_mode(settings):
     """
     Test that a dictionary with http and https values are set to None is returned, when `NO_PROXY` mode is specified
