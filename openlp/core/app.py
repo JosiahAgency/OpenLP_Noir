@@ -481,11 +481,30 @@ def main():
     if not is_win() and not is_macosx():
         qt_args.append('OpenLP')
     elif is_macosx() and getattr(sys, 'frozen', False) and not os.environ.get('QTWEBENGINEPROCESS_PATH'):
-        # Set the location to the QtWebEngineProcess binary, normally set by PyInstaller, but it moves around...
-        os.environ['QTWEBENGINEPROCESS_PATH'] = str((AppLocation.get_directory(AppLocation.AppDir) / 'PySide6' /
-                                                     'Qt6' / 'lib' / 'QtWebEngineCore.framework' / 'Versions' /
-                                                     '6' / 'Helpers' / 'QtWebEngineProcess.app' / 'Contents' /
-                                                     'MacOS' / 'QtWebEngineProcess').resolve())
+        # Set the location to the QtWebEngineProcess binary. Depending on the PyInstaller/PySide6 layout this can
+        # be under Contents/MacOS/PySide6 or Contents/Frameworks/PySide6, and the framework version can be A or 6.
+        app_dir = AppLocation.get_directory(AppLocation.AppDir)
+        contents_dir = app_dir.parent
+        qt_process_candidates = [
+            app_dir / 'PySide6' / 'Qt6' / 'lib' / 'QtWebEngineCore.framework' / 'Versions' / '6' / 'Helpers' /
+            'QtWebEngineProcess.app' / 'Contents' / 'MacOS' / 'QtWebEngineProcess',
+            app_dir / 'PySide6' / 'Qt6' / 'lib' / 'QtWebEngineCore.framework' / 'Versions' / 'A' / 'Helpers' /
+            'QtWebEngineProcess.app' / 'Contents' / 'MacOS' / 'QtWebEngineProcess',
+            contents_dir / 'Frameworks' / 'PySide6' / 'Qt6' / 'lib' / 'QtWebEngineCore.framework' / 'Versions' /
+            '6' / 'Helpers' / 'QtWebEngineProcess.app' / 'Contents' / 'MacOS' / 'QtWebEngineProcess',
+            contents_dir / 'Frameworks' / 'PySide6' / 'Qt6' / 'lib' / 'QtWebEngineCore.framework' / 'Versions' /
+            'A' / 'Helpers' / 'QtWebEngineProcess.app' / 'Contents' / 'MacOS' / 'QtWebEngineProcess',
+            contents_dir / 'Frameworks' / 'PySide6' / 'Qt' / 'lib' / 'QtWebEngineCore.framework' / 'Versions' /
+            '6' / 'Helpers' / 'QtWebEngineProcess.app' / 'Contents' / 'MacOS' / 'QtWebEngineProcess',
+            contents_dir / 'Frameworks' / 'PySide6' / 'Qt' / 'lib' / 'QtWebEngineCore.framework' / 'Versions' /
+            'A' / 'Helpers' / 'QtWebEngineProcess.app' / 'Contents' / 'MacOS' / 'QtWebEngineProcess',
+        ]
+        for qt_process_path in qt_process_candidates:
+            if qt_process_path.is_file():
+                os.environ['QTWEBENGINEPROCESS_PATH'] = str(qt_process_path.resolve())
+                break
+        if not os.environ.get('QTWEBENGINEPROCESS_PATH'):
+            log.warning('Could not resolve QTWEBENGINEPROCESS_PATH from known frozen app locations.')
     # Prevent the use of wayland, use xcb instead
     if is_wayland_compositor():
         qt_args.extend(['-platform', 'xcb'])

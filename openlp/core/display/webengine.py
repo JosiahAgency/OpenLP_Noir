@@ -24,6 +24,7 @@ Heavily inspired by https://stackoverflow.com/questions/33467776/qt-qwebengine-r
 """
 import logging
 import os.path
+import sys
 
 from PySide6 import QtCore, QtWebEngineCore, QtWebEngineWidgets, QtWidgets
 from typing import Tuple
@@ -264,8 +265,12 @@ def init_webview_custom_schemes():
     This inits the custom scheme protocols used in OpenLP WebEngines. It must happen before
     QApplication instantiation.
     """
+    app_dir = AppLocation.get_directory(AppLocation.AppDir)
+    display_path_candidates = [app_dir / 'core' / 'display' / 'html']
+    if getattr(sys, 'frozen', False):
+        display_path_candidates.append(app_dir.parent / 'Resources' / 'openlp' / 'core' / 'display' / 'html')
     openlp_root_paths = {
-        "display": AppLocation.get_directory(AppLocation.AppDir) / 'core' / 'display' / 'html'
+        "display": next((path for path in display_path_candidates if path.is_dir()), display_path_candidates[0])
     }
     # openlp:// protocol
     WebViewSchemes().register_scheme(OpenLPScheme(openlp_root_paths))

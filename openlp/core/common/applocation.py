@@ -41,6 +41,24 @@ FROZEN_APP_PATH = Path(sys.argv[0]).parent
 APP_PATH = Path(openlp.__file__).parent
 
 
+def _get_frozen_plugins_path():
+    """
+    Return the plugin directory for frozen builds, accounting for macOS app bundles and
+    PyInstaller onedir layouts.
+    """
+    candidates = [FROZEN_APP_PATH / 'plugins']
+    if is_macosx():
+        candidates.append(FROZEN_APP_PATH.parent / 'Resources' / 'openlp' / 'plugins')
+    candidates.append(FROZEN_APP_PATH / '_internal' / 'openlp' / 'plugins')
+    meipass = getattr(sys, '_MEIPASS', None)
+    if meipass:
+        candidates.append(Path(meipass) / 'openlp' / 'plugins')
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
+
+
 class AppLocation(object):
     """
     The :class:`AppLocation` class is a static class which retrieves a directory based on the directory type.
@@ -64,7 +82,10 @@ class AppLocation(object):
         if dir_type == AppLocation.AppDir or dir_type == AppLocation.VersionDir:
             path = get_frozen_path(FROZEN_APP_PATH, APP_PATH)
         elif dir_type == AppLocation.PluginsDir:
-            path = get_frozen_path(FROZEN_APP_PATH, APP_PATH) / 'plugins'
+            if getattr(sys, 'frozen', False) == 1:
+                path = _get_frozen_plugins_path()
+            else:
+                path = APP_PATH / 'plugins'
         elif dir_type == AppLocation.LanguageDir:
             path = get_frozen_path(FROZEN_APP_PATH, _get_os_dir_path(dir_type)) / 'i18n'
         else:

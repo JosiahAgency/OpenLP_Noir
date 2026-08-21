@@ -182,10 +182,22 @@ def get_version():
     global APPLICATION_VERSION
     if APPLICATION_VERSION:
         return APPLICATION_VERSION
-    file_path = AppLocation.get_directory(AppLocation.VersionDir) / '.version'
-    try:
-        full_version = file_path.read_text().rstrip()
-    except OSError:
+    file_paths = [AppLocation.get_directory(AppLocation.VersionDir) / '.version']
+    if getattr(sys, 'frozen', False):
+        app_dir = AppLocation.get_directory(AppLocation.AppDir)
+        file_paths.extend([
+            app_dir / 'openlp' / '.version',
+            app_dir.parent / 'Resources' / 'openlp' / '.version'
+        ])
+    full_version = None
+    for file_path in file_paths:
+        try:
+            if file_path.is_file():
+                full_version = file_path.read_text().rstrip()
+                break
+        except OSError:
+            continue
+    if not full_version:
         full_version = _get_version_from_hatch()
         if not full_version:
             log.error('Either .version/pyproject.toml are missing, or hatchling/hatch-vcs are not installed')

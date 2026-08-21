@@ -22,6 +22,7 @@
 The :mod:`languages` module provides a list of icons.
 """
 import logging
+import sys
 
 import qtawesome as qta
 from PySide6 import QtGui, QtWidgets
@@ -177,7 +178,11 @@ class UiIcons(metaclass=Singleton):
         """
         These are the font icons used in the code.
         """
-        font_path = AppLocation.get_directory(AppLocation.AppDir) / 'core' / 'ui' / 'fonts'
+        app_dir = AppLocation.get_directory(AppLocation.AppDir)
+        font_path_candidates = [app_dir / 'core' / 'ui' / 'fonts']
+        if getattr(sys, 'frozen', False):
+            font_path_candidates.append(app_dir.parent / 'Resources' / 'openlp' / 'core' / 'ui' / 'fonts')
+        font_path = next((path for path in font_path_candidates if path.is_dir()), font_path_candidates[0])
         qta.load_font('op', 'OpenLP.ttf', 'openlp-charmap.json', directory=str(font_path))
         palette = QtWidgets.QApplication.palette()
         self._default_icon_colors = {

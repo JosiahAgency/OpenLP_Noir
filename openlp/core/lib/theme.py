@@ -24,6 +24,7 @@ Provide the theme XML and handling functions for OpenLP v2 themes.
 import json
 import logging
 import copy
+import sys
 
 from lxml import etree, objectify
 
@@ -299,7 +300,11 @@ class Theme(object):
         Initialise the theme object.
         """
         # basic theme object with defaults
-        json_path = AppLocation.get_directory(AppLocation.AppDir) / 'core' / 'lib' / 'json' / 'theme.json'
+        app_dir = AppLocation.get_directory(AppLocation.AppDir)
+        json_path_candidates = [app_dir / 'core' / 'lib' / 'json' / 'theme.json']
+        if getattr(sys, 'frozen', False):
+            json_path_candidates.append(app_dir.parent / 'Resources' / 'openlp' / 'core' / 'lib' / 'json' / 'theme.json')
+        json_path = next((path for path in json_path_candidates if path.is_file()), json_path_candidates[0])
         jsn = get_text_file_string(json_path)
         self.load_theme(jsn)
         self.set_default_header_footer()

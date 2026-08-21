@@ -139,12 +139,19 @@ macOS app + DMG pipeline:
 
    ./packaging/macos/build.sh
 
+macOS app ZIP only (no DMG):
+
+.. code-block:: bash
+
+   ./packaging/macos/build.sh --skip-dmg
+
 Outputs include:
 
 * ``dist/openlp-<version>.tar.gz``
 * ``dist/openlp-<version>-py3-none-any.whl``
 * ``dist/installer/OpenLP-Noir-<version>-setup.exe``
 * ``dist/OpenLP Noir.app``
+* ``dist/installer/mac/OpenLP-Noir-<version>-macOS.zip``
 * ``dist/installer/mac/OpenLP-Noir-<version>-macOS.dmg``
 
 📜 License

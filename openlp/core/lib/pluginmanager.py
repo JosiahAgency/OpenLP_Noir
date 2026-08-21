@@ -22,11 +22,14 @@
 Provide plugin management
 """
 import os
+import pkgutil
+
+import openlp.plugins
 
 from PySide6 import QtWidgets
 
 from openlp.core.state import State, MessageType
-from openlp.core.common import extension_loader
+from openlp.core.common import extension_loader, import_openlp_module
 from openlp.core.common.applocation import AppLocation
 from openlp.core.common.i18n import translate, UiStrings
 from openlp.core.common.mixins import LogMixin, RegistryProperties
@@ -54,8 +57,18 @@ class PluginManager(RegistryBase, LogMixin, RegistryProperties):
         Bootstrap all the plugin manager functions
         Scan a directory for objects inheriting from the ``Plugin`` class.
         """
+        plugin_modules = sorted(
+            module_info.name for module_info in pkgutil.walk_packages(openlp.plugins.__path__, openlp.plugins.__name__ + '.')
+            if module_info.name.endswith('plugin') and not module_info.ispkg
+        )
+        for module_name in plugin_modules:
+            try:
+                import_openlp_module(module_name)
+                self.log_debug(f'Loaded plugin module {module_name}')
+            except (ImportError, OSError):
+                # On some platforms importing a module might cause OSError exceptions. (e.g. Mac OS X)
+                self.log_exception(f'Failed to import plugin module {module_name}')
         glob_pattern = os.path.join('plugins', '*', '[!.]*plugin.py')
-        extension_loader(AppLocation.get_directory(AppLocation.AppDir), glob_pattern)
         extension_loader(
             AppLocation.get_directory(AppLocation.DataDir), glob_pattern, community=True
         )
