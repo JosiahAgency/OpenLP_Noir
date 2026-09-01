@@ -61,6 +61,19 @@ class WebSocketMessage:
     value: int | str | dict | list
 
 
+def websocket_send_message(message: WebSocketMessage):
+    """
+    Sends a message over websocket to all connected clients.
+    """
+    try:
+        if ws := Registry().get('web_socket_server'):
+            ws.send_message(message)
+            return True
+    except KeyError:
+        pass
+    return False
+
+
 class WebSocketWorker(ThreadWorker, RegistryProperties, LogMixin):
     """
     A special Qt thread class to allow the WebSockets server to run at the same time as the UI.
@@ -286,16 +299,3 @@ class WebSocketServer(RegistryBase, RegistryProperties, QtCore.QObject, LogMixin
             self.worker.stop()
         finally:
             self.worker = None
-
-
-def websocket_send_message(message: WebSocketMessage):
-    """
-    Sends a message over websocket to all connected clients.
-    """
-    try:
-        if ws := Registry().get('web_socket_server'):
-            ws.send_message(message)
-            return True
-    except KeyError:
-        pass
-    return False

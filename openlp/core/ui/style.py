@@ -1030,10 +1030,6 @@ def is_ui_theme(ui_theme: UiThemes):
     return ui_theme_name == ui_theme
 
 
-def init_ui_theme_if_needed(ui_theme_name):
-    return not isinstance(ui_theme_name, UiThemes)
-
-
 def has_ui_theme(ui_theme: UiThemes):
     if ui_theme == UiThemes.QDarkStyle:
         return HAS_DARK_THEME

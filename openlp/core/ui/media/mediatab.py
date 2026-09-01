@@ -149,6 +149,3 @@ class MediaTab(SettingsTab):
         :param post_update: Indicates if called before or after updates.
         """
         pass
-
-    def on_revert(self):
-        pass

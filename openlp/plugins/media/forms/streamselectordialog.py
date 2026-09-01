@@ -94,9 +94,6 @@ class CaptureModeWidget(QtWidgets.QWidget):
         stream_string = 'qt6video={vdev};qt6audio={adev}'.format(vdev=vdev, adev=adev)
         self.callback(stream_string)
 
-    def colon_escape(self, s):
-        return s.replace(':', '\\:')
-
     def set_mrl(self, main, options):
         vdev = re.search(r'qt6video=(.+);', main)
         if vdev:

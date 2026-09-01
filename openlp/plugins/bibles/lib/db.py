@@ -429,19 +429,6 @@ class BibleDB(DBManager):
             self._is_web_bible = bool(self.get_object(self.BibleMeta, 'download_source'))
         return self._is_web_bible
 
-    def dump_bible(self):
-        """
-        Utility debugging method to dump the contents of a bible.
-        """
-        log.debug('.........Dumping Bible Database')
-        log.debug('...............................Books ')
-        books = self.session.query(self.Book).all()
-        log.debug(books)
-        log.debug('...............................Verses ')
-        verses = self.session.query(self.Verse).all()
-        log.debug(verses)
-
-
 class BiblesResourcesDB(QtCore.QObject):
     """
     This class represents the database-bound Bible Resources. It provide
@@ -670,34 +657,6 @@ class BiblesResourcesDB(QtCore.QObject):
                 'download_source_id': bible[4]
             } for bible in bibles]
         else:
-            return None
-
-    @staticmethod
-    def get_webbible(abbreviation, source):
-        """
-        Return the bibles a web_bible provide for download.
-
-        :param abbreviation: The abbreviation of the web_bible.
-        :param source: The source of the web_bible.
-        """
-        log.debug('BiblesResourcesDB.get_webbibles("{text}", "{source}")'.format(text=abbreviation, source=source))
-        if not isinstance(abbreviation, str):
-            abbreviation = str(abbreviation)
-        if not isinstance(source, str):
-            source = str(source)
-        source = BiblesResourcesDB.get_download_source(source)
-        bible = BiblesResourcesDB.run_sql(
-            'SELECT id, name, abbreviation, language_id, download_source_id FROM webbibles WHERE '
-            'download_source_id = ? AND abbreviation = ?', (source['id'], abbreviation))
-        try:
-            return {
-                'id': bible[0][0],
-                'name': bible[0][1],
-                'abbreviation': bible[0][2],
-                'language_id': bible[0][3],
-                'download_source_id': bible[0][4]
-            }
-        except (IndexError, TypeError):
             return None
 
     @staticmethod

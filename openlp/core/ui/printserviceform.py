@@ -28,7 +28,7 @@ import lxml.html
 from PySide6 import QtCore, QtGui, QtPrintSupport, QtWidgets
 
 from openlp.core.common.applocation import AppLocation
-from openlp.core.common.i18n import UiStrings, translate
+from openlp.core.common.i18n import translate
 from openlp.core.common.mixins import RegistryProperties
 from openlp.core.common.registry import Registry
 from openlp.core.lib import get_text_file_string
@@ -371,15 +371,6 @@ class PrintServiceForm(QtWidgets.QDialog, Ui_PrintServiceDialog, RegistryPropert
         """
         self.preview_widget.zoomIn(1 + self.zoom)
         self.zoom = 0
-
-    def update_text_format(self, value):
-        """
-        Called when html copy check box is selected.
-        """
-        if QtCore.Qt.CheckState(value) == QtCore.Qt.CheckState.Checked:
-            self.copyTextButton.setText(UiStrings().CopyToHtml)
-        else:
-            self.copyTextButton.setText(UiStrings().CopyToText)
 
     def on_slide_text_check_box_changed(self, state):
         """

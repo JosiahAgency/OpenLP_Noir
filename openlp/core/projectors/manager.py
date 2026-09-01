@@ -1021,16 +1021,3 @@ class ProjectorItem(QtCore.QObject):
         self.model_filter = None
         self.model_lamp = None
         super().__init__()
-
-
-def not_implemented(function):
-    """
-    Temporary function to build an information message box indicating function not implemented yet
-
-    :param func: Function name
-    """
-    QtWidgets.QMessageBox.information(None,
-                                      translate('OpenLP.ProjectorManager', 'Not Implemented Yet'),
-                                      translate('OpenLP.ProjectorManager',
-                                                'Function "{function}"<br />has not been implemented yet.'
-                                                '<br />Please check back again later.'.format(function=function)))

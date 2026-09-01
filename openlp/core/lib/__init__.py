@@ -53,25 +53,6 @@ class ServiceItemContext(object):
     Service = 2
 
 
-class ImageSource(object):
-    """
-    This enumeration class represents different image sources. An image sources states where an image is used. This
-    enumeration class is need in the context of the :class:~openlp.core.lib.imagemanager`.
-
-    ``ImagePlugin``
-        This states that an image is being used by the image plugin.
-
-    ``Theme``
-        This says, that the image is used by a theme.
-
-    ``CommandPlugins``
-        This states that an image is being used by a command plugin.
-    """
-    ImagePlugin = 1
-    Theme = 2
-    CommandPlugins = 3
-
-
 class ServiceItemAction(object):
     """
     Provides an enumeration for the required action moving between service items by left/right arrow keys

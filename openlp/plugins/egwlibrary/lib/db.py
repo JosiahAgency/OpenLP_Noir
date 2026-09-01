@@ -220,12 +220,6 @@ class EGWLibraryManager(DBManager):
         alias = self.get_object_filtered(Alias, Alias.key == key)
         return alias.book if alias else None
 
-    def get_book_by_title(self, title):
-        """
-        Return the book with the given exact title, or None.
-        """
-        return self.get_object_filtered(Book, Book.title == title)
-
     def get_chapters(self, book_id):
         """
         Return all chapters of a book, in order.

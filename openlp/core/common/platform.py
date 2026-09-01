@@ -90,35 +90,3 @@ def is_wayland_compositor():
     if __IS_WAYLAND_COMPOSITOR is None:
         __IS_WAYLAND_COMPOSITOR = bool(os.getenv('WAYLAND_DISPLAY', False))
     return __IS_WAYLAND_COMPOSITOR
-
-
-def is_xwayland_server():
-    """
-    Returns true if the OpenLP/Qt instance is running in a XWayland X11 server.
-    NOTE: This will be True only if OpenLP is running on X11 mode on a XWayland server
-
-    :return: True if the OpenLP/Qt instance is running in a XWayland X11 server, otherwise False
-    """
-    return is_wayland_compositor() and is_xorg_platform()
-
-
-def is_xorg_platform():
-    """
-    Returns True if the Qt is running on X.org/XWayland platform (Linux/*nix).
-    NOTE: This will return True if user is running the OpenLP as X.org application, but on a Wayland/XWayland
-    environment.
-
-    :return: True if the Qt is running on X.org/XWayland display server (Linux/*nix), otherwise False.
-    """
-    from PySide6 import QtGui
-    return QtGui.QGuiApplication.platformName() == 'xcb'
-
-
-def is_wayland_platform():
-    """
-    Returns true if the OpenLP/Qt instance is running using Qt's Wayland platform and running in a Wayland compositor
-
-    :return: True if the OpenLP/Qt instance is running in a Wayland compositor, otherwise False
-    """
-    from PySide6 import QtGui
-    return QtGui.QGuiApplication.platformName() == 'wayland'

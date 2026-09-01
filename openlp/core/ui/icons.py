@@ -375,14 +375,3 @@ class UiIcons(metaclass=Singleton):
         icon = self.get_icon_variant(icon_name, color_on=color, color_off_active=self._default_icon_colors['color'])
         return icon
 
-    @staticmethod
-    def _print_icons():
-        """
-        Have ability to dump icons to see what is actually available.  Can only run within an application.
-        Alternatively look at https://pictogrammers.github.io/@mdi/font/5.9.55/
-        :return:
-        """
-        ico = qta._resource['iconic']
-        mdi = ico.charmap['mdi']
-        for ky in mdi.keys():
-            print(ky, mdi[ky])

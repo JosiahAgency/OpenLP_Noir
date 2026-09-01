@@ -439,16 +439,6 @@ def handle_mime_data_urls(mime_data):
     return file_paths
 
 
-def remove_url_prefix(filename):
-    """
-    Remove the "file://" URL prefix
-
-    :param str filename: The filename that may have a file URL prefix
-    :returns str: The file name without the file URL prefix
-    """
-    return filename.replace('file://', '')
-
-
 class ListPreviewWidget(QtWidgets.QTableWidget, RegistryProperties):
     """
     A special type of QTableWidget which lists the slides in the slide controller

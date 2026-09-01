@@ -84,21 +84,6 @@ class BibleFormat(object):
         else:
             return None
 
-    @staticmethod
-    def get_formats_list():
-        """
-        Return a list of the supported Bible formats.
-        """
-        return [
-            BibleFormat.OSIS,
-            BibleFormat.CSV,
-            BibleFormat.OpenSong,
-            BibleFormat.WebDownload,
-            BibleFormat.Zefania,
-            BibleFormat.SWORD,
-            BibleFormat.WordProject
-        ]
-
 
 class BibleManager(LogMixin, RegistryProperties):
     """

@@ -661,15 +661,6 @@ class MediaController(QtWidgets.QWidget, RegistryBase, LogMixin, RegistryPropert
             controller.media_play_item = MediaPlayItem()
         self._media_bar(controller, "reset")
 
-    def media_hide_msg(self, msg: list):
-        """
-        Hide the related video Widget
-
-        :param msg: First element is the boolean for Live indication
-        """
-        is_live = msg[1]
-        self.media_hide(is_live)
-
     def media_hide(self, is_live, delayed=False):
         """
         Pause and hide the related video Widget if is_live

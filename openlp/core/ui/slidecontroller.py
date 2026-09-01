@@ -1127,14 +1127,6 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
         else:
             self.set_hide_mode(HideMode.Theme)
 
-    def on_theme_display(self, checked=None):
-        """
-        Handle the Theme screen button
-
-        :param checked: the new state of the of the widget
-        """
-        self.set_hide_mode(HideMode.Theme)
-
     def on_toggle_desktop(self, checked=None):
         """
         Toggle the desktop
@@ -1143,15 +1135,6 @@ class SlideController(QtWidgets.QWidget, LogMixin, RegistryProperties):
             self.set_hide_mode(None)
         else:
             self.set_hide_mode(HideMode.Screen)
-
-    def on_hide_display(self, checked=None):
-        """
-        Handle the Hide screen button
-        This enables the desktop screen.
-
-        :param checked: the new state of the of the widget
-        """
-        self.set_hide_mode(HideMode.Screen)
 
     def set_hide_mode(self, hide_mode):
         """

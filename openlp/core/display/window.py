@@ -21,10 +21,10 @@
 """
 The :mod:`~openlp.core.display.window` module contains the display window
 """
+import copy
 import json
 import logging
 import os
-import copy
 import re
 import time
 
@@ -39,7 +39,6 @@ from openlp.core.common.registry import Registry
 from openlp.core.common.utils import wait_for
 from openlp.core.display.screens import ScreenList
 from openlp.core.ui import HideMode
-
 
 FONT_FOUNDRY = re.compile(r'(.*?) \[(.*?)\]')
 TRANSITION_END_EVENT_NAME = 'transparent_transition_end'
@@ -135,6 +134,7 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
     """
     This is a window to show the output
     """
+
     def __init__(self, parent=None, screen=None, can_show_startup_screen=True, start_hidden=False,
                  after_loaded_callback=None, window_title=None):
         """
@@ -147,8 +147,8 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
         self._pending_javascript = []
         self.after_loaded_callback = after_loaded_callback
         # Gather all flags for the display window
-        flags = QtCore.Qt.WindowType.FramelessWindowHint | QtCore.Qt.WindowType.Tool |\
-            QtCore.Qt.WindowType.WindowStaysOnTopHint
+        flags = QtCore.Qt.WindowType.FramelessWindowHint | QtCore.Qt.WindowType.Tool | \
+                QtCore.Qt.WindowType.WindowStaysOnTopHint
         if self.settings.value('advanced/x11 bypass wm'):
             flags |= QtCore.Qt.WindowType.X11BypassWindowManagerHint
         else:
@@ -168,7 +168,17 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
+        # Never let this widget (or the QWebEngineView inside it) collapse to a zero-sized
+        # native window. Transient layout passes during startup/dock/tab-switch churn can
+        # briefly report a width/height of 0 (see the "ignoring non-positive scale" guards
+        # in on_preview_resize()/set_scale() below), and actually resizing the underlying
+        # QWebEngineView native surface to 0x0 (rather than merely skipping a JS zoom call)
+        # has been observed to trigger an intermittent native access violation inside Qt
+        # itself (Qt6Gui.dll / Qt6Widgets.dll) on Windows. Clamping the minimum size keeps
+        # the native surface valid at all times.
+        self.setMinimumSize(1, 1)
         self.webview = self.init_webengine()
+        self.webview.setMinimumSize(1, 1)
         self.webview.setAttribute(QtCore.Qt.WidgetAttribute.WA_TranslucentBackground)
         self.webview.page().setBackgroundColor(QtCore.Qt.GlobalColor.transparent)
         self.webview.display_clicked = self.disable_display
@@ -322,13 +332,6 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
         self._is_page_loaded = False
         self.webview.setUrl(url)
 
-    def set_html(self, html):
-        """
-        Set the html
-        """
-        self._is_page_loaded = False
-        self.webview.setHtml(html)
-
     def after_loaded(self):
         """
         Add stuff after page initialisation
@@ -340,12 +343,12 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
         hide_mouse = (self.settings.value('advanced/hide mouse') and self.is_display)
         slide_numbers_in_footer = self.settings.value('advanced/slide numbers in footer')
         self.run_in_display('init', {
-                            'isDisplay': self.is_display,
-                            'doItemTransitions': item_transitions,
-                            'slideNumbersInFooter': slide_numbers_in_footer,
-                            'hideMouse': hide_mouse,
-                            'displayTitle': self.window_title
-                            })
+            'isDisplay': self.is_display,
+            'doItemTransitions': item_transitions,
+            'slideNumbersInFooter': slide_numbers_in_footer,
+            'hideMouse': hide_mouse,
+            'displayTitle': self.window_title
+        })
         wait_for(lambda: self._is_initialised)
         if self.scale != 1:
             self.set_scale(self.scale)
@@ -525,12 +528,6 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
         to the current visible slides.
         """
         self.run_in_display('resetTheme')
-
-    def get_video_types(self):
-        """
-        Get the types of videos playable by the embedded media player
-        """
-        return self.run_in_display('getVideoTypes', is_sync=True)
 
     def show_display(self):
         """

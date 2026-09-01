@@ -312,51 +312,6 @@ class ScreenList(metaclass=Singleton):
         """
         self.settings.setValue('core/screens', {screen.number: screen.to_dict() for screen in self.screens})
 
-    def get_display_screen_list(self):
-        """
-        Returns a list with the screens. This should only be used to display available screens to the user::
-
-            ['Screen 1 (primary)', 'Screen 2']
-        """
-        screen_list = []
-        for screen in self.screens:
-            screen_name = '{name} {number:d}'.format(name=translate('OpenLP.ScreenList', 'Screen'),
-                                                     number=screen.number + 1)
-            if screen.is_primary:
-                screen_name = '{name} ({primary})'.format(name=screen_name,
-                                                          primary=translate('OpenLP.ScreenList', 'primary'))
-            screen_list.append(screen_name)
-        return screen_list
-
-    def get_number_for_window(self, window):
-        """
-        Return the screen number that the centre of the passed window is in.
-
-        :param window: A QWidget we are finding the location of.
-        """
-        for screen in self.screens:
-            if screen.geometry == window.geometry() or screen.display_geometry == window.geometry():
-                return screen
-        return None
-
-    def set_display_screen(self, number, can_save=False):
-        """
-        Set screen number ``number`` to be the display screen.
-
-        At the moment, this is forced to be only a single screen, but later when we support multiple monitors it
-        will need to be updated.
-
-        :param int number: The number of the screen
-        :param bool can_save: If the screen settings should be saved, defaults to False.
-        """
-        for screen in self.screens:
-            if screen.number == number:
-                screen.is_display = True
-            else:
-                screen.is_display = False
-        if can_save:
-            self.save_screen_settings()
-
     def get_screen_number(self, screen_dict):
         """
         Tries to match a screen with the passed-in screen_dict attributes

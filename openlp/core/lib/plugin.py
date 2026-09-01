@@ -333,33 +333,6 @@ class Plugin(RegistryBase, RegistryProperties):
         """
         self.text_strings[name] = {'title': title, 'tooltip': tooltip}
 
-    def get_display_css(self):
-        """
-        Add css style sheets to htmlbuilder.
-        """
-        return ''
-
-    def get_display_javascript(self):
-        """
-        Add javascript functions to htmlbuilder.
-        """
-        return ''
-
-    def refresh_css(self, frame):
-        """
-        Allow plugins to refresh javascript on displayed screen.
-
-        ``frame``
-            The Web frame holding the page.
-        """
-        return ''
-
-    def get_display_html(self):
-        """
-        Add html code to htmlbuilder.
-        """
-        return ''
-
     def config_update(self):
         """
         Called when Config is changed to restart values dependent on configuration.

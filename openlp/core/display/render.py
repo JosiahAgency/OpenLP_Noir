@@ -565,12 +565,6 @@ class ThemePreviewRenderer(DisplayWindow, LogMixin):
         self._fit_check_time = 0.0
         self._fit_cache_hits = 0
 
-    def calculate_line_count(self):
-        """
-        Calculate the number of lines that fits on one slide
-        """
-        return self.run_in_display('calculateLineCount', is_sync=True)
-
     def clear_slides(self):
         """
         Clear slides

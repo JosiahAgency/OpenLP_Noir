@@ -71,13 +71,6 @@ class TextType(object):
     Notes = 2
 
 
-class LibreOfficeException(Exception):
-    """
-    A specific exception for LO
-    """
-    pass
-
-
 @expose
 class LibreOfficeServer(object):
     """

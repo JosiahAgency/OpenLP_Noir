@@ -96,13 +96,6 @@ class LogMixin(object):
         trace_error_handler(self.logger)
         self.logger.error(message)
 
-    def log_critical(self, message):
-        """
-        Common log critical handler which prints the calling path
-        """
-        trace_error_handler(self.logger)
-        self.logger.critical(message)
-
     def log_exception(self, message):
         """
         Common log exception handler which prints the calling path
