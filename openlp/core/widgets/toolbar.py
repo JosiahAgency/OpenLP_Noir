@@ -85,7 +85,6 @@ class OpenLPToolbar(QtWidgets.QToolBar):
             else:
                 log.warning('No handle "%s" in actions list.', str(widgets))
 
-
     def set_widget_checked(self, widgets, checked=True):
         """
         Set the checked state for a widget or a list of widgets.

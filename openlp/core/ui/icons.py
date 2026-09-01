@@ -36,7 +36,6 @@ from openlp.core.ui.style import NOIR_CUE, NOIR_ON_AIR, NOIR_PLUGIN_ALERTS, NOIR
     NOIR_PLUGIN_PRESENTATIONS, NOIR_PLUGIN_SONGS, NOIR_SUCCESS, NOIR_TEXT_LOW, \
     NOIR_WARNING, get_noir_theme_tokens, is_ui_theme_dark, is_ui_theme_noir_family
 
-
 log = logging.getLogger(__name__)
 
 # The Noir icon set. Phosphor icons share a single stroke weight and geometric
@@ -174,6 +173,7 @@ class UiIcons(metaclass=Singleton):
     """
     Provide standard icons for objects to use.
     """
+
     def __init__(self):
         """
         These are the font icons used in the code.
@@ -374,4 +374,3 @@ class UiIcons(metaclass=Singleton):
         color = qtApp.palette().highlightedText().color()
         icon = self.get_icon_variant(icon_name, color_on=color, color_off_active=self._default_icon_colors['color'])
         return icon
-

@@ -33,14 +33,13 @@ from sqlalchemy.orm import Session, declarative_base, relationship
 from sqlalchemy.types import Unicode, UnicodeText, Integer
 
 from openlp.core.common import clean_filename
-from openlp.core.common.enum import LanguageSelection
 from openlp.core.common.applocation import AppLocation
+from openlp.core.common.enum import LanguageSelection
 from openlp.core.common.i18n import translate
 from openlp.core.db.helpers import init_db
 from openlp.core.db.manager import DBManager
 from openlp.core.lib.ui import critical_error_message_box
 from openlp.plugins.bibles.lib import BibleStrings, upgrade
-
 
 log = logging.getLogger(__name__)
 
@@ -362,7 +361,7 @@ class BibleDB(DBManager):
             critical_error_message_box(
                 translate('BiblesPlugin', 'No Book Found'),
                 translate('BiblesPlugin', 'No matching book '
-                          'could be found in this Bible. Check that you have spelled the name of the book correctly.'))
+                                          'could be found in this Bible. Check that you have spelled the name of the book correctly.'))
         return verse_list
 
     def verse_search(self, text: str):
@@ -428,6 +427,7 @@ class BibleDB(DBManager):
         if self._is_web_bible is None:
             self._is_web_bible = bool(self.get_object(self.BibleMeta, 'download_source'))
         return self._is_web_bible
+
 
 class BiblesResourcesDB(QtCore.QObject):
     """
@@ -551,7 +551,7 @@ class BiblesResourcesDB(QtCore.QObject):
         if not isinstance(book_id, int):
             book_id = int(book_id)
         books = BiblesResourcesDB.run_sql(
-            'SELECT id, testament_id, name, abbreviation, chapters FROM book_reference WHERE id = ?', (book_id, ))
+            'SELECT id, testament_id, name, abbreviation, chapters FROM book_reference WHERE id = ?', (book_id,))
         if books:
             return {
                 'id': books[0][0],
@@ -671,7 +671,7 @@ class BiblesResourcesDB(QtCore.QObject):
         if language_id:
             books = BiblesResourcesDB.run_sql(
                 'SELECT book_reference_id, name FROM alternative_book_names WHERE language_id = ? ORDER BY id',
-                (language_id, ))
+                (language_id,))
         else:
             books = BiblesResourcesDB.run_sql('SELECT book_reference_id, name FROM alternative_book_names ORDER BY id')
         for book in books:
@@ -745,7 +745,7 @@ class AlternativeBookNamesDB(object):
         log.debug('AlternativeBookNamesDB.get_book_reference_id("{name}", "{ref}")'.format(name=name, ref=language_id))
         if language_id:
             books = AlternativeBookNamesDB.run_sql(
-                'SELECT book_reference_id, name FROM alternative_book_names WHERE language_id = ?', (language_id, ))
+                'SELECT book_reference_id, name FROM alternative_book_names WHERE language_id = ?', (language_id,))
         else:
             books = AlternativeBookNamesDB.run_sql(
                 'SELECT book_reference_id, name FROM alternative_book_names')
