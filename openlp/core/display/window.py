@@ -148,7 +148,7 @@ class DisplayWindow(QtWidgets.QWidget, RegistryProperties, LogMixin):
         self.after_loaded_callback = after_loaded_callback
         # Gather all flags for the display window
         flags = QtCore.Qt.WindowType.FramelessWindowHint | QtCore.Qt.WindowType.Tool | \
-                QtCore.Qt.WindowType.WindowStaysOnTopHint
+            QtCore.Qt.WindowType.WindowStaysOnTopHint
         if self.settings.value('advanced/x11 bypass wm'):
             flags |= QtCore.Qt.WindowType.X11BypassWindowManagerHint
         else:
