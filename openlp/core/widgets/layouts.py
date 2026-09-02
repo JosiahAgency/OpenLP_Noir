@@ -147,6 +147,15 @@ class AspectRatioLayout(QtWidgets.QLayout):
             widget = self._item.widget()
             available_width = rect.width() - 2 * self.margin
             available_height = rect.height() - 2 * self.margin
+            if available_width <= 0 or available_height <= 0:
+                # A transient layout pass (e.g. a media manager dock/tab switch briefly
+                # collapsing this panel) can report a rect with zero or negative available
+                # space before settling. Computing a geometry from this would produce a
+                # zero/negative width or height, and applying that directly to the child
+                # widget (a DisplayWindow wrapping a QWebEngineView) has been linked to a
+                # native access violation in Qt's compositor (Qt6Gui.dll). Skip this pass;
+                # a follow-up layout pass with real space will set the correct geometry.
+                return
             height = available_height
             width = height * self._aspect_ratio
             if width > available_width:
