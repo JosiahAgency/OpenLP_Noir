@@ -763,7 +763,6 @@ def test_set_background_page_values_image_theme_does_not_crash_stream_mrl(mocked
     assert theme_form.background_page.stream_mrl == ''
 
 
-
 @patch('openlp.core.ui.themeform.ThemeForm._setup')
 def test_update_theme_cannot_update(mocked_setup, settings):
     """

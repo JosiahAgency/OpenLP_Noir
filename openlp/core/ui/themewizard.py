@@ -144,5 +144,6 @@ class Ui_ThemeWizard(object):
                                                                             ' Main and Footer areas.'))
         self.preview_page.setTitle(translate('OpenLP.ThemeWizard', 'Name and Save'))
         self.preview_page.setSubTitle(translate('OpenLP.ThemeWizard', 'Give the theme a name and save it. The '
-                                                                      'preview on the left reflects all of your changes.'))
+                                                                      'preview on the left reflects all of your '
+                                                                      'changes.'))
         self.theme_name_label.setText(translate('OpenLP.ThemeWizard', 'Theme name:'))

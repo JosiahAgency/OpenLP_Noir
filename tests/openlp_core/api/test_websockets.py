@@ -21,11 +21,12 @@
 """
 Functional tests to test the Http Server Class.
 """
-import pytest
 from unittest.mock import MagicMock, call, patch
 
-from openlp.core.api.websocketspoll import WebSocketPoller
+import pytest
+
 from openlp.core.api.websockets import WebSocketMessage, WebSocketWorker, WebSocketServer, websocket_send_message
+from openlp.core.api.websocketspoll import WebSocketPoller
 from openlp.core.common.registry import Registry
 from openlp.core.common.settings import Settings
 
@@ -492,7 +493,7 @@ def test_is_authorized_accepts_query_token_when_enabled(worker: WebSocketWorker,
     settings.setValue('api/authentication enabled', True)
     Registry().register('authentication_token', 'sekrit-token')
     mocked_websocket = MagicMock(**{'request.headers.get.return_value': '',
-                                   'request.path': '/?token=sekrit-token'})
+                                    'request.path': '/?token=sekrit-token'})
 
     # WHEN: Checking authorization
     result = worker._is_authorized(mocked_websocket)

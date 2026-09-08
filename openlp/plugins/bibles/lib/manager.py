@@ -23,21 +23,19 @@ import logging
 from pathlib import Path
 
 from openlp.core.common import delete_file
-from openlp.core.common.enum import LanguageSelection
 from openlp.core.common.applocation import AppLocation
+from openlp.core.common.enum import LanguageSelection
 from openlp.core.common.i18n import UiStrings, translate
 from openlp.core.common.mixins import LogMixin, RegistryProperties
 from openlp.core.common.registry import Registry
 from openlp.plugins.bibles.lib import parse_reference
 from openlp.plugins.bibles.lib.db import BibleDB
-
 from .importers.csvbible import CSVBible
 from .importers.http import HTTPBible
 from .importers.opensong import OpenSongBible
 from .importers.osis import OSISBible
 from .importers.wordproject import WordProjectBible
 from .importers.zefania import ZefaniaBible
-
 
 try:
     from .importers.sword import SwordBible
@@ -99,7 +97,7 @@ class BibleManager(LogMixin, RegistryProperties):
         Init confirms the bible exists and stores the database path.
         """
         log.debug('Bible Initialising')
-        self.parent = parent
+        self.parent = (parent)
 
         self.web = 'Web'
         self.db_cache = None
@@ -141,7 +139,7 @@ class BibleManager(LogMixin, RegistryProperties):
                 if download_name_meta is None:
                     # Corrupted or incomplete web bible database; missing required metadata.
                     log.warning('Web bible "{name}" is missing its "download_name" metadata, '
-                               'removing corrupted file'.format(name=name))
+                                'removing corrupted file'.format(name=name))
                     del self.db_cache[name]
                     bible.session.close()
                     bible.session = None
