@@ -484,3 +484,51 @@ def test_set_stream(settings):
 
     # THEN: The line edit should have been updated
     page.stream_lineedit.setText.assert_called_once_with('devicestream:/dev/vid1')
+
+
+def test_changed_signal_emitted_on_background_type_change(settings):
+    """
+    Test that the changed signal fires when the background type combo box changes
+    """
+    # GIVEN: A BackgroundPage instance with a slot connected to the changed signal
+    page = BackgroundPage()
+    mocked_slot = MagicMock()
+    page.changed.connect(mocked_slot)
+
+    # WHEN: The background type is changed
+    page.background_combo_box.setCurrentIndex(BackgroundType.Gradient)
+
+    # THEN: The changed signal should have fired
+    mocked_slot.assert_called_once()
+
+
+def test_changed_signal_emitted_on_color_change(settings):
+    """
+    Test that the changed signal fires when a color button changes
+    """
+    # GIVEN: A BackgroundPage instance with a slot connected to the changed signal
+    page = BackgroundPage()
+    mocked_slot = MagicMock()
+    page.changed.connect(mocked_slot)
+
+    # WHEN: The solid color is changed by the user (via the color dialog, which emits colorChanged)
+    page.color_button.colorChanged.emit('#ff0000')
+
+    # THEN: The changed signal should have fired
+    mocked_slot.assert_called_once()
+
+
+def test_changed_signal_emitted_on_image_path_change(settings, tmp_path):
+    """
+    Test that the changed signal fires when the background image path changes
+    """
+    # GIVEN: A BackgroundPage instance with a slot connected to the changed signal
+    page = BackgroundPage()
+    mocked_slot = MagicMock()
+    page.changed.connect(mocked_slot)
+
+    # WHEN: The image path is changed by the user (which emits pathChanged)
+    page.image_path_edit.pathChanged.emit(tmp_path / 'background.png')
+
+    # THEN: The changed signal should have fired
+    mocked_slot.assert_called_once()

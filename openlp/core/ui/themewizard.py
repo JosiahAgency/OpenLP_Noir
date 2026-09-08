@@ -24,7 +24,6 @@ The Create/Edit theme wizard
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from openlp.core.common.i18n import translate
-from openlp.core.common.platform import is_macosx
 from openlp.core.display.render import ThemePreviewRenderer
 from openlp.core.lib.ui import add_welcome_page
 from openlp.core.pages.alignment import AlignmentTransitionsPage
@@ -39,6 +38,7 @@ class Ui_ThemeWizard(object):
     """
     The Create/Edit theme wizard
     """
+
     def setup_ui(self, theme_wizard):
         """
         Set up the UI
@@ -47,17 +47,34 @@ class Ui_ThemeWizard(object):
         theme_wizard.setWindowIcon(UiIcons().main_icon)
         theme_wizard.setModal(True)
         theme_wizard.setOptions(QtWidgets.QWizard.WizardOption.IndependentPages |
-                                QtWidgets.QWizard.WizardOption.NoBackButtonOnStartPage |
-                                QtWidgets.QWizard.WizardOption.HaveCustomButton1)
-        theme_wizard.setFixedWidth(640)
-        if is_macosx():     # pragma: no cover
-            theme_wizard.setPixmap(QtWidgets.QWizard.WizardPixmap.BackgroundPixmap,
-                                   QtGui.QPixmap(':/wizards/openlp-osx-wizard.png'))
-        else:
-            theme_wizard.setWizardStyle(QtWidgets.QWizard.WizardStyle.ModernStyle)
-        self.spacer = QtWidgets.QSpacerItem(10, 0, QtWidgets.QSizePolicy.Policy.Fixed,
-                                            QtWidgets.QSizePolicy.Policy.Minimum)
-        # Welcome Page
+                                QtWidgets.QWizard.WizardOption.NoBackButtonOnStartPage)
+        # ModernStyle is used on every platform (rather than the platform default) because the live theme
+        # preview is shown via a side widget (see below), and Qt only draws wizard side widgets for the
+        # Classic/Modern styles, not MacStyle.
+        theme_wizard.setWizardStyle(QtWidgets.QWizard.WizardStyle.ModernStyle)
+        # Give the wizard a sensibly large default size (wide enough for a page plus the live preview side
+        # panel, and tall enough to see a decent-sized preview) so the user doesn't have to manually resize it
+        # every time it's opened. It remains resizable in case a larger/smaller size is preferred.
+        theme_wizard.setMinimumSize(1000, 400)
+        # theme_wizard.resize(1050, 750)
+        # Live preview side panel. This is a real, permanent side widget (not tied to any one page) so the
+        # user can see the effect of background/font/alignment/position changes immediately, on every page,
+        # instead of having to jump to the last page of the wizard and back.
+        self.preview_area = QtWidgets.QWidget(theme_wizard)
+        self.preview_area.setObjectName('PreviewArea')
+        self.preview_area.setFixedWidth(320)
+        self.preview_area_layout = AspectRatioLayout(self.preview_area, 0.75)  # Dummy ratio, will be updated
+        self.preview_area_layout.margin = 8
+        self.preview_area_layout.setSpacing(0)
+        self.preview_area_layout.setObjectName('preview_web_layout')
+        self.preview_box = ThemePreviewRenderer(self, window_title="Theme Editor Preview")
+        self.preview_box.setObjectName('preview_box')
+        self.preview_area_layout.addWidget(self.preview_box)
+        # Not needed on the welcome page - ThemeForm.on_current_id_changed() shows it again once the user
+        # moves past it.
+        self.preview_area.setVisible(False)
+        theme_wizard.setSideWidget(self.preview_area)
+        # Welcome, Page
         add_welcome_page(theme_wizard, ':/wizards/wizard_createtheme.bmp')
         # Background Page
         self.background_page = BackgroundPage()
@@ -81,7 +98,7 @@ class Ui_ThemeWizard(object):
         self.area_position_page = AreaPositionPage()
         self.area_position_page.setObjectName('area_position_page')
         theme_wizard.addPage(self.area_position_page)
-        # Preview Page
+        # Name and Save Page
         self.preview_page = QtWidgets.QWizardPage()
         self.preview_page.setObjectName('preview_page')
         self.preview_layout = QtWidgets.QVBoxLayout(self.preview_page)
@@ -96,16 +113,7 @@ class Ui_ThemeWizard(object):
         self.theme_name_edit.setObjectName('ThemeNameEdit')
         self.theme_name_layout.addRow(self.theme_name_label, self.theme_name_edit)
         self.preview_layout.addLayout(self.theme_name_layout)
-        self.preview_area = QtWidgets.QWidget(self.preview_page)
-        self.preview_area.setObjectName('PreviewArea')
-        self.preview_area_layout = AspectRatioLayout(self.preview_area, 0.75)  # Dummy ratio, will be update
-        self.preview_area_layout.margin = 8
-        self.preview_area_layout.setSpacing(0)
-        self.preview_area_layout.setObjectName('preview_web_layout')
-        self.preview_box = ThemePreviewRenderer(self, window_title="Theme Editor Preview")
-        self.preview_box.setObjectName('preview_box')
-        self.preview_area_layout.addWidget(self.preview_box)
-        self.preview_layout.addWidget(self.preview_area)
+        self.preview_layout.addStretch()
         theme_wizard.addPage(self.preview_page)
         self.retranslate_ui(theme_wizard)
 
@@ -118,25 +126,23 @@ class Ui_ThemeWizard(object):
         self.title_label.setText('<span style="font-size:14pt; font-weight:600;">{text}</span>'.format(text=text))
         self.information_label.setText(
             translate('OpenLP.ThemeWizard', 'This wizard will help you to create and edit your themes. Click the next '
-                      'button below to start the process by setting up your background.'))
+                                            'button below to start the process by setting up your background.'))
         self.background_page.setTitle(translate('OpenLP.ThemeWizard', 'Set Up Background'))
         self.background_page.setSubTitle(translate('OpenLP.ThemeWizard', 'Set up your theme\'s background '
-                                         'according to the parameters below.'))
+                                                                         'according to the parameters below.'))
         self.main_area_page.setTitle(translate('OpenLP.ThemeWizard', 'Main Area Font Details'))
         self.main_area_page.setSubTitle(translate('OpenLP.ThemeWizard', 'Define the font and display '
-                                                  'characteristics for the Display text'))
+                                                                        'characteristics for the Display text'))
         self.footer_area_page.setTitle(translate('OpenLP.ThemeWizard', 'Footer Area Font Details'))
         self.footer_area_page.setSubTitle(translate('OpenLP.ThemeWizard', 'Define the font and display '
-                                                    'characteristics for the Footer text'))
+                                                                          'characteristics for the Footer text'))
         self.alignment_page.setTitle(translate('OpenLP.ThemeWizard', 'Text Formatting Details'))
         self.alignment_page.setSubTitle(translate('OpenLP.ThemeWizard', 'Allows additional display '
-                                                  'formatting information to be defined'))
+                                                                        'formatting information to be defined'))
         self.area_position_page.setTitle(translate('OpenLP.ThemeWizard', 'Output Area Locations'))
         self.area_position_page.setSubTitle(translate('OpenLP.ThemeWizard', 'Allows you to change and move the'
-                                                      ' Main and Footer areas.'))
-        theme_wizard.setOption(QtWidgets.QWizard.WizardOption.HaveCustomButton1, False)
-        theme_wizard.setButtonText(QtWidgets.QWizard.WizardButton.CustomButton1,
-                                   translate('OpenLP.ThemeWizard', 'Layout Preview'))
-        self.preview_page.setTitle(translate('OpenLP.ThemeWizard', 'Preview and Save'))
-        self.preview_page.setSubTitle(translate('OpenLP.ThemeWizard', 'Preview the theme and save it.'))
+                                                                            ' Main and Footer areas.'))
+        self.preview_page.setTitle(translate('OpenLP.ThemeWizard', 'Name and Save'))
+        self.preview_page.setSubTitle(translate('OpenLP.ThemeWizard', 'Give the theme a name and save it. The '
+                                                                      'preview on the left reflects all of your changes.'))
         self.theme_name_label.setText(translate('OpenLP.ThemeWizard', 'Theme name:'))

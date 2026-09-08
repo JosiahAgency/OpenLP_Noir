@@ -24,11 +24,12 @@ Package to test the openlp.core.ui.thememanager package.
 import pytest
 import os
 import shutil
+import zipfile
 from pathlib import Path
 from tempfile import mkdtemp
 from unittest.mock import ANY, Mock, MagicMock, patch, call, sentinel
 
-from PySide6 import QtWidgets
+from PySide6 import QtGui, QtWidgets
 
 from openlp.core.common.registry import Registry
 from openlp.core.common.settings import Settings
@@ -393,6 +394,131 @@ def test_unzip_theme_invalid_version(theme_manager: ThemeManager):
         assert ret_theme_name is None, 'No theme name should have been returned'
 
 
+def test_unzip_theme_non_numeric_version_is_handled(theme_manager: ThemeManager):
+    """
+    Test that a theme zip with a non-numeric XML version attribute is reported as an import error instead of
+    crashing with an uncaught ValueError from float().
+    """
+    # GIVEN: An instance of ThemeManager whilst mocking a theme with a non-numeric version attribute
+    with patch('openlp.core.ui.thememanager.zipfile.ZipFile') as mocked_zip_file, \
+            patch('openlp.core.ui.thememanager.ElementTree.getroot') as mocked_getroot, \
+            patch('openlp.core.ui.thememanager.XML'), \
+            patch('openlp.core.ui.thememanager.critical_error_message_box') as mocked_critical_error_message_box:
+
+        mocked_zip_file.return_value = MagicMock(**{'namelist.return_value': [os.path.join('theme', 'theme.xml')]})
+        mocked_getroot.return_value = MagicMock(**{'get.return_value': 'not-a-number'})
+        theme_manager.theme_path = Path('folder')
+
+        # WHEN: unzip_theme is called
+        ret_theme_name = theme_manager.unzip_theme(Path('theme.file'))
+
+        # THEN: The import error should have been reported gracefully instead of raising
+        assert mocked_critical_error_message_box.call_count == 1, 'Should have been called once'
+        assert ret_theme_name is None, 'No theme name should have been returned'
+
+
+def test_unzip_theme_missing_name_element_is_handled(theme_manager: ThemeManager):
+    """
+    Test that a theme zip whose legacy XML is missing the <name> element is reported as an import error
+    instead of crashing with an uncaught AttributeError.
+    """
+    # GIVEN: An instance of ThemeManager whilst mocking a theme with no <name> element
+    with patch('openlp.core.ui.thememanager.zipfile.ZipFile') as mocked_zip_file, \
+            patch('openlp.core.ui.thememanager.ElementTree.getroot') as mocked_getroot, \
+            patch('openlp.core.ui.thememanager.XML'), \
+            patch('openlp.core.ui.thememanager.critical_error_message_box') as mocked_critical_error_message_box:
+
+        mocked_zip_file.return_value = MagicMock(**{'namelist.return_value': [os.path.join('theme', 'theme.xml')]})
+        mocked_getroot.return_value = MagicMock(**{'get.return_value': '2.0', 'find.return_value': None})
+        theme_manager.theme_path = Path('folder')
+
+        # WHEN: unzip_theme is called
+        ret_theme_name = theme_manager.unzip_theme(Path('theme.file'))
+
+        # THEN: The import error should have been reported gracefully instead of raising
+        assert mocked_critical_error_message_box.call_count == 1, 'Should have been called once'
+        assert ret_theme_name is None, 'No theme name should have been returned'
+
+
+def test_unzip_theme_corrupt_json_is_handled(theme_manager: ThemeManager):
+    """
+    Test that a theme zip containing corrupt/invalid JSON is reported as an import error instead of crashing
+    with an uncaught json.JSONDecodeError.
+    """
+    # GIVEN: An instance of ThemeManager whilst mocking a zip containing an unparsable JSON theme file
+    with patch('openlp.core.ui.thememanager.zipfile.ZipFile') as mocked_zip_file, \
+            patch('openlp.core.ui.thememanager.critical_error_message_box') as mocked_critical_error_message_box:
+
+        mocked_theme_zip = MagicMock(**{'namelist.return_value': [os.path.join('theme', 'theme.json')]})
+        mocked_theme_zip.read.return_value = b'{not valid json'
+        mocked_zip_file.return_value = mocked_theme_zip
+        theme_manager.theme_path = Path('folder')
+
+        # WHEN: unzip_theme is called
+        ret_theme_name = theme_manager.unzip_theme(Path('theme.file'))
+
+        # THEN: The import error should have been reported gracefully instead of raising
+        assert mocked_critical_error_message_box.call_count == 1, 'Should have been called once'
+        assert ret_theme_name is None, 'No theme name should have been returned'
+
+
+def test_unzip_theme_unparsable_xml_is_handled(theme_manager: ThemeManager):
+    """
+    Test that a theme zip containing unparsable XML is reported as an import error instead of crashing with
+    an uncaught xml.etree.ElementTree.ParseError.
+    """
+    # GIVEN: An instance of ThemeManager whilst mocking a zip containing invalid XML
+    with patch('openlp.core.ui.thememanager.zipfile.ZipFile') as mocked_zip_file, \
+            patch('openlp.core.ui.thememanager.critical_error_message_box') as mocked_critical_error_message_box:
+
+        mocked_theme_zip = MagicMock(**{'namelist.return_value': [os.path.join('theme', 'theme.xml')]})
+        mocked_theme_zip.read.return_value = b'<not><valid xml'
+        mocked_zip_file.return_value = mocked_theme_zip
+        theme_manager.theme_path = Path('folder')
+
+        # WHEN: unzip_theme is called
+        ret_theme_name = theme_manager.unzip_theme(Path('theme.file'))
+
+        # THEN: The import error should have been reported gracefully instead of raising
+        assert mocked_critical_error_message_box.call_count == 1, 'Should have been called once'
+        assert ret_theme_name is None, 'No theme name should have been returned'
+
+
+@patch('openlp.core.lib.theme.Theme.set_default_header_footer')
+def test_unzip_theme_rejects_path_traversal(mocked_theme_set_defaults, theme_manager: ThemeManager):
+    """
+    Test that a malicious theme zip containing a path traversal ("zip-slip") entry is rejected, and
+    no file is written outside the theme directory.
+    """
+    # GIVEN: A malicious theme zip containing a valid theme file plus a path-traversal entry
+    with patch('openlp.core.ui.thememanager.critical_error_message_box') as mocked_critical_error_message_box:
+        theme_manager.update_preview_images = MagicMock()
+        outside_dir = Path(mkdtemp())
+        theme_manager.theme_path = Path(mkdtemp())
+        malicious_zip_path = theme_manager.theme_path.parent / 'evil.otz'
+        theme_xml = (
+            '<?xml version="1.0" encoding="utf-8"?>'
+            '<theme version="2.0"><name>Evil Theme</name></theme>'
+        )
+        try:
+            with zipfile.ZipFile(malicious_zip_path, 'w') as malicious_zip:
+                malicious_zip.writestr('Evil Theme/Evil Theme.xml', theme_xml)
+                # Absolute path entry attempting to escape the theme directory
+                malicious_zip.writestr(str(outside_dir / 'pwned.txt'), 'pwned')
+
+            # WHEN: We try to unzip it
+            ret_theme_name = theme_manager.unzip_theme(malicious_zip_path)
+
+            # THEN: The import should be rejected and nothing written outside the theme directory
+            assert ret_theme_name is None, 'No theme name should have been returned'
+            assert mocked_critical_error_message_box.call_count == 1, 'An error should have been reported'
+            assert not (outside_dir / 'pwned.txt').exists(), 'The file should not have escaped the theme directory'
+        finally:
+            malicious_zip_path.unlink(missing_ok=True)
+            shutil.rmtree(theme_manager.theme_path, ignore_errors=True)
+            shutil.rmtree(outside_dir, ignore_errors=True)
+
+
 def test_update_preview_images(theme_manager: ThemeManager):
     """
     Test that the update_preview_images() method works correctly
@@ -556,6 +682,97 @@ def test_clone_theme_data(mock_set_default_header, mock_set_default_footer, them
     theme_manager.load_themes.assert_called_once_with()
 
 
+@patch('openlp.core.lib.theme.Theme.set_default_header')
+@patch('openlp.core.lib.theme.Theme.set_default_footer')
+def test_on_edit_theme_edits_a_copy_not_the_cached_theme(mock_set_default_footer, mock_set_default_header,
+                                                         theme_manager: ThemeManager):
+    """
+    Test that on_edit_theme() hands the wizard a deep copy of the theme, rather than the live/cached theme
+    object, so that in-progress live-preview edits can't leak into the cache before the user clicks Finish.
+    """
+    # GIVEN: A theme manager with a selected theme and a mocked wizard that accepts (Finish clicked)
+    cached_theme = Theme()
+    cached_theme.theme_name = 'My Theme'
+    cached_theme.background_type = 'solid'
+    theme_manager.theme_list_widget = MagicMock()
+    item = MagicMock()
+    item.data.return_value = 'My Theme'
+    theme_manager.theme_list_widget.currentItem.return_value = item
+    theme_manager.get_theme_data = MagicMock(return_value=cached_theme)
+    theme_manager.load_themes = MagicMock()
+    theme_manager.theme_form = MagicMock()
+    theme_manager.theme_form.exec.return_value = True
+    mocked_renderer = MagicMock()
+    Registry().register('renderer', mocked_renderer)
+
+    # WHEN: The theme is edited and the wizard is accepted
+    theme_manager.on_edit_theme()
+
+    # THEN: The wizard should have been given a distinct (deep-copied) object with equal data...
+    assert theme_manager.theme_form.theme is not cached_theme
+    assert theme_manager.theme_form.theme.theme_name == 'My Theme'
+    # ...and since the wizard was accepted, the renderer should be updated with the (possibly edited) copy
+    mocked_renderer.set_theme.assert_called_once_with(theme_manager.theme_form.theme)
+    theme_manager.load_themes.assert_called_once()
+
+
+@patch('openlp.core.lib.theme.Theme.set_default_header')
+@patch('openlp.core.lib.theme.Theme.set_default_footer')
+def test_on_edit_theme_cancelled_does_not_update_renderer(mock_set_default_footer, mock_set_default_header,
+                                                          theme_manager: ThemeManager):
+    """
+    Test that cancelling the theme edit wizard does not push any (possibly discarded) changes to the live
+    renderer.
+    """
+    # GIVEN: A theme manager with a selected theme and a mocked wizard that is cancelled
+    cached_theme = Theme()
+    cached_theme.theme_name = 'My Theme'
+    cached_theme.background_type = 'solid'
+    theme_manager.theme_list_widget = MagicMock()
+    item = MagicMock()
+    item.data.return_value = 'My Theme'
+    theme_manager.theme_list_widget.currentItem.return_value = item
+    theme_manager.get_theme_data = MagicMock(return_value=cached_theme)
+    theme_manager.load_themes = MagicMock()
+    theme_manager.theme_form = MagicMock()
+    theme_manager.theme_form.exec.return_value = False
+    mocked_renderer = MagicMock()
+    Registry().register('renderer', mocked_renderer)
+
+    # WHEN: The theme is edited and the wizard is cancelled
+    theme_manager.on_edit_theme()
+
+    # THEN: The renderer should not be touched, and the original cached theme should be untouched
+    mocked_renderer.set_theme.assert_not_called()
+    assert cached_theme.theme_name == 'My Theme'
+    theme_manager.load_themes.assert_called_once()
+
+
+@patch('openlp.core.ui.thememanager.zipfile.ZipFile.__init__')
+@patch('openlp.core.ui.thememanager.zipfile.ZipFile.write')
+def test_export_theme_failure_deletes_partial_zip_file(mocked_zipfile_write, mocked_zipfile_init,
+                                                       theme_manager: ThemeManager):
+    """
+    Test that a failed export cleans up the partial zip file (which is a file, not a directory - using
+    shutil.rmtree() on it would silently do nothing).
+    """
+    # GIVEN: An export that fails partway through
+    theme_manager.theme_path = RESOURCE_PATH / 'themes'
+    mocked_zipfile_init.return_value = None
+    mocked_zipfile_write.side_effect = OSError('disk full')
+    export_path = Path('some', 'path', 'Default.otz')
+
+    with patch('openlp.core.ui.thememanager.critical_error_message_box'), \
+            patch('openlp.core.ui.thememanager.Path.exists', return_value=True), \
+            patch('openlp.core.ui.thememanager.delete_file') as mocked_delete_file:
+        # WHEN: The theme is exported and writing fails
+        result = theme_manager._export_theme(export_path, 'Default')
+
+    # THEN: The partial file should be removed via delete_file(), and export should report failure
+    mocked_delete_file.assert_called_once_with(export_path)
+    assert result is False
+
+
 @patch('openlp.core.ui.thememanager.check_item_selected')
 def test_on_copy_theme_requires_selection(mocked_check_item_selected, theme_manager: ThemeManager):
     """
@@ -613,3 +830,74 @@ def test_load_first_time_themes_ignores_failed_imports(mocked_get_files, theme_m
 
     # THEN: only valid imported themes are passed to preview generation
     theme_manager.update_preview_images.assert_called_once_with(['Valid Theme'])
+
+
+@patch('openlp.core.ui.thememanager.AppLocation.get_files')
+@patch('openlp.core.ui.thememanager.validate_thumb')
+@patch('openlp.core.ui.thememanager.create_thumb')
+@patch('openlp.core.ui.thememanager.build_icon')
+def test_load_themes_regenerates_thumb_from_preview_png_not_json(
+        mocked_build_icon, mocked_create_thumb, mocked_validate_thumb, mocked_get_files,
+        theme_manager: ThemeManager, tmp_path):
+    """
+    Test that when a theme's cached thumbnail is missing/stale, load_themes() rebuilds it from the theme's
+    existing full-size preview PNG (self.theme_path/<name>.png), not from the theme's *.json* data file.
+    Passing the JSON file to create_thumb() would have QImageReader misinterpret its raw text bytes as
+    image data, producing a garbled/wrong-coloured icon (regression test).
+    """
+    # GIVEN: A theme whose small thumbnail is stale/missing, but whose full-size preview PNG exists
+    theme_manager.theme_path = tmp_path
+    theme_manager.thumb_path = tmp_path / 'thumbnails'
+    theme_dir = tmp_path / 'My Theme'
+    theme_dir.mkdir(parents=True)
+    theme_json_path = theme_dir / 'My Theme.json'
+    theme_json_path.write_text('{"theme_name": "My Theme"}')
+    sample_path_name = tmp_path / 'My Theme.png'
+    sample_path_name.write_bytes(b'fake-png-bytes')
+    mocked_get_files.return_value = [Path('My Theme') / 'My Theme.json']
+    mocked_validate_thumb.return_value = False
+    mocked_create_thumb.return_value = QtGui.QIcon()
+    theme_manager._get_theme_data = MagicMock(return_value=MagicMock())
+    theme_manager.theme_list_widget = MagicMock()
+    theme_manager._push_themes = MagicMock()
+    theme_manager.global_theme = 'Default'
+
+    # WHEN: load_themes() is called
+    theme_manager.load_themes()
+
+    # THEN: the thumbnail is rebuilt from the real preview PNG, never from the JSON file
+    mocked_create_thumb.assert_called_once_with(sample_path_name, theme_manager.thumb_path / 'My Theme.png')
+    mocked_build_icon.assert_not_called()
+
+
+@patch('openlp.core.ui.thememanager.AppLocation.get_files')
+@patch('openlp.core.ui.thememanager.validate_thumb')
+@patch('openlp.core.ui.thememanager.create_thumb')
+@patch('openlp.core.ui.thememanager.build_icon')
+def test_load_themes_falls_back_to_generic_icon_when_no_preview_exists(
+        mocked_build_icon, mocked_create_thumb, mocked_validate_thumb, mocked_get_files,
+        theme_manager: ThemeManager, tmp_path):
+    """
+    Test that load_themes() falls back to a generic icon (rather than crashing or misreading the JSON file
+    as an image) when neither a valid thumbnail nor a full-size preview PNG exists for a theme.
+    """
+    # GIVEN: A theme with no cached thumbnail and no full-size preview PNG at all
+    theme_manager.theme_path = tmp_path
+    theme_manager.thumb_path = tmp_path / 'thumbnails'
+    theme_dir = tmp_path / 'My Theme'
+    theme_dir.mkdir(parents=True)
+    (theme_dir / 'My Theme.json').write_text('{"theme_name": "My Theme"}')
+    mocked_get_files.return_value = [Path('My Theme') / 'My Theme.json']
+    mocked_validate_thumb.return_value = False
+    mocked_build_icon.return_value = QtGui.QIcon()
+    theme_manager._get_theme_data = MagicMock(return_value=MagicMock())
+    theme_manager.theme_list_widget = MagicMock()
+    theme_manager._push_themes = MagicMock()
+    theme_manager.global_theme = 'Default'
+
+    # WHEN: load_themes() is called
+    theme_manager.load_themes()
+
+    # THEN: create_thumb() is never called with the JSON file; a generic fallback icon is used instead
+    mocked_create_thumb.assert_not_called()
+    mocked_build_icon.assert_called_once()

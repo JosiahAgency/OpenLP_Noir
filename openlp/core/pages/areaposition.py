@@ -21,7 +21,7 @@
 """
 The :mod:`~openlp.core.pages.areaposition` module contains the area position page used in the theme wizard
 """
-from PySide6 import QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 from openlp.core.common.i18n import translate
 from openlp.core.pages import GridLayoutPage
@@ -32,6 +32,8 @@ class AreaPositionPage(GridLayoutPage):
     """
     A wizard page for the area positioning widgets in the theme wizard
     """
+    changed = QtCore.Signal()
+
     def setup_ui(self):
         """
         Set up the UI
@@ -119,6 +121,17 @@ class AreaPositionPage(GridLayoutPage):
         self.footer_position_check_box.toggled.connect(self.footer_y_spin_box.setDisabled)
         self.footer_position_check_box.toggled.connect(self.footer_width_spin_box.setDisabled)
         self.footer_position_check_box.toggled.connect(self.footer_height_spin_box.setDisabled)
+        # Notify listeners (e.g. the live theme preview) whenever a position or size changes.
+        self.main_position_check_box.toggled.connect(self.changed)
+        self.main_x_spin_box.valueChanged.connect(self.changed)
+        self.main_y_spin_box.valueChanged.connect(self.changed)
+        self.main_width_spin_box.valueChanged.connect(self.changed)
+        self.main_height_spin_box.valueChanged.connect(self.changed)
+        self.footer_position_check_box.toggled.connect(self.changed)
+        self.footer_x_spin_box.valueChanged.connect(self.changed)
+        self.footer_y_spin_box.valueChanged.connect(self.changed)
+        self.footer_width_spin_box.valueChanged.connect(self.changed)
+        self.footer_height_spin_box.valueChanged.connect(self.changed)
 
     def retranslate_ui(self):
         """

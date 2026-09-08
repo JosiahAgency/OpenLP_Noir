@@ -53,6 +53,12 @@ class HttpWorker(ThreadWorker):
         """
         address = Registry().get('settings_thread').value('api/ip address')
         port = Registry().get('settings_thread').value('api/port')
+        if address not in ('127.0.0.1', 'localhost', '::1') and \
+                not Registry().get('settings_thread').value('api/authentication enabled'):
+            log.warning(
+                'The remote API server is bound to {addr} with authentication disabled. Anyone on the network '
+                'will be able to control OpenLP without a login. Enable "Require login" in the Remote settings '
+                'if this host is reachable by untrusted devices.'.format(addr=address))
         try:
             application.static_folder = str(AppLocation.get_section_data_path('remotes') / 'static')
             self.server = create_server(application, host=address, port=port)

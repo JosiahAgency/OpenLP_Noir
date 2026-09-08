@@ -32,11 +32,14 @@ from openlp.core.common.mixins import RegistryProperties
 from openlp.core.common.registry import Registry
 from openlp.core.lib.theme import BackgroundType
 from openlp.core.lib.ui import critical_error_message_box
-from openlp.core.ui.themelayoutform import ThemeLayoutForm
 from openlp.core.ui.themewizard import Ui_ThemeWizard
 
 
 log = logging.getLogger(__name__)
+
+#: Milliseconds to wait after the last change before refreshing the live preview. This avoids triggering a full
+#: (relatively expensive, ~1 second) preview render on every single keystroke/spin/click.
+PREVIEW_UPDATE_DELAY = 500
 
 
 class ThemeForm(QtWidgets.QWizard, Ui_ThemeWizard, RegistryProperties):
@@ -65,8 +68,6 @@ class ThemeForm(QtWidgets.QWizard, Ui_ThemeWizard, RegistryProperties):
         self.setup_ui(self)
         self.can_update_theme = True
         self.temp_background_filename = None
-        self.theme_layout_form = ThemeLayoutForm(self)
-        self.customButtonClicked.connect(self.on_custom_1_button_clicked)
         self.currentIdChanged.connect(self.on_current_id_changed)
         Registry().register_function('theme_line_count', self.update_lines_text)
         self.main_area_page.font_name_changed.connect(self.calculate_lines)
@@ -84,6 +85,31 @@ class ThemeForm(QtWidgets.QWizard, Ui_ThemeWizard, RegistryProperties):
         self.footer_area_page.letter_spacing_changed.connect(self.calculate_lines)
         self.setOption(QtWidgets.QWizard.WizardOption.HaveHelpButton, True)
         self.helpRequested.connect(self.provide_help)
+        # Debounce timer driving the always-on live preview. Rather than re-rendering the (relatively expensive)
+        # preview on every single control change, we wait for a short pause in user activity first.
+        self.preview_update_timer = QtCore.QTimer(self)
+        self.preview_update_timer.setSingleShot(True)
+        self.preview_update_timer.setInterval(PREVIEW_UPDATE_DELAY)
+        self.preview_update_timer.timeout.connect(self._refresh_live_preview)
+        self._is_refreshing_preview = False
+        self.background_page.changed.connect(self.schedule_preview_update)
+        self.alignment_page.changed.connect(self.schedule_preview_update)
+        self.area_position_page.changed.connect(self.schedule_preview_update)
+        for font_page in (self.main_area_page, self.footer_area_page):
+            font_page.font_name_changed.connect(self.schedule_preview_update)
+            font_page.font_color_changed.connect(self.schedule_preview_update)
+            font_page.is_bold_changed.connect(self.schedule_preview_update)
+            font_page.is_italic_changed.connect(self.schedule_preview_update)
+            font_page.font_size_changed.connect(self.schedule_preview_update)
+            font_page.wrap_changed.connect(self.schedule_preview_update)
+            font_page.line_spacing_changed.connect(self.schedule_preview_update)
+            font_page.letter_spacing_changed.connect(self.schedule_preview_update)
+            font_page.is_outline_enabled_changed.connect(self.schedule_preview_update)
+            font_page.outline_color_changed.connect(self.schedule_preview_update)
+            font_page.outline_size_changed.connect(self.schedule_preview_update)
+            font_page.is_shadow_enabled_changed.connect(self.schedule_preview_update)
+            font_page.shadow_color_changed.connect(self.schedule_preview_update)
+            font_page.shadow_size_changed.connect(self.schedule_preview_update)
 
     def provide_help(self):
         """
@@ -172,35 +198,39 @@ class ThemeForm(QtWidgets.QWizard, Ui_ThemeWizard, RegistryProperties):
         Detects Page changes and updates as appropriate.
         :param page_id: current page number
         """
-        enabled = self.page(page_id) == self.area_position_page
-        self.setOption(QtWidgets.QWizard.WizardOption.HaveCustomButton1, enabled)
-        if self.page(page_id) == self.preview_page:
+        # The live preview panel isn't useful on the welcome page (there's nothing to preview yet), so only
+        # show it once the user has moved past it, and refresh it immediately whenever landing on a new page
+        # rather than waiting for the debounce timer or an explicit control change.
+        is_welcome_page = self.page(page_id) == self.welcome_page
+        self.preview_area.setVisible(not is_welcome_page)
+        if not is_welcome_page:
+            self._refresh_live_preview()
+
+    def schedule_preview_update(self, *args):
+        """
+        (Re)start the debounce timer so the live preview is refreshed shortly after the user stops interacting.
+        Called from every relevant control's change signal.
+        """
+        if self.currentPage() == self.welcome_page:
+            return
+        self.preview_update_timer.start()
+
+    def _refresh_live_preview(self):
+        """
+        Actually refresh the live preview panel. This is the debounce timer's timeout slot, but is also called
+        directly (bypassing the debounce delay) when the user switches to a new wizard page.
+        """
+        if self._is_refreshing_preview or self.currentPage() == self.welcome_page:
+            return
+        self._is_refreshing_preview = True
+        try:
             self.update_theme()
             self.resizeEvent()
             self.preview_box.clear_slides()
             self.preview_box.show()
             self.preview_box.generate_preview(self.theme, False, False)
-
-    def on_custom_1_button_clicked(self, number):
-        """
-        Generate layout preview and display the form.
-        """
-        self.update_theme()
-        width = self.renderer.width()
-        height = self.renderer.height()
-        pixmap = QtGui.QPixmap(width, height)
-        pixmap.fill(QtCore.Qt.GlobalColor.white)
-        paint = QtGui.QPainter(pixmap)
-        paint.setPen(QtGui.QPen(QtCore.Qt.GlobalColor.blue, 2))
-        main_rect = QtCore.QRect(int(self.theme.font_main_x), int(self.theme.font_main_y),
-                                 int(self.theme.font_main_width - 1), int(self.theme.font_main_height - 1))
-        paint.drawRect(main_rect)
-        paint.setPen(QtGui.QPen(QtCore.Qt.GlobalColor.red, 2))
-        footer_rect = QtCore.QRect(int(self.theme.font_footer_x), int(self.theme.font_footer_y),
-                                   int(self.theme.font_footer_width - 1), int(self.theme.font_footer_height - 1))
-        paint.drawRect(footer_rect)
-        paint.end()
-        self.theme_layout_form.exec(pixmap)
+        finally:
+            self._is_refreshing_preview = False
 
     def on_outline_toggled(self, is_enabled):
         """
@@ -233,9 +263,16 @@ class ThemeForm(QtWidgets.QWizard, Ui_ThemeWizard, RegistryProperties):
         if edit:
             self.setWindowTitle(translate('OpenLP.ThemeWizard', 'Edit Theme - {name}'
                                           ).format(name=self.theme.theme_name))
+            # The name field is hidden while editing an existing theme (it's renamed via the "Rename Theme"
+            # toolbar action instead), so the final page's copy shouldn't ask the user to name it.
+            self.preview_page.setSubTitle(translate('OpenLP.ThemeWizard', 'Save the theme. The preview on '
+                                                    'the left reflects all of your changes.'))
             self.next()
         else:
             self.setWindowTitle(UiStrings().NewTheme)
+            self.preview_page.setSubTitle(translate('OpenLP.ThemeWizard', 'Give the theme a name and save '
+                                                    'it. The preview on the left reflects all of your '
+                                                    'changes.'))
         return QtWidgets.QWizard.exec(self)
 
     def initializePage(self, page_id):
@@ -258,29 +295,36 @@ class ThemeForm(QtWidgets.QWizard, Ui_ThemeWizard, RegistryProperties):
     def set_background_page_values(self):
         """
         Handle the display and state of the Background page.
+
+        Note: every field is set unconditionally (not just the ones matching the theme's current
+        background type). The background page's widgets are shared/reused across every Add/Edit Theme
+        invocation, so if only the "active" type's fields were refreshed here, switching the background
+        type combo box (or a subsequent theme reusing the wizard) would show stale colors left over from
+        a previous, unrelated theme instead of that theme's actual (or default) values.
         """
         self.background_page.background_type = self.theme.background_type
-        if self.theme.background_type == BackgroundType.to_string(BackgroundType.Solid):
-            self.background_page.color = self.theme.background_color
-        elif self.theme.background_type == BackgroundType.to_string(BackgroundType.Gradient):
-            self.background_page.gradient_start = self.theme.background_start_color
-            self.background_page.gradient_end = self.theme.background_end_color
-            self.background_page.gradient_type = self.theme.background_direction
-        elif self.theme.background_type == BackgroundType.to_string(BackgroundType.Image):
-            self.background_page.image_color = self.theme.background_border_color
+        self.background_page.color = self.theme.background_color
+        self.background_page.gradient_start = self.theme.background_start_color
+        self.background_page.gradient_end = self.theme.background_end_color
+        self.background_page.gradient_type = self.theme.background_direction
+        self.background_page.image_color = self.theme.background_border_color
+        self.background_page.video_color = self.theme.background_border_color
+        self.background_page.stream_color = self.theme.background_border_color
+        # background_source is a Path for image/video themes and a plain str (or None) for stream themes;
+        # the stream MRL field only ever wants a string, so only use it as-is when it already is one and
+        # otherwise clear the field (rather than crashing QLineEdit.setText() with a Path).
+        stream_mrl = self.theme.background_source if isinstance(self.theme.background_source, str) else ''
+        self.background_page.stream_mrl = stream_mrl
+        if self.theme.background_type == BackgroundType.to_string(BackgroundType.Image):
             if self.theme.background_source and self.theme.background_source.exists():
                 self.background_page.image_path = self.theme.background_source
             else:
                 self.background_page.image_path = self.theme.background_filename
         elif self.theme.background_type == BackgroundType.to_string(BackgroundType.Video):
-            self.background_page.video_color = self.theme.background_border_color
             if self.theme.background_source and self.theme.background_source.exists():
                 self.background_page.video_path = self.theme.background_source
             else:
                 self.background_page.video_path = self.theme.background_filename
-        elif self.theme.background_type == BackgroundType.to_string(BackgroundType.Stream):
-            self.background_page.stream_color = self.theme.background_border_color
-            self.background_page.stream_mrl = self.theme.background_source
 
     def set_main_area_page_values(self):
         """
@@ -459,5 +503,12 @@ class ThemeForm(QtWidgets.QWizard, Ui_ThemeWizard, RegistryProperties):
         # Set the theme background to the cache location
         self.theme.background_filename = destination_path
         self.theme_manager.save_theme(self.theme)
-        self.theme_manager.save_preview(self.theme.theme_name, self.preview_box.save_screenshot())
+        # Force a fresh, fully-settled render of the *final* theme (background file now at its saved
+        # location, name finalised) rather than reusing whatever was last grabbed off-screen by the
+        # debounced live preview. QWebEngineView content is composited by a separate GPU process, so a
+        # bare grab() of "whatever's currently displayed" can occasionally capture a stale or
+        # not-yet-flushed frame; generate_preview() re-applies the theme and waits for it to settle
+        # before handing back a screenshot, which is far more likely to match what's actually on screen.
+        preview_pixmap = self.preview_box.generate_preview(self.theme, False, True)
+        self.theme_manager.save_preview(self.theme.theme_name, preview_pixmap)
         return QtWidgets.QDialog.accept(self)

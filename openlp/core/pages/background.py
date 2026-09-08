@@ -21,7 +21,7 @@
 """
 The :mod:`~openlp.core.pages.background` module contains the background page used in the theme wizard
 """
-from PySide6 import QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 from openlp.core.common import get_images_filter
 from openlp.core.common.i18n import UiStrings, translate
@@ -43,6 +43,8 @@ class BackgroundPage(GridLayoutPage):
     Image = 'image'
     Video = 'video'
     Stream = 'stream'
+
+    changed = QtCore.Signal()
 
     def setup_ui(self):
         """
@@ -152,6 +154,19 @@ class BackgroundPage(GridLayoutPage):
         self.background_combo_box.currentIndexChanged.connect(self._on_background_type_index_changed)
         self.device_stream_select_button.clicked.connect(self._on_device_stream_select_button_triggered)
         self.network_stream_select_button.clicked.connect(self._on_network_stream_select_button_triggered)
+        # Notify listeners (e.g. the live theme preview) whenever anything that affects the rendered
+        # background changes.
+        self.background_combo_box.currentIndexChanged.connect(self.changed)
+        self.color_button.colorChanged.connect(self.changed)
+        self.gradient_combo_box.currentIndexChanged.connect(self.changed)
+        self.gradient_start_button.colorChanged.connect(self.changed)
+        self.gradient_end_button.colorChanged.connect(self.changed)
+        self.image_path_edit.pathChanged.connect(self.changed)
+        self.image_color_button.colorChanged.connect(self.changed)
+        self.video_path_edit.pathChanged.connect(self.changed)
+        self.video_color_button.colorChanged.connect(self.changed)
+        self.stream_lineedit.textChanged.connect(self.changed)
+        self.stream_color_button.colorChanged.connect(self.changed)
         # Force the first set of widgets to show
         self._on_background_type_index_changed(0)
 

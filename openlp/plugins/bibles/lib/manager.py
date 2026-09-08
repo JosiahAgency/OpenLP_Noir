@@ -137,9 +137,19 @@ class BibleManager(LogMixin, RegistryProperties):
             # Look to see if lazy load bible exists and get create getter.
             if self.db_cache[name].is_web_bible:
                 source = self.db_cache[name].get_object(bible.BibleMeta, 'download_source')
-                download_name = self.db_cache[name].get_object(bible.BibleMeta, 'download_name').value
+                download_name_meta = self.db_cache[name].get_object(bible.BibleMeta, 'download_name')
+                if download_name_meta is None:
+                    # Corrupted or incomplete web bible database; missing required metadata.
+                    log.warning('Web bible "{name}" is missing its "download_name" metadata, '
+                               'removing corrupted file'.format(name=name))
+                    del self.db_cache[name]
+                    bible.session.close()
+                    bible.session = None
+                    gc.collect()
+                    delete_file(self.path / file_path)
+                    continue
                 web_bible = HTTPBible(self.parent, path=self.path, file=file_path, download_source=source.value,
-                                      download_name=download_name)
+                                      download_name=download_name_meta.value)
                 self.db_cache[name] = web_bible
         log.debug('Bibles reloaded')
 

@@ -444,3 +444,58 @@ def test_add_message_to_queues_no_loop(worker: WebSocketWorker, settings: Settin
 
     # THEN: Worker add_message_to_queues should be called
     worker.loop.call_soon_threadsafe.assert_not_called()
+
+
+def test_is_authorized_when_authentication_disabled(worker: WebSocketWorker, settings: Settings):
+    """Test that connections are always authorized when authentication is disabled (default)"""
+    # GIVEN: Authentication is disabled (the default) and a websocket with no token at all
+    mocked_websocket = MagicMock(**{'request.headers.get.return_value': '', 'request.path': '/'})
+
+    # WHEN: Checking authorization
+    result = worker._is_authorized(mocked_websocket)
+
+    # THEN: The connection should be authorized
+    assert result is True
+
+
+def test_is_authorized_rejects_missing_token_when_enabled(worker: WebSocketWorker, settings: Settings):
+    """Test that connections without a token are rejected when authentication is enabled"""
+    # GIVEN: Authentication is enabled and a websocket with no token
+    settings.setValue('api/authentication enabled', True)
+    Registry().register('authentication_token', 'sekrit-token')
+    mocked_websocket = MagicMock(**{'request.headers.get.return_value': '', 'request.path': '/'})
+
+    # WHEN: Checking authorization
+    result = worker._is_authorized(mocked_websocket)
+
+    # THEN: The connection should not be authorized
+    assert result is False
+
+
+def test_is_authorized_accepts_header_token_when_enabled(worker: WebSocketWorker, settings: Settings):
+    """Test that a valid Authorization header is accepted when authentication is enabled"""
+    # GIVEN: Authentication is enabled and a websocket with the correct Authorization header
+    settings.setValue('api/authentication enabled', True)
+    Registry().register('authentication_token', 'sekrit-token')
+    mocked_websocket = MagicMock(**{'request.headers.get.return_value': 'sekrit-token', 'request.path': '/'})
+
+    # WHEN: Checking authorization
+    result = worker._is_authorized(mocked_websocket)
+
+    # THEN: The connection should be authorized
+    assert result is True
+
+
+def test_is_authorized_accepts_query_token_when_enabled(worker: WebSocketWorker, settings: Settings):
+    """Test that a valid "token" query parameter is accepted when authentication is enabled"""
+    # GIVEN: Authentication is enabled and a websocket with the token only in the query string
+    settings.setValue('api/authentication enabled', True)
+    Registry().register('authentication_token', 'sekrit-token')
+    mocked_websocket = MagicMock(**{'request.headers.get.return_value': '',
+                                   'request.path': '/?token=sekrit-token'})
+
+    # WHEN: Checking authorization
+    result = worker._is_authorized(mocked_websocket)
+
+    # THEN: The connection should be authorized
+    assert result is True

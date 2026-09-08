@@ -25,11 +25,11 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 import pytest
+from PySide6 import QtCore
 
 from openlp.core.common.registry import Registry
 from openlp.core.lib.theme import BackgroundType
 from openlp.core.ui.themeform import ThemeForm
-from openlp.core.ui.themelayoutform import ThemeLayoutForm
 
 
 def _make_path(s):
@@ -82,8 +82,11 @@ def test_setup(settings):
     with patch('openlp.core.ui.themeform.ThemeForm._setup'):
         theme_form = ThemeForm(None)
     theme_form.setup_ui = MagicMock()
+    theme_form.background_page = MagicMock()
     theme_form.main_area_page = MagicMock()
     theme_form.footer_area_page = MagicMock()
+    theme_form.alignment_page = MagicMock()
+    theme_form.area_position_page = MagicMock()
 
     # WHEN: _setup() is called
     theme_form._setup()
@@ -92,22 +95,44 @@ def test_setup(settings):
     theme_form.setup_ui.assert_called_once_with(theme_form)
     assert theme_form.can_update_theme is True
     assert theme_form.temp_background_filename is None
-    assert isinstance(theme_form.theme_layout_form, ThemeLayoutForm)
-    theme_form.main_area_page.font_name_changed.connect.assert_called_once_with(theme_form.calculate_lines)
-    theme_form.main_area_page.font_size_changed.connect.assert_called_once_with(theme_form.calculate_lines)
-    theme_form.main_area_page.line_spacing_changed.connect.assert_called_once_with(theme_form.calculate_lines)
-    theme_form.main_area_page.letter_spacing_changed.connect.assert_called_once_with(theme_form.calculate_lines)
-    theme_form.main_area_page.is_outline_enabled_changed.connect.assert_called_once_with(
+    theme_form.main_area_page.font_name_changed.connect.assert_any_call(theme_form.calculate_lines)
+    theme_form.main_area_page.font_size_changed.connect.assert_any_call(theme_form.calculate_lines)
+    theme_form.main_area_page.line_spacing_changed.connect.assert_any_call(theme_form.calculate_lines)
+    theme_form.main_area_page.letter_spacing_changed.connect.assert_any_call(theme_form.calculate_lines)
+    theme_form.main_area_page.is_outline_enabled_changed.connect.assert_any_call(
         theme_form.on_outline_toggled)
-    theme_form.main_area_page.outline_size_changed.connect.assert_called_once_with(theme_form.calculate_lines)
-    theme_form.main_area_page.is_shadow_enabled_changed.connect.assert_called_once_with(
+    theme_form.main_area_page.outline_size_changed.connect.assert_any_call(theme_form.calculate_lines)
+    theme_form.main_area_page.is_shadow_enabled_changed.connect.assert_any_call(
         theme_form.on_shadow_toggled)
-    theme_form.main_area_page.shadow_size_changed.connect.assert_called_once_with(theme_form.calculate_lines)
-    theme_form.footer_area_page.font_name_changed.connect.assert_called_once_with(theme_form.calculate_lines)
-    theme_form.footer_area_page.font_size_changed.connect.assert_called_once_with(theme_form.calculate_lines)
-    theme_form.footer_area_page.wrap_changed.connect.assert_called_once_with(theme_form.calculate_lines)
-    theme_form.footer_area_page.line_spacing_changed.connect.assert_called_once_with(theme_form.calculate_lines)
-    theme_form.footer_area_page.letter_spacing_changed.connect.assert_called_once_with(theme_form.calculate_lines)
+    theme_form.main_area_page.shadow_size_changed.connect.assert_any_call(theme_form.calculate_lines)
+    theme_form.footer_area_page.font_name_changed.connect.assert_any_call(theme_form.calculate_lines)
+    theme_form.footer_area_page.font_size_changed.connect.assert_any_call(theme_form.calculate_lines)
+    theme_form.footer_area_page.wrap_changed.connect.assert_any_call(theme_form.calculate_lines)
+    theme_form.footer_area_page.line_spacing_changed.connect.assert_any_call(theme_form.calculate_lines)
+    theme_form.footer_area_page.letter_spacing_changed.connect.assert_any_call(theme_form.calculate_lines)
+    # The always-on live preview: page-level `changed` signals and the font pages' granular `*_changed`
+    # signals should all be wired up to schedule a debounced preview refresh.
+    assert isinstance(theme_form.preview_update_timer, QtCore.QTimer)
+    assert theme_form.preview_update_timer.isSingleShot()
+    assert theme_form.preview_update_timer.interval() == 500
+    theme_form.background_page.changed.connect.assert_called_once_with(theme_form.schedule_preview_update)
+    theme_form.alignment_page.changed.connect.assert_called_once_with(theme_form.schedule_preview_update)
+    theme_form.area_position_page.changed.connect.assert_called_once_with(theme_form.schedule_preview_update)
+    for font_page in (theme_form.main_area_page, theme_form.footer_area_page):
+        font_page.font_name_changed.connect.assert_any_call(theme_form.schedule_preview_update)
+        font_page.font_color_changed.connect.assert_called_once_with(theme_form.schedule_preview_update)
+        font_page.is_bold_changed.connect.assert_called_once_with(theme_form.schedule_preview_update)
+        font_page.is_italic_changed.connect.assert_called_once_with(theme_form.schedule_preview_update)
+        font_page.font_size_changed.connect.assert_any_call(theme_form.schedule_preview_update)
+        font_page.wrap_changed.connect.assert_any_call(theme_form.schedule_preview_update)
+        font_page.line_spacing_changed.connect.assert_any_call(theme_form.schedule_preview_update)
+        font_page.letter_spacing_changed.connect.assert_any_call(theme_form.schedule_preview_update)
+        font_page.is_outline_enabled_changed.connect.assert_any_call(theme_form.schedule_preview_update)
+        font_page.outline_color_changed.connect.assert_called_once_with(theme_form.schedule_preview_update)
+        font_page.outline_size_changed.connect.assert_any_call(theme_form.schedule_preview_update)
+        font_page.is_shadow_enabled_changed.connect.assert_any_call(theme_form.schedule_preview_update)
+        font_page.shadow_color_changed.connect.assert_called_once_with(theme_form.schedule_preview_update)
+        font_page.shadow_size_changed.connect.assert_any_call(theme_form.schedule_preview_update)
 
 
 @patch('openlp.core.ui.themeform.ThemeForm._setup')
@@ -281,31 +306,113 @@ def test_validate_current_page(mocked_setup, settings):
 @patch('openlp.core.ui.themeform.ThemeForm._setup')
 def test_on_current_id_changed_preview(mocked_setup, settings):
     """
-    Test the on_current_id_changed() method
+    Test the on_current_id_changed() method refreshes the live preview immediately when landing on any
+    non-welcome page.
     """
     # GIVEN: An instance of ThemeForm with some mocks
     theme_form = ThemeForm(None)
     theme_form.theme = 'my fake theme'
+    theme_form.welcome_page = MagicMock()
     theme_form.area_position_page = MagicMock()
     theme_form.preview_page = MagicMock()
     theme_form.page = MagicMock(return_value=theme_form.preview_page)
     theme_form.update_theme = MagicMock()
     theme_form.preview_box = MagicMock(**{'width.return_value': 300})
+    theme_form.preview_area = MagicMock()
     theme_form.preview_area_layout = MagicMock()
     theme_form.resizeEvent = MagicMock()
+    theme_form._is_refreshing_preview = False
+    theme_form.currentPage = MagicMock(return_value=theme_form.preview_page)
     mocked_renderer = MagicMock(**{'width.return_value': 1920, 'height.return_value': 0})
     Registry().remove('renderer')
     Registry().register('renderer', mocked_renderer)
 
-    # WHEN: on_current_id_changed() is called
+    # WHEN: on_current_id_changed() is called for any page other than the welcome page
     theme_form.on_current_id_changed(1)
 
-    # THEN: The right options should have been set
+    # THEN: The preview panel should be shown, and the live preview should have been refreshed immediately
+    theme_form.preview_area.setVisible.assert_called_once_with(True)
     theme_form.update_theme.assert_called_once()
     theme_form.resizeEvent.assert_called_once()
     theme_form.preview_box.clear_slides.assert_called_once()
     theme_form.preview_box.show.assert_called_once()
     theme_form.preview_box.generate_preview.assert_called_once_with('my fake theme', False, False)
+
+
+@patch('openlp.core.ui.themeform.ThemeForm._setup')
+def test_on_current_id_changed_welcome_page_skips_refresh(mocked_setup, settings):
+    """
+    Test that on_current_id_changed() hides the preview panel and does not refresh it when landing on the
+    welcome page.
+    """
+    # GIVEN: An instance of ThemeForm with some mocks, currently on the welcome page
+    theme_form = ThemeForm(None)
+    theme_form.welcome_page = MagicMock()
+    theme_form.page = MagicMock(return_value=theme_form.welcome_page)
+    theme_form.preview_area = MagicMock()
+    theme_form._refresh_live_preview = MagicMock()
+
+    # WHEN: on_current_id_changed() is called
+    theme_form.on_current_id_changed(0)
+
+    # THEN: The preview panel should be hidden and not refreshed
+    theme_form.preview_area.setVisible.assert_called_once_with(False)
+    theme_form._refresh_live_preview.assert_not_called()
+
+
+@patch('openlp.core.ui.themeform.ThemeForm._setup')
+def test_schedule_preview_update_starts_timer(mocked_setup, settings):
+    """
+    Test that schedule_preview_update() (re)starts the debounce timer when not on the welcome page.
+    """
+    # GIVEN: An instance of ThemeForm not on the welcome page
+    theme_form = ThemeForm(None)
+    theme_form.welcome_page = MagicMock()
+    theme_form.currentPage = MagicMock(return_value=MagicMock())
+    theme_form.preview_update_timer = MagicMock()
+
+    # WHEN: schedule_preview_update() is called
+    theme_form.schedule_preview_update()
+
+    # THEN: The debounce timer should have been (re)started
+    theme_form.preview_update_timer.start.assert_called_once()
+
+
+@patch('openlp.core.ui.themeform.ThemeForm._setup')
+def test_schedule_preview_update_skips_on_welcome_page(mocked_setup, settings):
+    """
+    Test that schedule_preview_update() does nothing while on the welcome page.
+    """
+    # GIVEN: An instance of ThemeForm on the welcome page
+    theme_form = ThemeForm(None)
+    theme_form.welcome_page = MagicMock()
+    theme_form.currentPage = MagicMock(return_value=theme_form.welcome_page)
+    theme_form.preview_update_timer = MagicMock()
+
+    # WHEN: schedule_preview_update() is called
+    theme_form.schedule_preview_update()
+
+    # THEN: The debounce timer should not have been started
+    theme_form.preview_update_timer.start.assert_not_called()
+
+
+@patch('openlp.core.ui.themeform.ThemeForm._setup')
+def test_refresh_live_preview_reentrancy_guard(mocked_setup, settings):
+    """
+    Test that _refresh_live_preview() no-ops if it's already in the middle of refreshing.
+    """
+    # GIVEN: An instance of ThemeForm that is already refreshing the preview
+    theme_form = ThemeForm(None)
+    theme_form.welcome_page = MagicMock()
+    theme_form.currentPage = MagicMock(return_value=MagicMock())
+    theme_form._is_refreshing_preview = True
+    theme_form.update_theme = MagicMock()
+
+    # WHEN: _refresh_live_preview() is called
+    theme_form._refresh_live_preview()
+
+    # THEN: Nothing should have happened
+    theme_form.update_theme.assert_not_called()
 
 
 @patch('openlp.core.ui.themeform.ThemeForm._setup')
@@ -595,6 +702,69 @@ def test_set_background_page_values(mocked_setup, background_type, settings):
 
 
 @patch('openlp.core.ui.themeform.ThemeForm._setup')
+def test_set_background_page_values_does_not_leak_stale_colors(mocked_setup, settings):
+    """
+    Test that set_background_page_values() resets *all* background-type fields (solid color, gradient
+    colors, image/video/stream border colors) every time, not just the ones belonging to the theme's
+    current background type. The background page's widgets are shared across every Add/Edit Theme
+    invocation, so previously this left colors from a completely different, previously-edited theme
+    behind - causing a newly created theme to show/save the wrong color (regression test).
+    """
+    # GIVEN: A ThemeForm whose background page still holds "solid: red" values from editing a previous
+    # theme, and a brand new theme that only cares about the gradient colors
+    theme_form = ThemeForm(None)
+    theme_form.background_page = MagicMock(color='#ff0000')
+    theme_form.main_area_page = MagicMock()
+    theme_form.footer_area_page = MagicMock()
+    theme_form.alignment_page = MagicMock()
+    theme_form.area_position_page = MagicMock()
+    theme_form.theme = MagicMock(
+        background_type='gradient', background_color='#000000', background_start_color='#111111',
+        background_end_color='#222222', background_direction='vertical', background_border_color='#333333',
+        background_source=None, background_filename=None)
+
+    # WHEN: set_background_page_values() is called for the new theme
+    theme_form.set_background_page_values()
+
+    # THEN: every color field is refreshed from the new theme, including the ones for background types
+    # other than "gradient" - the stale "red" solid color must not survive
+    assert theme_form.background_page.color == '#000000'
+    assert theme_form.background_page.gradient_start == '#111111'
+    assert theme_form.background_page.gradient_end == '#222222'
+    assert theme_form.background_page.image_color == '#333333'
+    assert theme_form.background_page.video_color == '#333333'
+    assert theme_form.background_page.stream_color == '#333333'
+
+
+@patch('openlp.core.ui.themeform.ThemeForm._setup')
+def test_set_background_page_values_image_theme_does_not_crash_stream_mrl(mocked_setup, settings):
+    """
+    Test that set_background_page_values() doesn't crash for an image/video theme. background_source is a
+    Path in that case, and the stream MRL field is a plain QLineEdit that only accepts strings - previously
+    unconditionally assigning background_source to stream_mrl raised a TypeError for non-stream themes
+    (regression test).
+    """
+    # GIVEN: A theme with an image background (background_source is a Path, not a str)
+    theme_form = ThemeForm(None)
+    theme_form.background_page = MagicMock()
+    theme_form.main_area_page = MagicMock()
+    theme_form.footer_area_page = MagicMock()
+    theme_form.alignment_page = MagicMock()
+    theme_form.area_position_page = MagicMock()
+    theme_form.theme = MagicMock(
+        background_type='image', background_color='#000000', background_start_color='#111111',
+        background_end_color='#222222', background_direction='vertical', background_border_color='#333333',
+        background_source=Path('/path/to/image.png'), background_filename=Path('/path/to/image.png'))
+
+    # WHEN: set_background_page_values() is called - THEN: it doesn't raise
+    theme_form.set_background_page_values()
+
+    # AND: the stream MRL field is cleared rather than being handed a Path
+    assert theme_form.background_page.stream_mrl == ''
+
+
+
+@patch('openlp.core.ui.themeform.ThemeForm._setup')
 def test_update_theme_cannot_update(mocked_setup, settings):
     """
     Test that the update_theme() method skips out early when the theme cannot be updated
@@ -620,7 +790,7 @@ def test_accept_strips_theme_name(mocked_setup, settings):
     theme_form.theme = MagicMock(background_type='solid')
     theme_form.theme_name_edit = MagicMock(**{'text.return_value': '  My Theme  '})
     theme_form.path = Path('/tmp/themes')
-    theme_form.preview_box = MagicMock(**{'save_screenshot.return_value': MagicMock()})
+    theme_form.preview_box = MagicMock(**{'generate_preview.return_value': MagicMock()})
     mocked_theme_manager = MagicMock()
     mocked_theme_manager.check_if_theme_exists.return_value = True
     Registry().register('theme_manager', mocked_theme_manager)
@@ -632,3 +802,6 @@ def test_accept_strips_theme_name(mocked_setup, settings):
 
     # THEN: Name should be stripped before saving
     assert theme_form.theme.theme_name == 'My Theme'
+    # AND: The final preview is a freshly-settled render of the finished theme, not a bare grab() of
+    # whatever the debounced live preview last happened to display
+    theme_form.preview_box.generate_preview.assert_called_once_with(theme_form.theme, False, True)

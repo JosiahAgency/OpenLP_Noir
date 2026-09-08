@@ -21,7 +21,7 @@
 """
 The :mod:`~openlp.core.pages.alignment` module contains the alignment page used in the theme wizard
 """
-from PySide6 import QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 from openlp.core.common.i18n import translate
 from openlp.core.lib.theme import HorizontalType, VerticalType, TransitionType, TransitionSpeed, TransitionDirection
@@ -34,6 +34,8 @@ class AlignmentTransitionsPage(GridLayoutPage):
     """
     A widget containing the alignment and transitions options
     """
+    changed = QtCore.Signal()
+
     def setup_ui(self):
         """
         Set up the UI
@@ -105,6 +107,16 @@ class AlignmentTransitionsPage(GridLayoutPage):
         self.layout.addWidget(self.transition_reverse_check_box, 4, 3)
         # Connect slots
         self.transitions_enabled_check_box.toggled.connect(self._on_transition_enabled_changed)
+        # Notify listeners (e.g. the live theme preview) whenever an alignment or transition setting changes.
+        self.horizontal_combo_box.currentIndexChanged.connect(self.changed)
+        self.vertical_combo_box.currentIndexChanged.connect(self.changed)
+        self.footer_horizontal_combo_box.currentIndexChanged.connect(self.changed)
+        self.footer_vertical_combo_box.currentIndexChanged.connect(self.changed)
+        self.transitions_enabled_check_box.toggled.connect(self.changed)
+        self.transition_effect_combo_box.currentIndexChanged.connect(self.changed)
+        self.transition_speed_combo_box.currentIndexChanged.connect(self.changed)
+        self.transition_direction_combo_box.currentIndexChanged.connect(self.changed)
+        self.transition_reverse_check_box.toggled.connect(self.changed)
 
     def retranslate_ui(self):
         """

@@ -509,3 +509,35 @@ def test_on_transition_reverse_setter(settings):
 
     # THEN: The checkbox should be correct
     assert page.transition_reverse_check_box.isChecked() is True
+
+
+def test_changed_signal_emitted_on_alignment_change(settings):
+    """
+    Test that the changed signal fires when the horizontal alignment combo box changes
+    """
+    # GIVEN: An AlignmentTransitionsPage instance with a slot connected to the changed signal
+    page = AlignmentTransitionsPage()
+    mocked_slot = MagicMock()
+    page.changed.connect(mocked_slot)
+
+    # WHEN: The horizontal alignment is changed
+    page.horizontal_align = (page.horizontal_combo_box.currentIndex() + 1) % page.horizontal_combo_box.count()
+
+    # THEN: The changed signal should have fired
+    mocked_slot.assert_called_once()
+
+
+def test_changed_signal_emitted_on_transition_toggle(settings):
+    """
+    Test that the changed signal fires when transitions are enabled/disabled
+    """
+    # GIVEN: An AlignmentTransitionsPage instance with a slot connected to the changed signal
+    page = AlignmentTransitionsPage()
+    mocked_slot = MagicMock()
+    page.changed.connect(mocked_slot)
+
+    # WHEN: Transitions are toggled
+    page.is_transition_enabled = not page.is_transition_enabled
+
+    # THEN: The changed signal should have fired
+    mocked_slot.assert_called_once()

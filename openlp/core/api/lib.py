@@ -21,6 +21,7 @@
 The OpenLP API library.
 """
 
+import hmac
 from functools import wraps
 from flask import request
 from openlp.core.common.registry import Registry
@@ -41,7 +42,9 @@ def login_required(f):
         if settings is None or not settings.value('api/authentication enabled'):
             return f(*args, **kwargs)
         token = request.headers.get('Authorization', '')
-        if token == Registry().get('authentication_token'):
+        expected_token = Registry().get('authentication_token') or ''
+        # Use a constant-time comparison to avoid leaking the token via timing side-channels.
+        if hmac.compare_digest(token, expected_token):
             return f(*args, **kwargs)
         return '', 401
     return decorated

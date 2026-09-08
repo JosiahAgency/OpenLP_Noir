@@ -22,6 +22,8 @@
 Package to test the openlp.core.pages.alignment package.
 """
 
+from unittest.mock import MagicMock
+
 from openlp.core.pages.areaposition import AreaPositionPage
 
 
@@ -323,3 +325,35 @@ def test_set_use_footer_default_location(settings):
 
     # THEN: The combobox should be correct
     assert page.footer_position_check_box.isChecked() is True
+
+
+def test_changed_signal_emitted_on_spin_box_value_change(settings):
+    """
+    Test that the changed signal fires when a position/size spin box value changes
+    """
+    # GIVEN: An AreaPositionPage instance with a slot connected to the changed signal
+    page = AreaPositionPage()
+    mocked_slot = MagicMock()
+    page.changed.connect(mocked_slot)
+
+    # WHEN: A spin box value is changed
+    page.main_x_spin_box.setValue(page.main_x_spin_box.value() + 1)
+
+    # THEN: The changed signal should have fired
+    mocked_slot.assert_called_once()
+
+
+def test_changed_signal_emitted_on_checkbox_toggle(settings):
+    """
+    Test that the changed signal fires when a "use default location" checkbox is toggled
+    """
+    # GIVEN: An AreaPositionPage instance with a slot connected to the changed signal
+    page = AreaPositionPage()
+    mocked_slot = MagicMock()
+    page.changed.connect(mocked_slot)
+
+    # WHEN: The main position checkbox is toggled
+    page.main_position_check_box.setChecked(not page.main_position_check_box.isChecked())
+
+    # THEN: The changed signal should have fired
+    mocked_slot.assert_called_once()

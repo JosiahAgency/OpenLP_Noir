@@ -23,10 +23,12 @@ The :mod:`websockets` module contains the websockets server. This is a server us
 changes from within OpenLP. It uses JSON to communicate with the remotes.
 """
 import asyncio
+import hmac
 import json
 import logging
 import uuid
 from dataclasses import asdict, dataclass
+from urllib.parse import parse_qs, urlsplit
 
 from PySide6 import QtCore
 
@@ -144,6 +146,26 @@ class WebSocketWorker(ThreadWorker, RegistryProperties, LogMixin):
         except BaseException:
             log.exception('Unable to stop websockets server')
 
+    def _is_authorized(self, websocket: ServerConnection) -> bool:
+        """
+        Check whether a WebSocket connection is allowed, honouring the same
+        ``api/authentication enabled`` setting and token used by the HTTP API.
+
+        :param websocket: The connection to check.
+        :return: True if the connection is authorized (or auth is disabled).
+        """
+        settings = Registry().get('settings_thread')
+        if settings is None or not settings.value('api/authentication enabled'):
+            return True
+        expected_token = Registry().get('authentication_token') or ''
+        # Accept the token either as an Authorization header or a "token" query parameter,
+        # since browser WebSocket clients can't set custom headers during the handshake.
+        token = websocket.request.headers.get('Authorization', '')
+        if not token:
+            query = parse_qs(urlsplit(websocket.request.path).query)
+            token = query.get('token', [''])[0]
+        return hmac.compare_digest(token, expected_token)
+
     async def handle_websocket(self, websocket: ServerConnection):
         """
         Handle web socket requests and return the state information
@@ -153,6 +175,10 @@ class WebSocketWorker(ThreadWorker, RegistryProperties, LogMixin):
         """
         client_id = str(uuid.uuid4() if log.getEffectiveLevel() == logging.DEBUG else 0)
         log.debug(f'(client_id={client_id}) WebSocket handle_websocket connection')
+        if not self._is_authorized(websocket):
+            log.warning(f'(client_id={client_id}) WebSocket connection rejected: unauthorized')
+            await websocket.close(code=1008, reason='Unauthorized')
+            return
         queue = asyncio.Queue()
         is_state_queue = not websocket.request.path.startswith('/messages')
         await self.register(websocket, client_id, queue, is_state_queue)

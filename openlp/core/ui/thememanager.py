@@ -21,11 +21,12 @@
 """
 The Theme Manager manages adding, deleteing and modifying of themes.
 """
+import copy
 import os
 import shutil
 import zipfile
 from pathlib import Path
-from xml.etree.ElementTree import XML, ElementTree
+from xml.etree.ElementTree import XML, ElementTree, ParseError
 
 from PySide6 import QtCore, QtWidgets
 
@@ -437,10 +438,14 @@ class ThemeManager(QtWidgets.QWidget, RegistryBase, Ui_ThemeManager, LogMixin, R
             theme = self.get_theme_data(item.data(QtCore.Qt.ItemDataRole.UserRole))
             if theme.background_type == 'image' or theme.background_type == 'video':
                 self.old_background_image_path = theme.background_filename
-            self.theme_form.theme = theme
-            self.theme_form.exec(True)
+            # Edit a deep copy, not the live/cached theme object. The wizard's always-on live preview
+            # mutates the theme continuously while the user is interacting with it, well before they
+            # click Finish; editing the shared cached object directly would mean a cancelled edit could
+            # still leak unsaved changes into the live renderer and the in-memory theme cache.
+            self.theme_form.theme = copy.deepcopy(theme)
+            if self.theme_form.exec(True):
+                self.renderer.set_theme(self.theme_form.theme)
             self.old_background_image_path = None
-            self.renderer.set_theme(theme)
             self.load_themes()
 
     def on_delete_theme(self, field=None):
@@ -526,8 +531,7 @@ class ThemeManager(QtWidgets.QWidget, RegistryBase, Ui_ThemeManager, LogMixin, R
                                        translate('OpenLP.ThemeManager',
                                                  'The {theme_name} export failed because this error occurred: {err}')
                                        .format(theme_name=theme_name, err=ose.strerror))
-            if theme_path.exists():
-                shutil.rmtree(theme_path, ignore_errors=True)
+            delete_file(theme_path)
             return False
 
     def on_import_theme(self, checked=None):
@@ -607,7 +611,16 @@ class ThemeManager(QtWidgets.QWidget, RegistryBase, Ui_ThemeManager, LogMixin, R
                 if validate_thumb(theme_path, thumb_path):
                     icon = build_icon(thumb_path)
                 else:
-                    icon = create_thumb(theme_path, thumb_path)
+                    # The small icon is missing or stale. Regenerate it from the existing full-size preview
+                    # image that save_preview() creates alongside the theme (self.theme_path/<name>.png) -
+                    # *not* from theme_path, which is the theme's *.json* data file. Passing that JSON file
+                    # to create_thumb() would have QImageReader misinterpret its raw bytes as image data,
+                    # producing a garbled/wrong-coloured icon instead of a real preview.
+                    sample_path_name = self.theme_path / '{name}.png'.format(name=text_name)
+                    if sample_path_name.exists():
+                        icon = create_thumb(sample_path_name, thumb_path)
+                    else:
+                        icon = build_icon(UiIcons().theme)
                 item_name.setIcon(icon)
                 item_name.setData(QtCore.Qt.ItemDataRole.UserRole, text_name)
                 self.theme_list_widget.addItem(item_name)
@@ -694,13 +707,22 @@ class ThemeManager(QtWidgets.QWidget, RegistryBase, Ui_ThemeManager, LogMixin, R
                     return
                 else:
                     abort_import = False
+                theme_path_resolved = self.theme_path.resolve()
                 for zipped_file in theme_zip.namelist():
                     zipped_file_rel_path = Path(zipped_file)
                     split_name = zipped_file_rel_path.parts
                     if split_name[-1] == '' or len(split_name) == 1:
                         # is directory or preview file
                         continue
+                    if zipped_file_rel_path.is_absolute() or '..' in split_name:
+                        # Reject absolute paths and path traversal ("zip-slip") attempts
+                        self.log_error('Theme zip contains an unsafe file path: {name}'.format(name=zipped_file))
+                        raise ValidationError
                     full_name = self.theme_path / zipped_file_rel_path
+                    if theme_path_resolved not in full_name.resolve().parents:
+                        # Extra safety net in case the checks above missed something
+                        self.log_error('Theme zip entry escapes the theme directory: {name}'.format(name=zipped_file))
+                        raise ValidationError
                     create_paths(full_name.parent)
                     if zipped_file_rel_path.suffix.lower() == '.xml':
                         # Legacy theme XML is converted to JSON below, so avoid
@@ -713,8 +735,14 @@ class ThemeManager(QtWidgets.QWidget, RegistryBase, Ui_ThemeManager, LogMixin, R
                     else:
                         with full_name.open('wb') as out_file:
                             out_file.write(theme_zip.read(zipped_file))
-        except (OSError, ValidationError, zipfile.BadZipFile):
+        # Catches malformed theme files that would otherwise crash the whole app: corrupt/invalid zip
+        # (zipfile.BadZipFile), disk/permission errors (OSError), our own validation failures
+        # (ValidationError), a non-numeric XML version attribute or corrupt JSON (ValueError, which is
+        # also the base class of json.JSONDecodeError), a missing <name> element in legacy XML themes
+        # (AttributeError), and unparsable XML (ParseError).
+        except (OSError, ValidationError, ValueError, AttributeError, ParseError, zipfile.BadZipFile):
             self.log_exception('Importing theme from zip failed {name}'.format(name=file_path))
+            abort_import = True
             critical_error_message_box(
                 translate('OpenLP.ThemeManager', 'Import Error'),
                 translate('OpenLP.ThemeManager', 'There was a problem importing {file_name}.\n\nIt is corrupt, '
