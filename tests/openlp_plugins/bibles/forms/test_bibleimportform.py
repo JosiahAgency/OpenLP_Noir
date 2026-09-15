@@ -150,7 +150,7 @@ def test_cleanup_failed_import_uses_file_path(mocked_delete_database: MagicMock,
 
     assert 'TestBible' not in import_form.manager.db_cache
     mocked_session.rollback.assert_called_once()
-    mocked_session.close.assert_called_once()
+    importer.close.assert_called_once()
     mocked_delete_database.assert_called_once_with(import_form.plugin.name, importer.file_path)
 
 

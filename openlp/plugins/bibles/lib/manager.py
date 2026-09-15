@@ -18,7 +18,6 @@
 # You should have received a copy of the GNU General Public License      #
 # along with this program.  If not, see <https://www.gnu.org/licenses/>. #
 ##########################################################################
-import gc
 import logging
 from pathlib import Path
 
@@ -125,9 +124,7 @@ class BibleManager(LogMixin, RegistryProperties):
             name = bible.get_name()
             # Remove corrupted files.
             if name is None:
-                bible.session.close()
-                bible.session = None
-                gc.collect()
+                bible.close()
                 delete_file(self.path / file_path)
                 continue
             log.debug('Bible Name: "{name}"'.format(name=name))
@@ -141,9 +138,7 @@ class BibleManager(LogMixin, RegistryProperties):
                     log.warning('Web bible "{name}" is missing its "download_name" metadata, '
                                 'removing corrupted file'.format(name=name))
                     del self.db_cache[name]
-                    bible.session.close()
-                    bible.session = None
-                    gc.collect()
+                    bible.close()
                     delete_file(self.path / file_path)
                     continue
                 web_bible = HTTPBible(self.parent, path=self.path, file=file_path, download_source=source.value,
@@ -181,9 +176,7 @@ class BibleManager(LogMixin, RegistryProperties):
         """
         log.debug('BibleManager.delete_bible("{name}")'.format(name=name))
         bible = self.db_cache[name]
-        bible.session.close()
-        bible.session = None
-        gc.collect()
+        bible.close()
         if bible.file_path:
             bible_path = bible.path / bible.file_path
         else:

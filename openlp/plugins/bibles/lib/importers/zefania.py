@@ -109,7 +109,10 @@ class ZefaniaBible(BibleImport):
                         translate('BiblesPlugin.Zefnia',
                                   'Importing {book} {chapter}...').format(book=db_book.name,
                                                                           chapter=chapter_number))
-            self.session.commit()
+                # Commit once per book, rather than holding one huge transaction open for the
+                # whole Bible; this bounds the amount of uncommitted work outstanding at any time
+                # and matches the batching strategy used by the other importers.
+                self.session.commit()
             self.application.process_events()
         except Exception as e:
             self.set_import_failure(

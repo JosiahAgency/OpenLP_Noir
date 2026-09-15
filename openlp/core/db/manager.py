@@ -322,3 +322,22 @@ class DBManager(object):
             except OperationalError:
                 # Just ignore the operational error
                 pass
+
+    def close(self):
+        """
+        Close the session and release the underlying database connection(s).
+
+        This is needed (rather than just discarding the session/manager and relying on the
+        garbage collector) because SQLite databases opened via ``init_db()`` use a
+        ``StaticPool``, which keeps a single DB-API connection open for the lifetime of the
+        engine. Simply closing the session returns that connection to the pool, it does not
+        close the underlying file handle, so on some platforms (e.g. Windows) the database
+        file cannot be deleted or renamed until the connection is actually closed. Disposing
+        of the engine here closes it deterministically, without depending on when (or if) the
+        garbage collector runs.
+        """
+        if self.session:
+            engine = self.session.get_bind()
+            self.session.close()
+            engine.dispose()
+            self.session = None

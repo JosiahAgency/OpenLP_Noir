@@ -1002,8 +1002,7 @@ class BibleImportForm(OpenLPWizard):
         self.manager.db_cache.pop(importer.name, None)
         if hasattr(importer, 'session') and importer.session:
             importer.session.rollback()
-            importer.session.close()
-            importer.session = None
+            importer.close()
         if hasattr(importer, 'file_path') and importer.file_path:
             delete_database(self.plugin.name, importer.file_path)
 

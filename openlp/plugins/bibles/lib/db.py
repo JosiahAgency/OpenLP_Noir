@@ -27,9 +27,10 @@ from typing import Any, List, Optional, Tuple
 
 import chardet
 from PySide6 import QtCore
-from sqlalchemy import Column, ForeignKey, func, or_
+from sqlalchemy import Column, ForeignKey, Index, and_, func, or_
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import Session, declarative_base, relationship
+from sqlalchemy.orm import Session, declarative_base, joinedload, relationship
+from sqlalchemy.sql import text as sql_text
 from sqlalchemy.types import Unicode, UnicodeText, Integer
 
 from openlp.core.common import clean_filename
@@ -39,11 +40,60 @@ from openlp.core.common.i18n import translate
 from openlp.core.db.helpers import init_db
 from openlp.core.db.manager import DBManager
 from openlp.core.lib.ui import critical_error_message_box
-from openlp.plugins.bibles.lib import BibleStrings, upgrade
+from openlp.plugins.bibles.lib import BibleStrings
+from openlp.plugins.bibles.lib import upgrade
 
 log = logging.getLogger(__name__)
 
 RESERVED_CHARACTERS = '\\.^$*+?{}[]()'
+
+# Extra indexes and (SQLite only) an FTS5 full text index, applied to every Bible database
+# in addition to the indexes declared on the models themselves. These are expressed as raw
+# SQL (with "IF NOT EXISTS" guards) rather than declarative model options so that they also
+# get added to Bible databases that were created by older versions of OpenLP, not just to
+# brand new ones.
+INDEX_SCHEMA = [
+    # get_verses()/get_verse_count() always filter by book_id and chapter together (and
+    # frequently by verse too), so a composite index serves those queries far better than the
+    # single-column indexes on their own.
+    'CREATE INDEX IF NOT EXISTS ix_verse_book_chapter_verse ON verse (book_id, chapter, verse)'
+]
+
+# verse_search() prefers this FTS5 index (kept in sync automatically by the triggers below)
+# when it is available, and falls back to slower LIKE queries when it is not (e.g. on
+# non-SQLite backends, or SQLite builds without the FTS5 extension). This mirrors the
+# approach used by the EGW Library plugin's paragraph search.
+FTS_SCHEMA = [
+    """
+    CREATE VIRTUAL TABLE IF NOT EXISTS verse_fts USING fts5(
+        text, content='verse', content_rowid='id', tokenize='unicode61 remove_diacritics 2')
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS verse_fts_ai AFTER INSERT ON verse
+    BEGIN
+    INSERT INTO verse_fts(rowid, text)
+    VALUES (new.id, new.text);
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS verse_fts_ad AFTER
+    DELETE
+    ON verse
+    BEGIN
+        INSERT INTO verse_fts(verse_fts, rowid, text) VALUES ('delete', old.id, old.text);
+    END
+    """,
+    """
+    CREATE TRIGGER IF NOT EXISTS verse_fts_au AFTER
+    UPDATE ON verse BEGIN
+    INSERT
+    INTO verse_fts(verse_fts, rowid, text)
+    VALUES ('delete', old.id, old.text);
+    INSERT INTO verse_fts(rowid, text)
+    VALUES (new.id, new.text);
+    END
+    """
+]
 
 
 class BibleDB(DBManager):
@@ -97,6 +147,7 @@ class BibleDB(DBManager):
         if self.session and 'file' in kwargs:
             self.get_name()
         self._is_web_bible = None
+        self._has_fts = None
 
     def init_schema(self, url: str) -> Session:
         """
@@ -105,13 +156,24 @@ class BibleDB(DBManager):
         Due to the fact that we have to set up separate ``Base`` classes for each database, all the models are declared
         here. They can be subsequently referenced via ``self.ModelName`` or ``bible.ModelName``.
 
+        Every Bible lives in its own single-file database (one file per translation/version).
+        Each book's verses are stored individually (denormalised with ``book_id`` on every
+        ``Verse`` row) so that lookups by reference never need more than one join, and so a
+        composite index can cover the ``book_id``/``chapter``/``verse`` filters used by nearly
+        every query (see ``INDEX_SCHEMA``). On SQLite, an FTS5 index of the verse text is also
+        maintained (see ``FTS_SCHEMA``) so ``verse_search()`` can search a whole Bible quickly;
+        it is optional because not every SQLite build includes the FTS5 extension, and other
+        database backends (e.g. MySQL) do not support FTS5 at all - ``verse_search()`` falls
+        back to plain ``LIKE`` queries in those cases.
+
         :param url: The database to setup.
         """
         Base = declarative_base()
 
         class BibleMeta(Base):
             """
-            Bible Meta Data
+            Key/value metadata about a Bible, e.g. its name, copyright, permissions and (for a
+            web Bible) which online source its verses are fetched from.
             """
             __tablename__ = 'metadata'
 
@@ -120,7 +182,22 @@ class BibleDB(DBManager):
 
         class Book(Base):
             """
-            Bible Book model
+            A book of the Bible, belonging to a single Bible/translation.
+
+            ``book_reference_id`` and ``testament_reference_id`` are *not* foreign keys into
+            this database. They are ids into the separate, bundled ``bibles_resources.sqlite``
+            reference database (see :class:`BiblesResourcesDB`), which holds one canonical
+            entry per Bible book/testament shared by every Bible OpenLP knows about. Storing
+            these reference ids (rather than just the book's own local ``id`` or its name)
+            is what lets OpenLP:
+
+            * match "the same" book across two different Bibles/translations/languages, even
+              though each Bible's own ``Book`` rows are independent and their local ``id``
+              values are unrelated (see the ``book_reference_id`` comparison in
+              ``mediaitem.py``'s dual Bible search);
+            * look up localised or alternative names for a book regardless of what name is
+              actually stored in this particular Bible's database (see ``get_name()`` below and
+              ``BiblesResourcesDB.get_book_by_id()``).
             """
             __tablename__ = 'book'
 
@@ -143,9 +220,18 @@ class BibleDB(DBManager):
 
         class Verse(Base):
             """
-            Topic model
+            A single verse of a book. ``book_id`` is denormalised onto every row (rather than
+            being looked up via ``chapter``, which does not exist as its own table) so that
+            reference and text-search queries only ever need to touch this one table.
             """
             __tablename__ = 'verse'
+            __table_args__ = (
+                # Matches the queries in get_verses()/get_verse_count(), which always filter by
+                # book_id and chapter together (and frequently by verse too). See INDEX_SCHEMA
+                # for how this same index is retrofitted onto Bibles created before this index
+                # existed.
+                Index('ix_verse_book_chapter_verse', 'book_id', 'chapter', 'verse'),
+            )
 
             id = Column(Integer, primary_key=True, index=True)
             book_id = Column(Integer, ForeignKey('book.id'), index=True)
@@ -162,6 +248,31 @@ class BibleDB(DBManager):
 
         session, metadata = init_db(url, base=Base)
         metadata.create_all(bind=metadata.bind, checkfirst=True)
+        if url.startswith('sqlite'):
+            try:
+                for statement in INDEX_SCHEMA:
+                    session.execute(sql_text(statement))
+                session.commit()
+            except OperationalError:
+                log.exception('Unable to create one or more indexes on the Verse table')
+                session.rollback()
+            try:
+                # Existing Bibles may already have an FTS5 index (nothing to do), or may
+                # already have verses in them but no index yet (upgrading from a version of
+                # OpenLP that had no FTS index, in which case the newly created index needs
+                # backfilling from the existing content).
+                result = session.execute(sql_text(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'verse_fts'"))
+                fts_already_existed = bool(result.scalar())
+                for statement in FTS_SCHEMA:
+                    session.execute(sql_text(statement))
+                if not fts_already_existed:
+                    session.execute(sql_text("INSERT INTO verse_fts(verse_fts) VALUES ('rebuild')"))
+                session.commit()
+            except OperationalError:
+                # SQLite without FTS5 support; searches fall back to LIKE queries.
+                log.exception('Unable to create the FTS5 index, full text search will use LIKE queries')
+                session.rollback()
         return session
 
     def get_name(self) -> str:
@@ -220,12 +331,18 @@ class BibleDB(DBManager):
         for verse_number, verse_text in text_list.items():
             verse = self.Verse(book_id=book_id, chapter=chapter, verse=verse_number, text=verse_text)
             self.session.add(verse)
-        try:
-            self.session.commit()
-        except OperationalError:
-            # Wait 10ms and try again (lp#1154467)
-            time.sleep(0.01)
-            self.session.commit()
+        # Retry with an increasing backoff (lp#1154467). A single 10ms retry is not enough for
+        # things like slow/flaky network connections to a remote database, so try a few times.
+        for try_count in range(3):
+            try:
+                self.session.commit()
+                return
+            except OperationalError:
+                log.exception('Probably a MySQL issue, "MySQL has gone away"')
+                self.session.rollback()
+                if try_count >= 2:
+                    raise
+                time.sleep(0.01 * (try_count + 1))
 
     def create_verse(self, book_id: int, chapter: int, verse: int, text: str):
         """
@@ -237,11 +354,41 @@ class BibleDB(DBManager):
         :param text: The verse text.
         """
         if not isinstance(text, str):
-            details = chardet.detect(text)
-            text = str(text, details['encoding'])
+            # Some importers (e.g. the SWORD importer, which reads third-party modules using a
+            # variety of legacy encodings) cannot guarantee the text they hand us is already a
+            # ``str``. When that happens, decode it defensively rather than assuming success.
+            text = self._decode_verse_text(text)
         verse = self.Verse(book_id=book_id, chapter=chapter, verse=verse, text=text)
         self.session.add(verse)
         return verse
+
+    @staticmethod
+    def _decode_verse_text(raw_text: bytes) -> str:
+        """
+        Decode raw (non-``str``) verse text into a ``str``. ``chardet`` is used to guess the
+        encoding since it is not known up front, but detection is not perfect: it can be wrong,
+        return a low confidence result, or fail to detect an encoding at all. Rather than
+        silently trusting it (which risks garbled/inconsistent data in the database) or letting
+        it raise an unhandled exception part-way through an import, any failure or low
+        confidence result is logged and a safe fallback that never raises is always used.
+
+        :param raw_text: The non-``str`` (typically ``bytes``) verse text to decode.
+        :return: The decoded text, as a ``str``.
+        """
+        try:
+            details = chardet.detect(raw_text)
+            encoding = details.get('encoding')
+            confidence = details.get('confidence') or 0
+            if not encoding:
+                raise ValueError('chardet could not detect an encoding')
+            if confidence < 0.5:
+                log.warning('Low confidence ({confidence}) detecting encoding "{encoding}" for verse text, '
+                            'decoding may be incorrect'.format(confidence=confidence, encoding=encoding))
+            return str(raw_text, encoding)
+        except (LookupError, UnicodeDecodeError, ValueError, TypeError):
+            log.exception('Failed to decode verse text using the detected encoding, falling back to UTF-8 '
+                          'with replacement characters')
+            return raw_text.decode('utf-8', errors='replace')
 
     def save_meta(self, key: str, value: Any):
         """
@@ -296,8 +443,6 @@ class BibleDB(DBManager):
         :rtype: list[int]
         """
         log.debug('get_book_ref_id_by_localised_name("{book}", "{lang}")'.format(book=book, lang=language_selection))
-        from openlp.core.common.enum import LanguageSelection
-        from openlp.plugins.bibles.lib import BibleStrings
         book_names = BibleStrings().BookNames
         # escape reserved characters
         for character in RESERVED_CHARACTERS:
@@ -339,24 +484,57 @@ class BibleDB(DBManager):
         log.debug('BibleDB.get_verses("{ref}")'.format(ref=reference_list))
         verse_list = []
         book_error = False
+        # Resolve every referenced book with a single query (rather than one query per
+        # reference) - a reference list very often repeats the same book/chapter (e.g. a
+        # multi-verse selection within one chapter), so this also avoids resolving the same
+        # book more than once.
+        book_ref_ids = {book_id for book_id, _, _, _ in reference_list}
+        books_by_ref_id = {book.book_reference_id: book
+                           for book in self.get_all_objects(self.Book, self.Book.book_reference_id.in_(book_ref_ids))}
+        # Build one filter per reference, so all of them can be fetched (with the book eagerly
+        # loaded) in a single combined query instead of a separate SELECT per reference.
+        range_filters = []
+        ranges = []  # Keeps (book_id, chapter, start_verse, end_verse) in the caller's order.
         for book_id, chapter, start_verse, end_verse in reference_list:
-            db_book = self.get_book_by_book_ref_id(book_id)
-            if db_book:
-                book_id = db_book.book_reference_id
-                log.debug('Book name corrected to "{book}"'.format(book=db_book.name))
-                if end_verse == -1:
-                    end_verse = self.get_verse_count(book_id, chapter)
-                verses = self.session.query(self.Verse) \
-                    .filter_by(book_id=db_book.id) \
-                    .filter_by(chapter=chapter) \
-                    .filter(self.Verse.verse >= start_verse) \
-                    .filter(self.Verse.verse <= end_verse) \
-                    .order_by(self.Verse.verse) \
-                    .all()
-                verse_list.extend(verses)
-            else:
+            db_book = books_by_ref_id.get(book_id)
+            if not db_book:
                 log.debug('OpenLP failed to find book with id "{book}"'.format(book=book_id))
                 book_error = True
+                continue
+            log.debug('Book name corrected to "{book}"'.format(book=db_book.name))
+            if end_verse == -1:
+                end_verse = self.get_verse_count(db_book.book_reference_id, chapter)
+            ranges.append((db_book.id, chapter, start_verse, end_verse))
+            range_filters.append(
+                and_(self.Verse.book_id == db_book.id, self.Verse.chapter == chapter,
+                     self.Verse.verse >= start_verse, self.Verse.verse <= end_verse))
+        if range_filters:
+            query = self.session.query(self.Verse) \
+                .options(joinedload(self.Verse.book)) \
+                .filter(or_(*range_filters))
+            for try_count in range(3):
+                try:
+                    verses = query.all()
+                    break
+                except OperationalError:
+                    # This exception clause is for users running MySQL which likes to terminate connections on
+                    # its own without telling anyone. See bug #927473. However, other dbms can raise it,
+                    # usually in a non-recoverable way. So we only retry 3 times.
+                    log.exception('Probably a MySQL issue, "MySQL has gone away"')
+                    self.session.rollback()
+                    if try_count >= 2:
+                        raise
+            # Group the combined result set by book/chapter so it can be sliced back into the
+            # per-reference ranges the caller asked for, in the order they asked for them (a
+            # single combined query has no inherent per-reference ordering of its own).
+            verses_by_book_chapter = {}
+            for verse in verses:
+                verses_by_book_chapter.setdefault((verse.book_id, verse.chapter), []).append(verse)
+            for book_id, chapter, start_verse, end_verse in ranges:
+                matches = [verse for verse in verses_by_book_chapter.get((book_id, chapter), [])
+                           if start_verse <= verse.verse <= end_verse]
+                matches.sort(key=lambda verse: verse.verse)
+                verse_list.extend(matches)
         if book_error and show_error:
             critical_error_message_box(
                 translate('BiblesPlugin', 'No Book Found'),
@@ -364,9 +542,27 @@ class BibleDB(DBManager):
                                           'spelled the name of the book correctly.'))
         return verse_list
 
+    def has_fts(self):
+        """
+        Check (once) whether the FTS5 index is available for this Bible database.
+        """
+        if self._has_fts is None:
+            try:
+                result = self.session.execute(sql_text(
+                    "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'verse_fts'"))
+                self._has_fts = bool(result.scalar())
+            except OperationalError:
+                # Not SQLite (no sqlite_master table)
+                self._has_fts = False
+        return self._has_fts
+
     def verse_search(self, text: str):
         """
-        Search for verses containing text ``text``.
+        Search for verses containing text ``text``, using the FTS5 index when it is available
+        (much faster, and results are ranked by relevance) and falling back to ``LIKE`` based
+        substring matching when it is not (e.g. non-SQLite backends, or SQLite builds without
+        the FTS5 extension). Note the FTS5 index matches whole words only, so it will not find
+        e.g. "begin" within "beginning" the way the LIKE fallback does.
 
         :param text:
             The text to search for. If the text contains commas, it will be
@@ -375,6 +571,42 @@ class BibleDB(DBManager):
             values.
         """
         log.debug('BibleDB.verse_search("{text}")'.format(text=text))
+        if self.has_fts():
+            try:
+                return self._fts_search(text)
+            except OperationalError:
+                log.exception('FTS search failed, falling back to a LIKE search')
+                self.session.rollback()
+        return self._like_search(text)
+
+    def _fts_search(self, text):
+        """
+        The FTS5 based implementation of :func:`verse_search`.
+        """
+        if text.find(',') > -1:
+            groups = [group.strip() for group in text.split(',') if group.strip()]
+            joiner = ' OR '
+        else:
+            groups = [group.strip() for group in text.split(' ') if group.strip()]
+            joiner = ' '
+        if not groups:
+            return []
+        # Quote each group so user input cannot break the FTS5 query syntax.
+        match_query = joiner.join('"{group}"'.format(group=group.replace('"', '""')) for group in groups)
+        sql = ('SELECT verse.id FROM verse '
+               'JOIN verse_fts ON verse_fts.rowid = verse.id '
+               'WHERE verse_fts MATCH :match ORDER BY rank')
+        verse_ids = [row[0] for row in self.session.execute(sql_text(sql), {'match': match_query})]
+        if not verse_ids:
+            return []
+        verses = {verse.id: verse
+                  for verse in self.session.query(self.Verse).filter(self.Verse.id.in_(verse_ids)).all()}
+        return [verses[verse_id] for verse_id in verse_ids if verse_id in verses]
+
+    def _like_search(self, text):
+        """
+        The LIKE based fallback for :func:`verse_search`.
+        """
         verses = self.session.query(self.Verse)
         if text.find(',') > -1:
             keywords = ['%{keyword}%'.format(keyword=keyword.strip()) for keyword in text.split(',') if keyword.strip()]
@@ -384,8 +616,17 @@ class BibleDB(DBManager):
             keywords = ['%{keyword}%'.format(keyword=keyword.strip()) for keyword in text.split(' ') if keyword.strip()]
             for keyword in keywords:
                 verses = verses.filter(self.Verse.text.like(keyword))
-        verses = verses.all()
-        return verses
+        for try_count in range(3):
+            try:
+                return verses.all()
+            except OperationalError:
+                # This exception clause is for users running MySQL which likes to terminate connections on its own
+                # without telling anyone. See bug #927473. However, other dbms can raise it, usually in a
+                # non-recoverable way. So we only retry 3 times.
+                log.exception('Probably a MySQL issue, "MySQL has gone away"')
+                self.session.rollback()
+                if try_count >= 2:
+                    raise
 
     def get_chapter_count(self, book) -> int:
         """

@@ -35,20 +35,16 @@ def test_delete_bible_by_file_path(settings):
     with patch.object(BibleManager, 'reload_bibles'), \
             patch('openlp.plugins.bibles.lib.manager.delete_file', return_value=True) as mocked_delete_file:
         instance = BibleManager(MagicMock())
-        # We need to keep a reference to the mock for close_all as it gets set to None later on!
-        mocked_close = MagicMock()
-        mocked_bible = MagicMock(file_path='KJV.sqlite', path=Path('bibles'),
-                                 **{'session.close': mocked_close})
+        mocked_bible = MagicMock(file_path='KJV.sqlite', path=Path('bibles'))
         instance.db_cache = {'KJV': mocked_bible}
 
         # WHEN: Calling delete_bible with 'KJV'
         result = instance.delete_bible('KJV')
 
-        # THEN: The session should have been closed and set to None, the bible should be deleted, and the result of
-        #       the deletion returned.
+        # THEN: The bible's connection should have been closed, the bible file deleted, and the result of the
+        #       deletion returned.
         assert result is True
-        mocked_close.assert_called_once_with()
-        assert mocked_bible.session is None
+        mocked_bible.close.assert_called_once_with()
         mocked_delete_file.assert_called_once_with(Path('bibles') / 'KJV.sqlite')
 
 
@@ -60,19 +56,15 @@ def test_delete_bible_by_name(settings):
     with patch.object(BibleManager, 'reload_bibles'), \
             patch('openlp.plugins.bibles.lib.manager.delete_file', return_value=True) as mocked_delete_file:
         instance = BibleManager(MagicMock())
-        # We need to keep a reference to the mock for close_all as it gets set to None later on!
-        mocked_close = MagicMock()
-        mocked_bible = MagicMock(file_path=None, path=Path('bibles'),
-                                 **{'session.close': mocked_close})
+        mocked_bible = MagicMock(file_path=None, path=Path('bibles'))
         mocked_bible.name = 'KJV'
         instance.db_cache = {'KJV': mocked_bible}
 
         # WHEN: Calling delete_bible with 'KJV'
         result = instance.delete_bible('KJV')
 
-        # THEN: The session should have been closed and set to None, the bible should be deleted, and the result of
-        #       the deletion returned.
+        # THEN: The bible's connection should have been closed, the bible file deleted, and the result of the
+        #       deletion returned.
         assert result is True
-        mocked_close.assert_called_once_with()
-        assert mocked_bible.session is None
+        mocked_bible.close.assert_called_once_with()
         mocked_delete_file.assert_called_once_with(Path('bibles') / 'KJV.sqlite')

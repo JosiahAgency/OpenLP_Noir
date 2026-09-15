@@ -85,9 +85,12 @@ class SwordBible(BibleImport):
                         for verse in verses:
                             verse_number += 1
                             self.create_verse(db_book.id, chapter_number, verse_number, verse)
+                    # Commit once per book, rather than holding one huge transaction open for the
+                    # whole Bible; this bounds the amount of uncommitted work outstanding at any
+                    # time and matches the batching strategy used by the other importers.
+                    self.session.commit()
                     self.wizard.increment_progress_bar(
                         translate('BiblesPlugin.Sword', 'Importing {name}...').format(name=db_book.name))
-            self.session.commit()
             self.application.process_events()
         except Exception as e:
             critical_error_message_box(
