@@ -70,7 +70,6 @@ class EGWLibraryMediaItem(MediaManagerItem):
         log.debug('setup_item')
         self.egwlibrary_go_live.connect(self.go_live_remote)
         self.egwlibrary_add_to_service.connect(self.add_to_service_remote)
-        self.single_service_item = False
         self.quick_preview_allowed = True
         self.has_search = True
 

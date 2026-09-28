@@ -124,8 +124,8 @@ openlp = "openlp.__main__:start"
 
 [project.urls]
 Homepage = "https://openlp.org/"
-Source = "https://gitlab.com/openlp/openlp"
-Issues = "https://gitlab.com/openlp/openlp/-/issues"
+Source = "https://github.com/JosiahAgency/OpenLP_Noir"
+Issues = "https://github.com/JosiahAgency/OpenLP_Noir/issues"
 Documentation = "https://manual.openlp.org"
 
 [tool.hatch.version]
