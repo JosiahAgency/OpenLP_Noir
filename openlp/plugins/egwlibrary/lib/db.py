@@ -344,9 +344,17 @@ class EGWLibraryManager(DBManager):
             self.session.query(Chapter).filter(Chapter.book_id == book_id).delete(synchronize_session=False)
             self.session.query(Alias).filter(Alias.book_id == book_id).delete(synchronize_session=False)
             self.session.query(Book).filter(Book.id == book_id).delete(synchronize_session=False)
+            # The bulk deletes bypass the session and leave stale cached objects for the
+            # deleted book behind. Identify them now, before commit() expires their
+            # attributes (accessing an expired attribute after commit would try to reload
+            # it and fail, since the row is gone), and only expunge those - so unrelated
+            # objects, e.g. books already imported earlier in the same batch, stay usable.
+            stale = [obj for obj in list(self.session.identity_map.values())
+                     if (isinstance(obj, Book) and obj.id == book_id)
+                     or (isinstance(obj, (Chapter, Paragraph, Alias)) and obj.book_id == book_id)]
             self.session.commit()
-            # The bulk deletes bypass the session, so drop any stale cached objects
-            self.session.expunge_all()
+            for obj in stale:
+                self.session.expunge(obj)
             self.is_dirty = True
             return True
         except OperationalError:

@@ -54,9 +54,14 @@ but can be given explicitly when the source numbering differs (for instance when
 paragraph carried over from the previous page counts as paragraph 1).
 
 Importing a book whose abbreviation already exists in the library replaces that book.
+
+A whole library can also be bulk imported in one go from another installation's
+``egwlibrary.sqlite`` database file, via :func:`import_sqlite_database`, instead of
+importing every book individually.
 """
 import json
 import logging
+import sqlite3
 
 from openlp.core.common.i18n import translate
 from openlp.plugins.egwlibrary.lib import normalize_alias
@@ -205,3 +210,69 @@ def import_json_file(manager, file_path):
         raise _error(translate('EGWLibraryPlugin.Importer', '"{name}" is not an EGW Library book file.'),
                      name=file_path.name)
     return [import_book(manager, book_data) for book_data in books]
+
+
+def _table_exists(conn, table_name):
+    result = conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (table_name,))
+    return result.fetchone() is not None
+
+
+def import_sqlite_database(manager, file_path):
+    """
+    Bulk import every book from another EGW library SQLite database (i.e. an
+    ``egwlibrary.sqlite`` file, as produced by this plugin) in one go, instead of
+    importing each book individually - handy for moving a whole library between
+    installations. As with the JSON import, a book replaces any existing book sharing
+    its abbreviation.
+
+    :param manager: The EGWLibraryManager to import into.
+    :param file_path: A Path to the source .sqlite database.
+    :return: A list of (Book, paragraph_count) tuples for the imported books.
+    """
+    try:
+        conn = sqlite3.connect('file:{path}?mode=ro'.format(path=file_path), uri=True)
+        conn.row_factory = sqlite3.Row
+    except sqlite3.Error as error:
+        raise _error(translate('EGWLibraryPlugin.Importer', 'Unable to open "{name}": {error}'),
+                     name=file_path.name, error=error)
+    try:
+        if not all(_table_exists(conn, table) for table in ('book', 'chapter', 'paragraph')):
+            raise _error(translate('EGWLibraryPlugin.Importer',
+                                   '"{name}" is not an EGW Library database.'), name=file_path.name)
+        has_alias_table = _table_exists(conn, 'alias')
+        results = []
+        for book_row in conn.execute('SELECT * FROM book ORDER BY id'):
+            book_data = {
+                'title': book_row['title'],
+                'abbreviation': book_row['abbreviation'],
+                'copyright': book_row['copyright'] or '',
+                'language': book_row['language'] or 'en',
+                'chapters': []
+            }
+            if has_alias_table:
+                book_data['aliases'] = [row['display'] for row in
+                                        conn.execute('SELECT display FROM alias WHERE book_id = ?',
+                                                     (book_row['id'],))]
+            for chapter_row in conn.execute(
+                    'SELECT * FROM chapter WHERE book_id = ? ORDER BY number', (book_row['id'],)):
+                chapter_data = {
+                    'number': chapter_row['number'],
+                    'title': chapter_row['title'] or '',
+                    'paragraphs': []
+                }
+                for paragraph_row in conn.execute(
+                        'SELECT * FROM paragraph WHERE chapter_id = ? ORDER BY paragraph_number',
+                        (chapter_row['id'],)):
+                    # Pass the stored page/paragraph-on-page through explicitly rather than
+                    # letting import_book() recompute them, so re-imported citations match
+                    # the source database exactly.
+                    chapter_data['paragraphs'].append({
+                        'text': paragraph_row['text'],
+                        'page': paragraph_row['page'],
+                        'para': paragraph_row['para_on_page']
+                    })
+                book_data['chapters'].append(chapter_data)
+            results.append(import_book(manager, book_data))
+        return results
+    finally:
+        conn.close()

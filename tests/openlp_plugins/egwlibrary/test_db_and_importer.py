@@ -23,11 +23,13 @@ Tests for the EGW Library database manager and the JSON importer, using an in-me
 database.
 """
 import json
+import sqlite3
 
 import pytest
 
 from openlp.plugins.egwlibrary.lib.db import EGWLibraryManager, init_schema
-from openlp.plugins.egwlibrary.lib.importer import EGWImportError, import_book, import_json_file
+from openlp.plugins.egwlibrary.lib.importer import EGWImportError, import_book, import_json_file, \
+    import_sqlite_database
 
 
 BOOK_DATA = {
@@ -272,3 +274,63 @@ def test_import_json_file_invalid(manager, tmp_path):
     file_path.write_text('[1, 2, 3]', encoding='utf-8')
     with pytest.raises(EGWImportError):
         import_json_file(manager, file_path)
+
+
+def _build_source_database(tmp_path, books):
+    """
+    Build a standalone EGW library .sqlite file (as another installation would produce)
+    containing the given books, for use as the source of a bulk import.
+    """
+    file_path = tmp_path / 'source.sqlite'
+    source_session = init_schema('sqlite:///{path}'.format(path=file_path))
+    source_manager = EGWLibraryManager.__new__(EGWLibraryManager)
+    source_manager.is_dirty = False
+    source_manager.db_url = 'sqlite:///{path}'.format(path=file_path)
+    source_manager.session = source_session
+    source_manager._has_fts = None
+    for book_data in books:
+        import_book(source_manager, book_data)
+    source_manager.session.bind.dispose()
+    source_manager.session.close()
+    return file_path
+
+
+def test_import_sqlite_database(manager, tmp_path):
+    """
+    Test bulk importing every book from another installation's .sqlite database.
+    """
+    other_book = {'title': 'Steps to Christ', 'abbreviation': 'SC',
+                  'paragraphs': [{'page': 9, 'text': 'A paragraph.'}]}
+    file_path = _build_source_database(tmp_path, [BOOK_DATA, other_book])
+    results = import_sqlite_database(manager, file_path)
+    assert [(book.abbreviation, count) for book, count in results] == [('DA', 6), ('SC', 1)]
+    # Aliases and citations survived the round trip
+    assert manager.get_book_by_alias('desire').abbreviation == 'DA'
+    paragraphs = manager.get_paragraphs_for_reference(results[0][0].id, 28, 2)
+    assert paragraphs[0].text == 'Explicit paragraph number on page twenty eight.'
+
+
+def test_import_sqlite_database_replaces_existing_book(manager, tmp_path):
+    """
+    Test that bulk importing replaces a book that already exists, same as JSON import.
+    """
+    import_book(manager, BOOK_DATA)
+    replacement = dict(BOOK_DATA, title='The Desire of Ages (revised)')
+    file_path = _build_source_database(tmp_path, [replacement])
+    import_sqlite_database(manager, file_path)
+    books = manager.get_books()
+    assert len(books) == 1
+    assert books[0].title == 'The Desire of Ages (revised)'
+
+
+def test_import_sqlite_database_invalid_file(manager, tmp_path):
+    """
+    Test that a .sqlite file without the expected tables raises a user-visible error.
+    """
+    file_path = tmp_path / 'not_a_library.sqlite'
+    conn = sqlite3.connect(file_path)
+    conn.execute('CREATE TABLE something_else (id INTEGER)')
+    conn.commit()
+    conn.close()
+    with pytest.raises(EGWImportError):
+        import_sqlite_database(manager, file_path)

@@ -38,7 +38,8 @@ from openlp.core.ui.icons import UiIcons
 from openlp.core.widgets.dialogs import FileDialog
 from openlp.plugins.egwlibrary.lib import format_paragraph_reference, parse_reference
 from openlp.plugins.egwlibrary.lib.db import Alias
-from openlp.plugins.egwlibrary.lib.importer import EGWImportError, import_book, import_json_file
+from openlp.plugins.egwlibrary.lib.importer import EGWImportError, import_book, import_json_file, \
+    import_sqlite_database
 from openlp.plugins.egwlibrary.lib.pdfimport import EGWPdfError, convert_pdf_book
 from openlp.plugins.egwlibrary.lib.pdfimportdialog import PdfBookDetailsDialog
 
@@ -193,15 +194,16 @@ class EGWLibraryMediaItem(MediaManagerItem):
 
     def on_import_click(self):
         """
-        Import one or more books from JSON files or EGW Estate PDF exports.
+        Import one or more books from JSON files, EGW Estate PDF exports, or bulk import
+        every book from another installation's EGW library SQLite database.
         """
         log.debug('on_import_click')
         file_paths, _ = FileDialog.getOpenFileNames(
             self, translate('EGWLibraryPlugin.MediaItem', 'Import EGW Library Book(s)'),
             self.settings.value('egwlibrary/last directory import'),
             translate('EGWLibraryPlugin.MediaItem',
-                      'EGW Library book files (*.json *.pdf);;JSON book files (*.json);;'
-                      'EGW Estate PDF exports (*.pdf)'))
+                      'EGW Library book files (*.json *.pdf *.sqlite);;JSON book files (*.json);;'
+                      'EGW Estate PDF exports (*.pdf);;EGW Library databases (*.sqlite)'))
         if not file_paths:
             log.debug('on_import_click: no files selected')
             return
@@ -213,6 +215,9 @@ class EGWLibraryMediaItem(MediaManagerItem):
             try:
                 if file_path.suffix.lower() == '.pdf':
                     self._import_pdf(file_path, imported)
+                elif file_path.suffix.lower() == '.sqlite':
+                    for book, paragraph_count in import_sqlite_database(self.manager, file_path):
+                        imported.append('{title} ({count})'.format(title=book.title, count=paragraph_count))
                 else:
                     for book, paragraph_count in import_json_file(self.manager, file_path):
                         imported.append('{title} ({count})'.format(title=book.title, count=paragraph_count))

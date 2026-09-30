@@ -49,3 +49,12 @@ A paragraph is either a plain string (the text) or an object:
   imported without page numbers are still searchable by chapter and full text, and are
   cited by paragraph number (`DA ¶12`).
 - A sample file is provided in this folder (`sample_book.json`).
+
+## Bulk import from another installation
+
+Rather than importing books one JSON file at a time, you can bulk import an entire
+library in one go by picking another installation's `egwlibrary.sqlite` database file
+in the Import dialog (it is stored alongside the other OpenLP data files, normally in
+the user's OpenLP data folder). Every book in that database is imported exactly as if
+each had been imported individually - books whose abbreviation already exists in the
+current library are replaced.
