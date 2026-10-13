@@ -54,7 +54,7 @@ def test_search_threaded(registry, settings):
     invoke_call = mocked_songs_plugin.media_item.staticMetaObject.invokeMethod.call_args_list[0]
     assert invoke_call.args[0] is mocked_songs_plugin.media_item
     assert invoke_call.args[1] == 'search'
-    assert invoke_call.args[2] == QtCore.Qt.ConnectionType.DirectConnection
+    assert invoke_call.args[2] == QtCore.Qt.ConnectionType.BlockingQueuedConnection
 
 
 def test_search_unthreaded(registry, settings):

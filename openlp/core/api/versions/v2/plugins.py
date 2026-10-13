@@ -23,6 +23,7 @@ The OpenLP plugins.
 import logging
 import json
 import re
+import threading
 
 from flask import abort, request, Blueprint, jsonify, Response
 from PySide6 import QtCore
@@ -39,6 +40,31 @@ log = logging.getLogger(__name__)
 plugins = Blueprint('v2-plugins', __name__)
 
 
+def run_in_gui_thread(context, func, *args):
+    """
+    Run ``func`` in the thread that owns the ``context`` QObject and wait for the result. HTTP worker threads must
+    never touch Qt widgets or the plugin databases directly.
+    """
+    if not isinstance(context, QtCore.QObject) or QtCore.QThread.currentThread() == context.thread():
+        return func(*args)
+    done = threading.Event()
+    outcome = {}
+
+    def runner():
+        try:
+            outcome['result'] = func(*args)
+        except BaseException as err:
+            outcome['error'] = err
+        finally:
+            done.set()
+
+    QtCore.QTimer.singleShot(0, context, runner)
+    done.wait()
+    if 'error' in outcome:
+        raise outcome['error']
+    return outcome.get('result')
+
+
 def search(plugin_name, text):
     """
     Searches the given plugin for the given text.
@@ -53,9 +79,10 @@ def search(plugin_name, text):
     plugin = Registry().get('plugin_manager').get_plugin_by_name(plugin_name)
     if plugin.status == PluginStatus.Active and plugin.media_item and plugin.media_item.has_search:
         if hasattr(plugin.media_item.search, '_slots'):
-            # If this method has a _slots attribute, it means that it should be called from the parent thread
+            # Run the slot in the media item's (GUI) thread and block until done; DirectConnection would run it in
+            # the calling HTTP worker thread, where Qt widgets and the SQLite session must not be touched
             results = plugin.media_item.staticMetaObject.invokeMethod(
-                plugin.media_item, 'search', QtCore.Qt.ConnectionType.DirectConnection,
+                plugin.media_item, 'search', QtCore.Qt.ConnectionType.BlockingQueuedConnection,
                 QtCore.Q_RETURN_ARG('QVariantList'), QtCore.Q_ARG(str, text), QtCore.Q_ARG(bool, False))
         else:
             # Fall back to original behaviour
@@ -89,7 +116,7 @@ def add(plugin_name, item_id):
     """
     plugin = Registry().get('plugin_manager').get_plugin_by_name(plugin_name)
     if plugin.status == PluginStatus.Active and plugin.media_item:
-        new_item_id = plugin.media_item.create_item_from_id(item_id)
+        new_item_id = run_in_gui_thread(plugin.media_item, plugin.media_item.create_item_from_id, item_id)
         getattr(plugin.media_item, f'{plugin_name}_add_to_service').emit([new_item_id, True])
 
 
@@ -104,7 +131,7 @@ def get_options(plugin_name):
     """
     plugin = Registry().get('plugin_manager').get_plugin_by_name(plugin_name)
     if plugin.status == PluginStatus.Active and plugin.media_item:
-        options = plugin.media_item.search_options()
+        options = run_in_gui_thread(plugin.media_item, plugin.media_item.search_options)
         return options
     return []
 
@@ -125,7 +152,7 @@ def set_option(plugin_name, search_option, value):
     plugin = Registry().get('plugin_manager').get_plugin_by_name(plugin_name)
     success = False
     if plugin.status == PluginStatus.Active and plugin.media_item:
-        success = plugin.media_item.set_search_option(search_option, value)
+        success = run_in_gui_thread(plugin.media_item, plugin.media_item.set_search_option, search_option, value)
     return success
 
 

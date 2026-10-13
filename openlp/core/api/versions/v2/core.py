@@ -157,6 +157,7 @@ def main_image():
     """
     live_controller = Registry().get('live_controller')
     img_data = live_controller.staticMetaObject.invokeMethod(
-        live_controller, 'grab_maindisplay', QtCore.Qt.ConnectionType.DirectConnection, QtCore.Q_RETURN_ARG(str))
+        live_controller, 'grab_maindisplay',
+        QtCore.Qt.ConnectionType.BlockingQueuedConnection, QtCore.Q_RETURN_ARG(str))
     img = f'data:image/jpeg;base64,{img_data}'
     return jsonify({'binary_image': img})
