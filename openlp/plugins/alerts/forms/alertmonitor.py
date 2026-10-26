@@ -13,7 +13,8 @@ class AlertMonitorDialog(QtWidgets.QDialog):
 
     def __init__(self, plugin):
         flags = (
-                    QtCore.Qt.WindowType.Tool | QtCore.Qt.WindowType.WindowTitleHint | QtCore.Qt.WindowType.WindowCloseButtonHint)
+                QtCore.Qt.WindowType.Tool | QtCore.Qt.WindowType.WindowTitleHint |
+                QtCore.Qt.WindowType.WindowCloseButtonHint)
         super().__init__(Registry().get('main_window'), flags)
         self.plugin = plugin
         self._setup_ui()

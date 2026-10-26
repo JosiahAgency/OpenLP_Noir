@@ -108,7 +108,8 @@ class AlertsPlugin(Plugin):
         self.tools_alert_monitor_item = create_action(tools_menu, 'toolsAlertMonitorItem',
                                                       text=translate('AlertsPlugin', 'Alert &Monitor'),
                                                       icon=UiIcons().live, statustip=translate('AlertsPlugin',
-                                                                                               'Show the active and queued alerts'),
+                                                                                               'Show the active and '
+                                                                                               'queued alerts'),
                                                       visible=False, can_shortcuts=True,
                                                       triggers=self.on_monitor_trigger)
         self.main_window.tools_menu.addAction(self.tools_alert_monitor_item)
@@ -142,7 +143,8 @@ class AlertsPlugin(Plugin):
         :return: text
         """
         about_text = translate('AlertsPlugin',
-                               '<strong>Alerts Plugin</strong>''<br />The alert plugin controls the displaying of alerts on the display screen.')
+                               '<strong>Alerts Plugin</strong>''<br />The alert plugin controls the displaying of '
+                               'alerts on the display screen.')
         return about_text
 
     def set_plugin_text_strings(self):
