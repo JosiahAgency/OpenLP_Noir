@@ -141,8 +141,8 @@ class AlertsPlugin(Plugin):
 
         :return: text
         """
-        about_text = translate('AlertsPlugin', '<strong>Alerts Plugin</strong>'
-                                               '<br />The alert plugin controls the displaying of alerts on the display screen.')
+        about_text = translate('AlertsPlugin',
+                               '<strong>Alerts Plugin</strong>''<br />The alert plugin controls the displaying of alerts on the display screen.')
         return about_text
 
     def set_plugin_text_strings(self):

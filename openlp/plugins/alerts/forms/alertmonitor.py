@@ -13,7 +13,7 @@ class AlertMonitorDialog(QtWidgets.QDialog):
 
     def __init__(self, plugin):
         flags = (
-                QtCore.Qt.WindowType.Tool | QtCore.Qt.WindowType.WindowTitleHint | QtCore.Qt.WindowType.WindowCloseButtonHint)
+                    QtCore.Qt.WindowType.Tool | QtCore.Qt.WindowType.WindowTitleHint | QtCore.Qt.WindowType.WindowCloseButtonHint)
         super().__init__(Registry().get('main_window'), flags)
         self.plugin = plugin
         self._setup_ui()
@@ -82,8 +82,8 @@ class AlertMonitorDialog(QtWidgets.QDialog):
         self.show_now_button.setText(translate(tr, 'Show Now'))
         self.remove_button.setText(translate(tr, 'Remove'))
         self.clear_button.setText(translate(tr, 'Clear Queue'))
-        self.show_now_button.setToolTip(translate(tr,
-                                                  'Override the alert on the screen. It returns to the front of the queue'))
+        self.show_now_button.setToolTip(
+            translate(tr, 'Override the alert on the screen. It returns to the front of the queue'))
 
     @staticmethod
     def _caption(alert):
