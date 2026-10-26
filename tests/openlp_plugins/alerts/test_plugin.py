@@ -21,12 +21,13 @@
 """
 This module contains tests for the plugin class Alerts plugin.
 """
-import pytest
 from unittest.mock import MagicMock, patch
 
-from openlp.core.state import State
+import pytest
+
 from openlp.core.common.registry import Registry
 from openlp.core.common.settings import Settings
+from openlp.core.state import State
 from openlp.plugins.alerts.alertsplugin import AlertsPlugin
 
 
@@ -67,29 +68,47 @@ def test_alerts_trigger(alerts_plugin: AlertsPlugin):
     # WHEN: I request the form
     alerts_plugin.on_alerts_trigger()
     # THEN: the form is loaded
-    alerts_plugin.alert_form.load_list.assert_called_once()
-    alerts_plugin.alert_form.exec.assert_called_once()
+    alerts_plugin.alert_form.open_form.assert_called_once()
+
+
+def test_monitor_trigger(alerts_plugin: AlertsPlugin):
+    """Test triggering the Alert Monitor window"""
+    # GIVEN an environment
+    alerts_plugin.monitor_form = MagicMock()
+    # WHEN: I request the monitor
+    alerts_plugin.on_monitor_trigger()
+    # THEN: it is shown and brought to the front
+    alerts_plugin.monitor_form.show.assert_called_once()
+    alerts_plugin.monitor_form.raise_.assert_called_once()
+    alerts_plugin.monitor_form.activateWindow.assert_called_once()
 
 
 def test_alerts_initialise(alerts_plugin: AlertsPlugin):
     """Test the initialise functionality"""
     # GIVEN an environment
     alerts_plugin.tools_alert_item = MagicMock()
+    alerts_plugin.tools_alert_monitor_item = MagicMock()
+
     # WHEN: I request the form
     with patch('openlp.plugins.alerts.alertsplugin.ActionList.instance') as mocked_actionlist:
         alerts_plugin.initialise()
         # THEN: the form is loaded
-        mocked_actionlist.add_action.assert_called_once()
+        assert mocked_actionlist.add_action.call_count == 2
         alerts_plugin.tools_alert_item.setVisible.assert_called_once_with(True)
+        alerts_plugin.tools_alert_monitor_item.setVisible.assert_called_once_with(True)
 
 
 def test_alerts_finalise(alerts_plugin: AlertsPlugin):
     """Test the finalise functionality"""
     # GIVEN an environment
     alerts_plugin.tools_alert_item = MagicMock()
-    # WHEN: I request the form
+    alerts_plugin.tools_alert_monitor_item = MagicMock()
+    alerts_plugin.monitor_form = MagicMock()
+    # WHEN: I finalise the plugin
     with patch('openlp.plugins.alerts.alertsplugin.ActionList.instance') as mocked_actionlist:
         alerts_plugin.finalise()
-        # THEN: the form is loaded
-        mocked_actionlist.remove_action.assert_called_once()
+        # THEN: both actions are removed and hidden, and the monitor is closed
+        assert mocked_actionlist.remove_action.call_count == 2
         alerts_plugin.tools_alert_item.setVisible.assert_called_once_with(False)
+        alerts_plugin.tools_alert_monitor_item.setVisible.assert_called_once_with(False)
+        alerts_plugin.monitor_form.close.assert_called_once()

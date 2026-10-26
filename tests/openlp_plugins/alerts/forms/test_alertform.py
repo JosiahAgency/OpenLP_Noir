@@ -36,6 +36,7 @@ from openlp.plugins.alerts.lib.presets import DEFAULT_PRESETS, AlertPriority
 
 class FakeAlertsDbManager:
     """A minimal stand-in for the alerts plugin's Manager, backed by a dict."""
+
     def __init__(self):
         self._items = {}
         self._next_id = 1
@@ -168,3 +169,42 @@ def test_cannot_save_scheduled_alert_with_placeholders(alert_form):
     # THEN: The user was warned and nothing was saved
     mocked_warning.assert_called_once()
     assert alert_form.item_id is None
+
+
+def test_open_form_shows_and_resets_a_closed_dialog(alert_form):
+    """Opening a closed dialog shows it with a blank new template"""
+    # GIVEN: Leftover text in a closed form
+    alert_form.alert_text_edit.setText('leftover')
+
+    # WHEN: The form is opened
+    alert_form.open_form()
+
+    # THEN: It is visible, blank, and ready for a new template
+    assert alert_form.isVisible() is True
+    assert alert_form.alert_text_edit.text() == ''
+    assert alert_form.item_id is None
+    assert alert_form.start_from_combo_box.isEnabled() is True
+    alert_form.close()
+
+
+def test_open_form_does_not_reset_an_open_dialog(alert_form):
+    """Opening an already-open dialog only brings it forward, so work in progress is kept"""
+    # GIVEN: An open form with text typed in
+    alert_form.open_form()
+    alert_form.alert_text_edit.setText('work in progress')
+
+    # WHEN: The form is opened again (e.g. Tools > Alert clicked twice)
+    alert_form.open_form()
+
+    # THEN: The text was not wiped
+    assert alert_form.alert_text_edit.text() == 'work in progress'
+    alert_form.close()
+
+
+def test_monitor_button_opens_the_monitor(alert_form):
+    """The Alert Monitor button asks the plugin to show the monitor"""
+    # WHEN: The monitor button is clicked
+    alert_form.monitor_button.click()
+
+    # THEN: The plugin was asked to open the monitor
+    alert_form.plugin.on_monitor_trigger.assert_called_once()

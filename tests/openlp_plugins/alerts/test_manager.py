@@ -28,7 +28,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from openlp.plugins.alerts.lib.alertsmanager import AlertsManager
+from openlp.plugins.alerts.lib.alertsmanager import AlertsManager, EXIT_ANIMATION_BUFFER
 from openlp.plugins.alerts.lib.presets import AlertPriority, resolve_alert_settings
 
 
@@ -42,6 +42,18 @@ def alert_environment(registry, settings):
         mocked_screen_list.return_value.__len__.return_value = 2
         alert_manager = AlertsManager(None)
         yield alert_manager, mocked_live_controller
+
+
+@pytest.fixture
+def single_shot(alert_environment):
+    """Capture the manager's exit-animation timer so tests can run its callback by hand"""
+    with patch('openlp.plugins.alerts.lib.alertsmanager.QtCore') as mocked_qtcore:
+        yield mocked_qtcore
+
+
+def _run_exit_callback(mocked_qtcore):
+    """Fire the most recently scheduled exit-animation callback"""
+    mocked_qtcore.QTimer.singleShot.call_args[0][1]()
 
 
 def test_remove_message_text(registry):
@@ -242,3 +254,232 @@ def test_check_schedules_disables_expired_alert(alert_environment):
     assert mocked_live_controller.display.alert.call_count == 0
     assert scheduled_item.enabled is False
     mocked_plugin.manager.save_object.assert_called_once_with(scheduled_item)
+
+
+def test_display_alert_sends_text_and_style_to_display(alert_environment):
+    """The display's alert method receives the text and the JSON style"""
+    alert_manager, mocked_live_controller = alert_environment
+
+    alert_manager.display_alert('hello', AlertPriority.Info)
+
+    args = mocked_live_controller.display.alert.call_args[0]
+    assert args[0] == 'hello'
+    assert json.loads(args[1])['alertType'] == 'toast'
+
+
+def test_alerts_get_unique_ids(alert_environment):
+    """Every alert is given its own id, so views can refer to it"""
+    alert_manager, _ = alert_environment
+    alert_manager.display_alert('first', AlertPriority.Info)
+    alert_manager.display_alert('second', AlertPriority.Info)
+    alert_manager.display_alert('third', AlertPriority.Info)
+
+    ids = [alert_manager._current['id']] + [alert['id'] for alert in alert_manager._queue]
+    assert len(set(ids)) == 3
+
+
+def test_queue_changed_emitted(alert_environment):
+    """Showing, queueing and clearing all notify listeners"""
+    alert_manager, _ = alert_environment
+    emitted = []
+    alert_manager.queue_changed.connect(lambda: emitted.append(True))
+
+    alert_manager.display_alert('first', AlertPriority.Info)  # shown
+    alert_manager.display_alert('second', AlertPriority.Info)  # queued
+    alert_manager.clear_queue()  # cleared
+
+    assert len(emitted) == 3
+
+
+def test_get_state_snapshot(alert_environment):
+    """get_state reports the current alert, the last shown alert and a copy of the queue"""
+    alert_manager, _ = alert_environment
+    alert_manager.display_alert('first', AlertPriority.Info)
+    alert_manager.display_alert('second', AlertPriority.Info)
+
+    state = alert_manager.get_state()
+
+    assert state['current']['text'] == 'first'
+    assert state['last']['text'] == 'first'
+    assert [alert['text'] for alert in state['queue']] == ['second']
+    # AND: the queue in the snapshot is a copy
+    state['queue'].clear()
+    assert len(alert_manager._queue) == 1
+
+
+def test_stop_current_shows_next_after_exit_animation(alert_environment, single_shot):
+    """Stop hides the alert on screen, then the next queued alert takes over"""
+    alert_manager, mocked_live_controller = alert_environment
+    alert_manager.display_alert('first', AlertPriority.Info)
+    alert_manager.display_alert('second', AlertPriority.Info)
+
+    alert_manager.stop_current()
+
+    # THEN: Nothing is current yet, the next alert is waiting out the exit animation
+    mocked_live_controller.display.hide_alert.assert_called_once()
+    assert alert_manager._current is None
+    assert alert_manager._pending['text'] == 'second'
+    assert alert_manager._queue == []
+
+    # WHEN: The exit animation has had time to play
+    _run_exit_callback(single_shot)
+
+    # THEN: The next alert is showing
+    assert alert_manager._current['text'] == 'second'
+    assert mocked_live_controller.display.alert.call_count == 2
+
+
+def test_stop_all_clears_queue(alert_environment, single_shot):
+    """Stop all hides the alert and drops everything waiting"""
+    alert_manager, mocked_live_controller = alert_environment
+    alert_manager.display_alert('first', AlertPriority.Info)
+    alert_manager.display_alert('second', AlertPriority.Info)
+
+    alert_manager.stop_current(clear_queue=True)
+
+    mocked_live_controller.display.hide_alert.assert_called_once()
+    assert alert_manager._current is None
+    assert alert_manager._pending is None
+    assert alert_manager._queue == []
+    single_shot.QTimer.singleShot.assert_not_called()
+
+
+def test_stop_during_exit_gap_cancels_pending_alert(alert_environment, single_shot):
+    """Stopping while the next alert is waiting out the exit animation stops it appearing"""
+    alert_manager, mocked_live_controller = alert_environment
+    alert_manager.display_alert('first', AlertPriority.Info)
+    alert_manager.display_alert('second', AlertPriority.Info)
+    alert_manager.stop_current()
+    callback = single_shot.QTimer.singleShot.call_args[0][1]
+
+    # WHEN: Stop is pressed again during the gap, then the stale timer fires
+    alert_manager.stop_current()
+    callback()
+
+    # THEN: The cancelled alert never reaches the display
+    assert alert_manager._current is None
+    assert mocked_live_controller.display.alert.call_count == 1
+
+
+def test_finish_waits_for_the_outgoing_alerts_animation(alert_environment, single_shot):
+    """The delay before the next alert is based on the alert that is leaving"""
+    alert_manager, _ = alert_environment
+    leaving_style = dict(resolve_alert_settings(alert_manager.settings, AlertPriority.Info))
+    leaving_style['animationSpeed'] = 700
+    arriving_style = dict(leaving_style)
+    arriving_style['animationSpeed'] = 100
+    alert_manager.display_alert('leaving', AlertPriority.Info, style=leaving_style)
+    alert_manager.display_alert('arriving', AlertPriority.Info, style=arriving_style)
+
+    alert_manager._finish_current_alert()
+
+    assert single_shot.QTimer.singleShot.call_args[0][0] == EXIT_ANIMATION_BUFFER + 700
+
+
+def test_restart_replays_current_alert(alert_environment, single_shot):
+    """Restart hides the alert and shows the same alert again from the start"""
+    alert_manager, mocked_live_controller = alert_environment
+    alert_manager.display_alert('first', AlertPriority.Info)
+
+    alert_manager.restart_current()
+
+    mocked_live_controller.display.hide_alert.assert_called_once()
+    assert alert_manager._current is None
+    assert alert_manager._pending['text'] == 'first'
+
+    _run_exit_callback(single_shot)
+
+    assert alert_manager._current['text'] == 'first'
+    assert mocked_live_controller.display.alert.call_count == 2
+
+
+def test_restart_replays_last_alert_when_nothing_is_showing(alert_environment, single_shot):
+    """With nothing on screen, Restart replays the last alert that was shown"""
+    alert_manager, mocked_live_controller = alert_environment
+    alert_manager.display_alert('first', AlertPriority.Info)
+    alert_manager.stop_current(clear_queue=True)
+
+    alert_manager.restart_current()
+    _run_exit_callback(single_shot)
+
+    assert alert_manager._current['text'] == 'first'
+    assert mocked_live_controller.display.alert.call_count == 2
+
+
+def test_restart_with_no_history_does_nothing(alert_environment, single_shot):
+    """Restart is a no-op when no alert has ever been shown"""
+    alert_manager, mocked_live_controller = alert_environment
+
+    alert_manager.restart_current()
+
+    mocked_live_controller.display.hide_alert.assert_not_called()
+    single_shot.QTimer.singleShot.assert_not_called()
+
+
+def test_show_now_overrides_current_alert(alert_environment):
+    """Show now puts a queued alert on screen; the interrupted alert returns to the queue front"""
+    alert_manager, _ = alert_environment
+    alert_manager.display_alert('first', AlertPriority.Info)
+    alert_manager.display_alert('second', AlertPriority.Info)
+    alert_manager.display_alert('third', AlertPriority.Info)
+    third_id = alert_manager._queue[1]['id']
+
+    result = alert_manager.show_now(third_id)
+
+    assert result is True
+    assert alert_manager._current['text'] == 'third'
+    assert [alert['text'] for alert in alert_manager._queue] == ['first', 'second']
+
+
+def test_show_now_unknown_id(alert_environment):
+    """Show now with an id that is not queued changes nothing"""
+    alert_manager, _ = alert_environment
+    alert_manager.display_alert('first', AlertPriority.Info)
+
+    assert alert_manager.show_now(99999) is False
+    assert alert_manager._current['text'] == 'first'
+
+
+def test_remove_from_queue(alert_environment):
+    """Removing one queued alert leaves the others"""
+    alert_manager, _ = alert_environment
+    alert_manager.display_alert('first', AlertPriority.Info)
+    alert_manager.display_alert('second', AlertPriority.Info)
+    alert_manager.display_alert('third', AlertPriority.Info)
+
+    alert_manager.remove_from_queue(alert_manager._queue[0]['id'])
+
+    assert [alert['text'] for alert in alert_manager._queue] == ['third']
+    assert alert_manager._current['text'] == 'first'
+
+
+def test_clear_queue_leaves_current_alert(alert_environment):
+    """Clear queue drops the waiting alerts but not the one on screen"""
+    alert_manager, _ = alert_environment
+    alert_manager.display_alert('first', AlertPriority.Info)
+    alert_manager.display_alert('second', AlertPriority.Info)
+
+    alert_manager.clear_queue()
+
+    assert alert_manager._queue == []
+    assert alert_manager._current['text'] == 'first'
+
+
+def test_display_failure_does_not_wedge_the_manager(alert_environment, single_shot):
+    """A failing display call is logged, and Stop all still recovers the manager"""
+    alert_manager, mocked_live_controller = alert_environment
+    mocked_live_controller.display.alert.side_effect = RuntimeError('boom')
+    alert_manager.log_exception = MagicMock()
+
+    alert_manager.display_alert('first', AlertPriority.Info)
+
+    # THEN: The failure was logged, not raised
+    alert_manager.log_exception.assert_called_once()
+    assert alert_manager._current['text'] == 'first'
+
+    # WHEN: Stop all is used
+    alert_manager.stop_current(clear_queue=True)
+
+    # THEN: The manager is clean again
+    assert alert_manager._current is None
+    assert alert_manager._pending is None
