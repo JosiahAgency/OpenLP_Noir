@@ -21,20 +21,20 @@
 
 import logging
 
-from openlp.core.state import State
 from openlp.core.common.actions import ActionList
 from openlp.core.common.i18n import UiStrings, translate
 from openlp.core.common.registry import Registry
 from openlp.core.db.manager import DBManager
 from openlp.core.lib.plugin import Plugin, StringContent
 from openlp.core.lib.ui import create_action
+from openlp.core.state import State
 from openlp.core.ui.icons import UiIcons
 from openlp.plugins.alerts.forms.alertform import AlertForm
+from openlp.plugins.alerts.forms.alertmonitor import AlertMonitorDialog
 from openlp.plugins.alerts.lib import upgrade
 from openlp.plugins.alerts.lib.alertsmanager import AlertsManager
 from openlp.plugins.alerts.lib.alertstab import AlertsTab
 from openlp.plugins.alerts.lib.db import init_schema
-
 
 log = logging.getLogger(__name__)
 
@@ -56,6 +56,7 @@ class AlertsPlugin(Plugin):
         AlertsManager(self)
         self.manager = DBManager('alerts', init_schema, upgrade_mod=upgrade)
         self.alert_form = AlertForm(self)
+        self.monitor_form = AlertMonitorDialog(self)
         State().add_service(self.name, self.weight, is_plugin=True)
         State().update_pre_conditions(self.name, self.check_pre_conditions())
 
@@ -68,6 +69,8 @@ class AlertsPlugin(Plugin):
         self.tools_alert_item.setVisible(True)
         action_list = ActionList.get_instance()
         action_list.add_action(self.tools_alert_item, UiStrings().Tools)
+        self.tools_alert_monitor_item.setVisible(True)
+        action_list.add_action(self.tools_alert_monitor_item, UiStrings().Tools)
         Registry().get('alerts_manager').start_scheduler()
 
     def finalise(self):
@@ -81,6 +84,9 @@ class AlertsPlugin(Plugin):
         self.tools_alert_item.setVisible(False)
         action_list = ActionList.get_instance()
         action_list.remove_action(self.tools_alert_item, 'Tools')
+        self.monitor_form.close()
+        self.tools_alert_monitor_item.setVisible(False)
+        action_list.remove_action(self.tools_alert_monitor_item, 'Tools')
 
     def add_tools_menu_item(self, tools_menu):
         """
@@ -99,6 +105,13 @@ class AlertsPlugin(Plugin):
         # access during a live service. The same action backs both entries, so visibility and
         # shortcuts stay in sync.
         self.main_window.menu_bar.insertAction(self.main_window.help_menu.menuAction(), self.tools_alert_item)
+        self.tools_alert_monitor_item = create_action(tools_menu, 'toolsAlertMonitorItem',
+                                                      text=translate('AlertsPlugin', 'Alert &Monitor'),
+                                                      icon=UiIcons().live, statustip=translate('AlertsPlugin',
+                                                                                               'Show the active and queued alerts'),
+                                                      visible=False, can_shortcuts=True,
+                                                      triggers=self.on_monitor_trigger)
+        self.main_window.tools_menu.addAction(self.tools_alert_monitor_item)
 
     def toggle_alerts_state(self):
         """
@@ -111,8 +124,15 @@ class AlertsPlugin(Plugin):
         """
         Start of the Alerts dialog triggered from the main menu.
         """
-        self.alert_form.load_list()
-        self.alert_form.exec()
+        self.alert_form.open_form()
+
+    def on_monitor_trigger(self):
+        """
+        Start of the Alerts Monitor dialog triggered from the main menu.
+        """
+        self.monitor_form.show()
+        self.monitor_form.raise_()
+        self.monitor_form.activateWindow()
 
     @staticmethod
     def about():
@@ -122,7 +142,7 @@ class AlertsPlugin(Plugin):
         :return: text
         """
         about_text = translate('AlertsPlugin', '<strong>Alerts Plugin</strong>'
-                               '<br />The alert plugin controls the displaying of alerts on the display screen.')
+                                               '<br />The alert plugin controls the displaying of alerts on the display screen.')
         return about_text
 
     def set_plugin_text_strings(self):

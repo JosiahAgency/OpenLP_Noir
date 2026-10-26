@@ -63,27 +63,31 @@ class AlertForm(QtWidgets.QDialog, AlertDialog):
         self.alert_list_widget.clicked.connect(self.on_single_click)
         self.alert_list_widget.currentRowChanged.connect(self.on_current_row_changed)
         self.schedule_group_box.toggled.connect(self.on_schedule_toggled)
+        self.monitor_button.clicked.connect(lambda: self.plugin.on_monitor_trigger())
 
-    def exec(self):
+    def open_form(self):
         """
         Execute the dialog and return the exit code.
         """
+        if self.isVisible():
+            self.raise_()
+            self.activateWindow()
+            return
+        self.load_list()
         self.display_button.setEnabled(False)
         self.display_close_button.setEnabled(False)
         self.name_edit.setText('')
         self.alert_text_edit.setText('')
         self.schedule_group_box.setChecked(False)
         self.item_id = None
-        # A fresh, unsaved template starts from the selected priority's
-        # current default and may freely borrow from any of the four.
         self.start_from_combo_box.setEnabled(True)
         self.start_from_combo_box.setCurrentIndex(AlertPriority.Info.value)
         self.style_editor.load_style(new_template_style(Registry().get('settings'), AlertPriority.Info))
-        # The presets may have been edited in Settings since the dialog was
-        # last shown, so rebuild the priority captions and explanations
         self._refresh_priority_captions()
         self._update_priority_info()
-        return QtWidgets.QDialog.exec(self)
+        self.show()
+        self.raise_()
+        self.activateWindow()
 
     def _refresh_priority_captions(self):
         """

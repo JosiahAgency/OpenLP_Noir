@@ -1024,6 +1024,7 @@ class Settings(QtCore.QSettings):
                 "shortcuts/toolsFindDuplicates": [],
                 "shortcuts/toolsSongListReport": [],
                 "shortcuts/toolsAlertItem": [QtGui.QKeySequence(QtCore.Qt.Key.Key_F7)],
+                "shortcuts/toolsAlertMonitorItem": [],
                 "shortcuts/toolsTimerItem": [],
                 "shortcuts/toolsFirstTimeWizard": [],
                 "shortcuts/toolsOpenDataFolder": [],

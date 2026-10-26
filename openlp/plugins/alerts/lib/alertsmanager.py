@@ -24,6 +24,7 @@ engine: the priority queue (with preemption for critical alerts), the display
 timing, and the scheduler which fires stored alerts inside their start/end
 window and on their repeat interval.
 """
+import itertools
 import json
 from datetime import datetime, timedelta
 
@@ -47,12 +48,16 @@ class AlertsManager(QtCore.QObject, RegistryBase, LogMixin, RegistryProperties):
     AlertsManager manages the alert queue, display timing and scheduling.
     """
     alerts_text = QtCore.Signal(list)
+    queue_changed = QtCore.Signal()
 
     def __init__(self, parent):
         super(AlertsManager, self).__init__()
         self.plugin = parent
         self._queue = []
         self._current = None
+        self._last = None
+        self._pending = None
+        self._ids = itertools.count(1)
         self._hide_timer = QtCore.QTimer(self)
         self._hide_timer.setSingleShot(True)
         self._hide_timer.timeout.connect(self._finish_current_alert)
@@ -90,7 +95,17 @@ class AlertsManager(QtCore.QObject, RegistryBase, LogMixin, RegistryProperties):
                 text = text.replace('\n', ' ')
             self.display_alert(text, AlertPriority.Notice)
 
-    def display_alert(self, text='', priority=AlertPriority.Info, style=None):
+    def _safe_display(self, method, *args):
+        """Call a live display method without letting a failure corrupt the queue state."""
+        try:
+            getattr(self.live_controller.display, method)(*args)
+        except Exception:
+            self.log_exception(f'Alert display class "{method}" failed')
+
+    def _has_source(self, source):
+        return any(alert and alert.get('source') == source for alert in [self._current, self._pending, *self._queue])
+
+    def display_alert(self, text='', priority=AlertPriority.Info, style=None, source=None):
         """
         Called from the Alert form (or the scheduler) to display an alert.
 
@@ -112,23 +127,22 @@ class AlertsManager(QtCore.QObject, RegistryBase, LogMixin, RegistryProperties):
         priority = AlertPriority(priority)
         if style is None:
             style = resolve_alert_settings(self.settings, priority)
-        alert = {'text': text, 'priority': priority, 'style': style}
+        alert = {'id': next(self._ids), 'text': text, 'priority': priority, 'style': style, 'source': source}
         behaviour = PRIORITY_BEHAVIOUR[priority]
         if self._current is None:
             self._show_alert(alert)
         elif behaviour == 'preempt':
-            interrupted = self._current
-            self._hide_timer.stop()
-            self._queue.insert(0, interrupted)
-            self._show_alert(alert)
+            self._preempt(alert)
         elif behaviour == 'front':
             # Ahead of anything less urgent, behind equal or higher priorities
             position = 0
             while position < len(self._queue) and self._queue[position]['priority'] >= priority:
                 position += 1
             self._queue.insert(position, alert)
+            self.queue_changed.emit()
         else:
             self._queue.append(alert)
+            self.queue_changed.emit()
 
     def _show_alert(self, alert):
         """
@@ -137,37 +151,45 @@ class AlertsManager(QtCore.QObject, RegistryBase, LogMixin, RegistryProperties):
         :param alert: dict with ``text``, ``priority`` and ``style``
         """
         settings = alert['style']
-        self._current = alert
-        self.live_controller.display.alert(alert['text'], json.dumps(settings))
-        # The alert stays for its timeout (per scrolling pass when scrolling),
-        # plus the entrance/exit animations
         duration = settings['timeout']
         if settings['scroll']:
             duration = settings['timeout'] * max(1, int(settings['repeat']))
         duration_ms = int(duration * 1000) + 2 * int(settings['animationSpeed'])
+        self._current = alert
+        self._last = alert
         self._hide_timer.start(duration_ms)
+        self._safe_display('alert', alert['text'], json.dumps(settings))
+        self.queue_changed.emit()
 
     def _finish_current_alert(self):
         """
         The current alert's time is up: hide it and, once the exit animation
         has had time to play, show the next alert in the queue.
         """
+        finished = self._current
         self._current = None
-        self.live_controller.display.hide_alert()
+        self._safe_display('hide_alert')
         if self._queue:
             next_alert = self._queue.pop(0)
-            exit_delay = EXIT_ANIMATION_BUFFER + int(next_alert['style']['animationSpeed'])
+            self._pending = next_alert
+            exit_speed = int(finished['style']['animationSpeed']) if finished else 0
+            exit_delay = EXIT_ANIMATION_BUFFER + exit_speed
             QtCore.QTimer.singleShot(exit_delay, lambda: self._resume_with(next_alert))
+        self.queue_changed.emit()
 
     def _resume_with(self, alert):
         """
         Show a queued alert, unless something (e.g. a preempting critical
         alert) has taken the display in the meantime.
         """
+        if alert is not self._pending:
+            return
+        self._pending = None
         if self._current is None:
             self._show_alert(alert)
         else:
             self._queue.insert(0, alert)
+            self.queue_changed.emit()
 
     def check_schedules(self):
         """
@@ -194,10 +216,88 @@ class AlertsManager(QtCore.QObject, RegistryBase, LogMixin, RegistryProperties):
                     item.repeat_minutes > 0 and now >= item.last_fired + timedelta(minutes=item.repeat_minutes))
             if not due:
                 continue
+            if self._has_source(item.id):
+                continue
             style = resolve_template_style(item, self.settings)
-            self.display_alert(item.text, AlertPriority(item.priority), style=style)
+            self.display_alert(item.text, AlertPriority(item.priority), style=style, source=item.id)
             item.last_fired = now
             if item.repeat_minutes == 0:
                 # One-shot alert: it has done its job
                 item.enabled = False
             manager.save_object(item)
+
+    def _preempt(self, alert):
+        """Show ``alert`` now; whatever was showing goes back to the front of the queue."""
+        if self._current is not None:
+            self._hide_timer.stop()
+            self._queue.insert(0, self._current)
+        self._show_alert(alert)
+
+    def get_state(self):
+        """
+                Snapshot for views.
+                :return: dict with ``current`` (alert or None), ``last``, ``remaining_ms`` and ``queue`` (list).
+                """
+        current = self._current or self._pending
+        remaining = self._hide_timer.remainingTime() if self._current else 0
+        return {'current': current, 'last': self._last, 'remaining_ms': max(0, remaining), 'queue': list(self._queue)}
+
+    def stop_current(self, clear_queue=False):
+        """
+        Stop the alert on screen. The next queued alert (if any) then shows,
+        unless ``clear_queue`` is set, which stops everything
+        """
+        if clear_queue:
+            self._queue.clear()
+        if self._current is None:
+            self._pending = None
+            self.queue_changed.emit()
+            return
+        self._hide_timer.stop()
+        if clear_queue:
+            self._pending = None
+        self._finish_current_alert()
+
+    def restart_current(self):
+        """Replay the alert on screen from the start, or the last one shown if nothing is showing."""
+        alert = self._current or self._last
+        if alert is None:
+            return
+        self._hide_timer.stop()
+        self._current = None
+        self._safe_display('hide_alert')
+
+        if self._pending is not None and self._pending is not alert:
+            self._queue.insert(0, self._pending)
+        self._pending = alert
+        exit_delay = EXIT_ANIMATION_BUFFER + int(alert['style']['animationSpeed'])
+        QtCore.QTimer.singleShot(exit_delay, lambda: self._resume_with(alert))
+        self.queue_changed.emit()
+
+    def show_now(self, alert_id):
+        """Override: put a queued alert on screen immediately. The interrupted alert goes back to the queue front."""
+        for index, alert in enumerate(self._queue):
+            if alert['id'] == alert_id:
+                self._queue.pop(index)
+                self._preempt(alert)
+                return True
+        return False
+
+    def remove_from_queue(self, alert_id):
+        """Drop one queued alert."""
+        self._queue = [alert for alert in self._queue if alert['id'] != alert_id]
+        self.queue_changed.emit()
+
+    def clear_queue(self):
+        """Drop all queued alerts."""
+        self._queue.clear()
+        self._pending = None
+        self.queue_changed.emit()
+
+    def shutdown(self):
+        """Stop all timers and drop state when the plugin is finalised."""
+        self._scheduler_timer.stop()
+        self._hide_timer.stop()
+        self._queue.clear()
+        self._current = None
+        self._pending = None

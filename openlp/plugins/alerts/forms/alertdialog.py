@@ -124,12 +124,14 @@ class AlertDialog(object):
         self._setup_message_tab()
         self._setup_style_tab()
         self._setup_schedule_tab()
+
         self.editor_panel_layout.addWidget(self.editor_tabs)
         self.display_button = create_button(alert_dialog, 'display_button', icon=UiIcons().live, enabled=False)
         self.display_close_button = create_button(alert_dialog, 'display_close_button', icon=UiIcons().live,
                                                   enabled=False)
+        self.monitor_button = create_button(alert_dialog, 'monitor_button', icon=UiIcons().live)
         self.button_box = create_button_box(alert_dialog, 'button_box', ['close', 'help'],
-                                            [self.display_button, self.display_close_button])
+                                            [self.display_button, self.display_close_button, self.monitor_button])
         self.editor_panel_layout.addWidget(self.button_box)
         self.alert_dialog_layout.addWidget(self.editor_panel)
 
@@ -257,3 +259,4 @@ class AlertDialog(object):
         self.save_button.setText(translate('AlertsPlugin.AlertForm', '&Save'))
         self.display_button.setText(translate('AlertsPlugin.AlertForm', 'Displ&ay'))
         self.display_close_button.setText(translate('AlertsPlugin.AlertForm', 'Display && Cl&ose'))
+        self.monitor_button.setText(translate('AlertsPlugin.AlertForm', 'Alert &Monitor'))
